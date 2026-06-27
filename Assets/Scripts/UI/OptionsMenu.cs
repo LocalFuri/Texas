@@ -1,0 +1,357 @@
+using System;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace TexasHoldem
+{
+    /// <summary>
+    /// Debug options panel toggled with F1, F2, F5, O, or right mouse button.
+    /// Pauses Texas Hold'em gameplay (time scale + game-loop waits) while open.
+    /// </summary>
+    public class OptionsMenu : MonoBehaviour
+    {
+        public const int OptionCount = 6;
+
+        private const float PanelWidth   = 248f;
+        private const float RowHeight    = 20f;
+        private const float CheckboxSize = 15f;
+        private const float RowSpacing   = 3f;
+        private const float PanelPadding = 10f;
+        private const float NearPanelPaddingPx = 24f;
+
+        // Reference panel ~#052c05
+        private static readonly Color PanelBg    = new Color(0.020f, 0.173f, 0.020f, 1f);
+        // Reference label ~#e6d64e
+        private static readonly Color LabelColor = new Color(0.902f, 0.839f, 0.306f, 1f);
+
+        // ── Singleton ─────────────────────────────────────────────────────
+        public static OptionsMenu Instance { get; private set; }
+
+        // ── Option State (readable by other systems) ───────────────────────
+        public bool Autoplay           => _toggleStates[0];
+        public bool AutoplayAtMaxSpeed => _toggleStates[1];
+        public bool ShowBotCards       => _toggleStates[2];
+        public bool TestMode           => _toggleStates[3];
+        public bool GodMode            => _toggleStates[4];
+        public bool AutoAdvance        => _toggleStates[5];
+        public bool IsOpen             => _isOpen;
+
+        public event Action OnOptionsChanged;
+
+        // ── Serialized references (wired by OptionsMenuBuilder) ───────────
+        [SerializeField] private CanvasGroup _canvasGroup;
+        [SerializeField] private Toggle[]    _toggles = new Toggle[OptionCount];
+
+        [Header("Audio")]
+        [SerializeField] private AudioClip _menuToggleClip;
+        [SerializeField] [Range(0f, 1f)] private float _menuToggleVolume = 0.35f;
+
+        // ── Private ───────────────────────────────────────────────────────
+        private readonly bool[] _toggleStates = new bool[OptionCount];
+        private bool            _isOpen;
+        private float           _timeScaleBeforePause = 1f;
+        private AudioSource     _audioSource;
+
+        // ── Unity Callbacks ───────────────────────────────────────────────
+
+        private void Awake()
+        {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            Instance = this;
+            ResolveCanvasGroup();
+            ResolveAudioSource();
+
+            for (int i = 0; i < _toggles.Length; i++)
+            {
+                int idx = i;
+                if (_toggles[idx] != null)
+                    _toggles[idx].onValueChanged.AddListener(v => OnToggleChanged(idx, v));
+            }
+
+            SetVisible(false);
+        }
+
+        private void Start()
+        {
+            OptionsMenuToggleStyle.ResetRuntimeSprites();
+            ApplyCompactLayout();
+            ApplyToggleStyles();
+        }
+
+        private void OnDestroy()
+        {
+            if (_isOpen)
+                Time.timeScale = _timeScaleBeforePause;
+
+            if (Instance == this)
+                Instance = null;
+        }
+
+        private void Update()
+        {
+            if (WasToggleKeyPressed())
+            {
+                SetVisible(!_isOpen);
+                return;
+            }
+
+            if (!Input.GetMouseButtonDown(1))
+                return;
+
+            if (_isOpen)
+            {
+                SetVisible(false);
+                return;
+            }
+
+            if (IsCursorNearPanel())
+                SetVisible(true);
+        }
+
+        // ── Visibility ────────────────────────────────────────────────────
+
+        private void SetVisible(bool visible)
+        {
+            if (_isOpen == visible)
+                return;
+
+            _isOpen = visible;
+
+            if (visible)
+            {
+                _timeScaleBeforePause = Time.timeScale;
+                Time.timeScale         = 0f;
+            }
+            else
+            {
+                Time.timeScale = _timeScaleBeforePause;
+            }
+
+            ResolveCanvasGroup();
+
+            gameObject.SetActive(true);
+
+            if (visible)
+                transform.SetAsLastSibling();
+
+            _canvasGroup.alpha          = visible ? 1f : 0f;
+            _canvasGroup.interactable   = visible;
+            _canvasGroup.blocksRaycasts = visible;
+
+            PlayMenuToggleSound();
+        }
+
+        private void ResolveAudioSource()
+        {
+            _audioSource = GetComponent<AudioSource>();
+            if (_audioSource == null)
+                _audioSource = gameObject.AddComponent<AudioSource>();
+
+            _audioSource.playOnAwake      = false;
+            _audioSource.ignoreListenerPause = true;
+        }
+
+        private void PlayMenuToggleSound()
+        {
+            if (_menuToggleClip == null || _audioSource == null)
+                return;
+
+            _audioSource.PlayOneShot(_menuToggleClip, _menuToggleVolume);
+        }
+
+        private void ResolveCanvasGroup()
+        {
+            if (_canvasGroup != null)
+                return;
+
+            _canvasGroup = GetComponent<CanvasGroup>();
+            if (_canvasGroup == null)
+                _canvasGroup = gameObject.AddComponent<CanvasGroup>();
+        }
+
+        private static bool WasToggleKeyPressed()
+        {
+            // O is a reliable backup when the Unity Editor captures F1 for Help.
+            return Input.GetKeyDown(KeyCode.F1)
+                || Input.GetKeyDown(KeyCode.F2)
+                || Input.GetKeyDown(KeyCode.F5)
+                || Input.GetKeyDown(KeyCode.O);
+        }
+
+        private bool IsCursorNearPanel()
+        {
+            var rt = transform as RectTransform;
+            if (rt == null)
+                return false;
+
+            var canvas = rt.GetComponentInParent<Canvas>();
+            Camera cam = null;
+            if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                cam = canvas.worldCamera;
+
+            var corners = new Vector3[4];
+            rt.GetWorldCorners(corners);
+
+            Vector2 min = RectTransformUtility.WorldToScreenPoint(cam, corners[0]);
+            Vector2 max = RectTransformUtility.WorldToScreenPoint(cam, corners[2]);
+
+            var rect = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+            rect.xMin -= NearPanelPaddingPx;
+            rect.yMin -= NearPanelPaddingPx;
+            rect.xMax += NearPanelPaddingPx;
+            rect.yMax += NearPanelPaddingPx;
+
+            return rect.Contains(Input.mousePosition);
+        }
+
+        // ── Toggle Callbacks ──────────────────────────────────────────────
+
+        private void OnToggleChanged(int index, bool value)
+        {
+            if (index < 0 || index >= _toggleStates.Length)
+                return;
+
+            _toggleStates[index] = value;
+
+            if (index == 4 && value)
+                ApplyGodModeChips();
+
+            OnOptionsChanged?.Invoke();
+        }
+
+        private static void ApplyGodModeChips()
+        {
+            var gm = FindObjectOfType<GameManager>();
+            if (gm?.Players == null) return;
+
+            foreach (PlayerState player in gm.Players)
+            {
+                if (player.Type != PlayerType.Human) continue;
+                player.Chips = Mathf.Max(player.Chips, 100_000);
+            }
+
+            gm.OnPlayersUpdated?.Invoke(gm.Players);
+        }
+
+        private void ApplyToggleStyles()
+        {
+            if (_toggles == null)
+                return;
+
+            foreach (Toggle toggle in _toggles)
+                OptionsMenuToggleStyle.Apply(toggle);
+        }
+
+        /// <summary>Repairs legacy scene layout to match the compact debug checklist reference.</summary>
+        private void ApplyCompactLayout()
+        {
+            transform.SetAsLastSibling();
+
+            var rt = transform as RectTransform;
+            if (rt != null)
+            {
+                float panelHeight = PanelPadding * 2f
+                    + OptionCount * RowHeight
+                    + (OptionCount - 1) * RowSpacing;
+
+                rt.anchorMin        = new Vector2(0.5f, 0.5f);
+                rt.anchorMax        = new Vector2(0.5f, 0.5f);
+                rt.pivot            = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = Vector2.zero;
+                rt.sizeDelta        = new Vector2(PanelWidth, panelHeight);
+            }
+
+            var bg = GetComponent<Image>();
+            if (bg != null)
+            {
+                bg.color         = PanelBg;
+                bg.raycastTarget = true;
+                OptionsMenuToggleStyle.EnsurePanelBackgroundSprite(bg);
+            }
+
+            var vl = GetComponent<VerticalLayoutGroup>();
+            if (vl != null)
+            {
+                int pad = (int)PanelPadding;
+                vl.padding                = new RectOffset(pad, pad, pad, pad);
+                vl.spacing                = RowSpacing;
+                vl.childAlignment         = TextAnchor.UpperLeft;
+                vl.childControlWidth      = true;
+                vl.childControlHeight     = true;
+                vl.childForceExpandWidth  = false;
+                vl.childForceExpandHeight = false;
+            }
+
+            foreach (Transform child in transform)
+            {
+                if (child.name == "Title" || child.name == "Divider")
+                {
+                    child.gameObject.SetActive(false);
+                    continue;
+                }
+
+                if (!child.name.StartsWith("Row_"))
+                    continue;
+
+                var rowLe = child.GetComponent<LayoutElement>();
+                if (rowLe == null)
+                    rowLe = child.gameObject.AddComponent<LayoutElement>();
+                rowLe.preferredHeight = RowHeight;
+                rowLe.minHeight       = RowHeight;
+
+                var hl = child.GetComponent<HorizontalLayoutGroup>();
+                if (hl != null)
+                {
+                    hl.spacing                = 8f;
+                    hl.childAlignment         = TextAnchor.MiddleLeft;
+                    hl.childControlWidth      = true;
+                    hl.childControlHeight     = true;
+                    hl.childForceExpandWidth  = false;
+                    hl.childForceExpandHeight = false;
+                }
+
+                Transform toggle = child.Find("Toggle");
+                if (toggle != null)
+                {
+                    var toggleLe = toggle.GetComponent<LayoutElement>();
+                    if (toggleLe == null)
+                        toggleLe = toggle.gameObject.AddComponent<LayoutElement>();
+                    toggleLe.minWidth = toggleLe.preferredWidth = CheckboxSize;
+                    toggleLe.minHeight = toggleLe.preferredHeight = CheckboxSize;
+
+                    if (toggle is RectTransform toggleRt)
+                        toggleRt.sizeDelta = new Vector2(CheckboxSize, CheckboxSize);
+                }
+
+                Transform label = child.Find("Label");
+                if (label != null)
+                {
+                    var tmp = label.GetComponent<TMP_Text>();
+                    if (tmp != null)
+                    {
+                        tmp.color              = LabelColor;
+                        tmp.fontSize           = 20f;
+                        tmp.fontStyle          = FontStyles.Normal;
+                        tmp.enableWordWrapping = false;
+                    }
+
+                    var labelLe = label.GetComponent<LayoutElement>();
+                    if (labelLe == null)
+                        labelLe = label.gameObject.AddComponent<LayoutElement>();
+                    labelLe.flexibleWidth     = 1f;
+                    labelLe.minHeight         = RowHeight;
+                    labelLe.preferredHeight   = RowHeight;
+                }
+            }
+
+            if (rt != null)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rt);
+        }
+    }
+}
