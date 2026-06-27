@@ -430,7 +430,8 @@ namespace TexasHoldem
             hudGlowGfx.GlowIntensity  = 0f;
             hudGlowGfx.color          = Color.white;
             hudGlowGfx.raycastTarget  = false;
-            SetRect(hudGlowGo, 0f, PillY, PillW + HudGlowSpreadPx * 2f, PillH + HudGlowSpreadPx * 2f);
+            float pillX = mirrored ? -14f : 14f;
+            SetRect(hudGlowGo, pillX, PillY, PillW + HudGlowSpreadPx * 2f, PillH + HudGlowSpreadPx * 2f);
 
             //    HudPanel — dark rounded-rect pill (renders on top of HudGlow).
             GameObject hudGo  = GetOrCreate(root, "HudPanel");
@@ -439,7 +440,7 @@ namespace TexasHoldem
             hudImg.sprite = roundedRect;
             hudImg.type   = Image.Type.Sliced;
             hudImg.color  = PillColor;
-            SetRect(hudGo, 0f, PillY, PillW, PillH);
+            SetRect(hudGo, pillX, PillY, PillW, PillH);
 
             DestroyIfExists(root, "TimerBar");
             DestroyIfExists(root, "ActiveGlow");

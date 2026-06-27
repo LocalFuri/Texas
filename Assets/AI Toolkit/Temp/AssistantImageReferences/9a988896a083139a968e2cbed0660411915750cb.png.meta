@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 00f42296a2c9b824b9e0d93b73b24738
+guid: 1ce1c10a89efc3f4e9e4b142a3364808
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -1836178474684897419
-    second: PokerChip_0
+      213: -6169416693935934039
+    second: 9a988896a083139a968e2cbed0660411915750cb_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -100,13 +100,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: PokerChip_0
+      name: 9a988896a083139a968e2cbed0660411915750cb_0
       rect:
         serializedVersion: 2
-        x: 1
-        y: 1
-        width: 62
-        height: 62
+        x: 0
+        y: 0
+        width: 404
+        height: 250
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 5772030e7659486e0800000000000000
-      internalID: -1836178474684897419
+      spriteID: 9a5759e2434d16aa0800000000000000
+      internalID: -6169416693935934039
       vertices: []
       indices: 
       edges: []
@@ -125,7 +125,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      PokerChip_0: -1836178474684897419
+      9a988896a083139a968e2cbed0660411915750cb_0: -6169416693935934039
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

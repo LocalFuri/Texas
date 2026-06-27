@@ -9,7 +9,10 @@ namespace TexasHoldem
     /// </summary>
     public static class PlayerHudLayout
     {
+        public const float PillW     = 220f;
+        public const float PillH     = 76f;
         public const float PillY     = 0f;
+        public const float HudGlowSpreadPx = 30f;
         public const float AvatarD   = 162f;
         public const float AvatarX   = -133f;
         public const float TextX     = 25f;
@@ -57,6 +60,7 @@ namespace TexasHoldem
             float textX     = TextPosX(mirrored);
             float nameTextX = NameTextPosX(mirrored);
             var   align     = TextAlign(mirrored);
+            float pillX     = mirrored ? -14f : 14f;
 
             SetRect(FindChild(root, "AvatarFrame"), avatarX, PillY, AvatarD, AvatarD);
             ApplyText(FindChild(root, "NameText"),   nameTextX, NameY, NameTextW, NameTextH, align);
@@ -65,6 +69,8 @@ namespace TexasHoldem
 
             SetRect(FindChild(root, "ActionBadge"),    textX, ActionBadgeY, ActionBadgeGlowW, ActionBadgeGlowH);
             SetRect(FindChild(root, "SeatActionMenu"), textX, SeatActionMenuY, SeatActionMenuW, SeatActionMenuH);
+            SetRect(FindChild(root, "HudPanel"),       pillX, PillY, PillW, PillH);
+            SetRect(FindChild(root, "HudGlow"),        pillX, PillY, PillW + HudGlowSpreadPx * 2f, PillH + HudGlowSpreadPx * 2f);
         }
 
         private static void ApplyText(Transform t, float x, float y, float w, float h, TextAlignmentOptions align)
