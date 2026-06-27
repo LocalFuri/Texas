@@ -1969,7 +1969,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 14, y: 0}
-  m_SizeDelta: {x: 220, y: 76}
+  m_SizeDelta: {x: 256, y: 76}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &7439451696026846620
 CanvasRenderer:
@@ -3338,7 +3338,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 14, y: 0}
-  m_SizeDelta: {x: 280, y: 136}
+  m_SizeDelta: {x: 316, y: 136}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8800011000222333446
 CanvasRenderer:
@@ -3376,7 +3376,7 @@ MonoBehaviour:
     width: 1
     height: 1
   _shader: {fileID: 4800000, guid: c4e8f1a92b6d4e5f9a0b1c2d3e4f5a6b, type: 3}
-  _panelWidthPx: 220
+  _panelWidthPx: 256
   _panelHeightPx: 76
   _cornerRadiusPx: 14
   _glowSpreadPx: 30

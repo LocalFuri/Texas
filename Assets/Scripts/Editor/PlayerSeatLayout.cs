@@ -376,6 +376,43 @@ namespace TexasHoldem
             return view.HudMirrored;
         }
 
+        private static Vector2 ResolveHudLocalPx(PlayerView view)
+        {
+#if UNITY_2022_2_OR_NEWER
+            TableLayoutManager layout = Object.FindFirstObjectByType<TableLayoutManager>(
+                FindObjectsInactive.Include);
+#else
+            TableLayoutManager layout = Object.FindObjectOfType<TableLayoutManager>(true);
+#endif
+            if (layout != null)
+            {
+                PlayerView[] views = layout.GetPlayerViews();
+                for (int i = 0; i < views.Length; i++)
+                {
+                    if (views[i] == view)
+                        return layout.GetSeatConfig(i).hudLocalPx;
+                }
+            }
+
+            // Fallback to mirrored default
+            float pillX = ResolveHudMirrored(view) ? -14f : 14f;
+            return new Vector2(pillX, 0f);
+        }
+
+        private static float ResolvePillW(PlayerView view, Vector2 hudLocalPx, bool mirrored)
+        {
+#if UNITY_2022_2_OR_NEWER
+            TableLayoutManager layout = Object.FindFirstObjectByType<TableLayoutManager>(
+                FindObjectsInactive.Include);
+#else
+            TableLayoutManager layout = Object.FindObjectOfType<TableLayoutManager>(true);
+#endif
+            if (layout != null)
+                return layout.ComputePillWidth(hudLocalPx, mirrored, view);
+
+            return PlayerHudLayout.ComputePillWidthFromCards(view, hudLocalPx.x, mirrored);
+        }
+
         // ── Per-seat logic ────────────────────────────────────────────────────
 
         private static void ApplyToView(PlayerView view, Sprite circle, Sprite roundedRect, Sprite chromeRing, Sprite chipSprite)
@@ -424,14 +461,15 @@ namespace TexasHoldem
             HudPanelGlowGraphic hudGlowGfx = GetOrAdd<HudPanelGlowGraphic>(hudGlowGo);
             RecordObj(hudGlowGo);
             RecordObj(hudGlowGfx);
-            hudGlowGfx.PanelWidthPx   = PillW;
+            Vector2 hudLocalPx = ResolveHudLocalPx(view);
+            float   pillW      = ResolvePillW(view, hudLocalPx, mirrored);
+            hudGlowGfx.PanelWidthPx   = pillW;
             hudGlowGfx.PanelHeightPx  = PillH;
             hudGlowGfx.GlowSpreadPx   = HudGlowSpreadPx;
             hudGlowGfx.GlowIntensity  = 0f;
             hudGlowGfx.color          = Color.white;
             hudGlowGfx.raycastTarget  = false;
-            float pillX = mirrored ? -14f : 14f;
-            SetRect(hudGlowGo, pillX, PillY, PillW + HudGlowSpreadPx * 2f, PillH + HudGlowSpreadPx * 2f);
+            SetRect(hudGlowGo, hudLocalPx.x, hudLocalPx.y, pillW + HudGlowSpreadPx * 2f, PillH + HudGlowSpreadPx * 2f);
 
             //    HudPanel — dark rounded-rect pill (renders on top of HudGlow).
             GameObject hudGo  = GetOrCreate(root, "HudPanel");
@@ -440,7 +478,7 @@ namespace TexasHoldem
             hudImg.sprite = roundedRect;
             hudImg.type   = Image.Type.Sliced;
             hudImg.color  = PillColor;
-            SetRect(hudGo, pillX, PillY, PillW, PillH);
+            SetRect(hudGo, hudLocalPx.x, hudLocalPx.y, pillW, PillH);
 
             DestroyIfExists(root, "TimerBar");
             DestroyIfExists(root, "ActiveGlow");

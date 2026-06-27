@@ -35,6 +35,9 @@ namespace TexasHoldem
                  "between the player and the table center.")]
         public Vector2 betLabelLocalPos;
 
+        [Tooltip("AnchoredPosition of the HudPanel inside the seat root (anchor at panel center).")]
+        public Vector2 hudLocalPx;
+
         [Tooltip("Extra avatar-local nudge applied after placing the dealer token centred below the portrait.")]
         public Vector2 dealerButtonOffset;
 
@@ -114,6 +117,10 @@ namespace TexasHoldem
         /// <summary>Seat layout entry for the given index.</summary>
         public SeatConfig GetSeatConfig(int seatIndex)
             => (uint)seatIndex < (uint)SeatCount ? _seats[seatIndex] : default;
+
+        /// <summary>Pill width so the HudPanel outer edge aligns with the outer hole-card edge.</summary>
+        public float ComputePillWidth(Vector2 hudLocalPx, bool mirrorHud, PlayerView view)
+            => PlayerHudLayout.ComputePillWidthFromCards(view, hudLocalPx.x, mirrorHud, _cardWidth, _cardGap);
 
         /// <summary>
         /// Display name for a seat — uses the <see cref="PlayerView"/> on that slot first,
@@ -435,9 +442,53 @@ namespace TexasHoldem
                 rt.sizeDelta        = cfg.size;
 
                 _playerViews[i].SetHudMirrored(cfg.mirrorHud);
-                _playerViews[i].ApplyHudLayout();
                 ApplyHoleCards(_playerViews[i], cfg);
+                ApplyHudPanel(_playerViews[i], cfg);
+                _playerViews[i].ApplyHudLayout();
                 ApplyBetLabel(_playerViews[i], cfg);
+            }
+        }
+
+        private void ApplyHudPanel(PlayerView view, SeatConfig cfg)
+        {
+            float pillW      = ComputePillWidth(cfg.hudLocalPx, cfg.mirrorHud, view);
+            float pillH      = PlayerHudLayout.PillH;
+            float glowSpread = PlayerHudLayout.HudGlowSpreadPx;
+
+            Transform panelT = view.transform.Find("HudPanel");
+            Transform glowT  = view.transform.Find("HudGlow");
+
+            if (panelT != null)
+            {
+                var rt = panelT as RectTransform;
+                if (rt != null)
+                {
+                    rt.anchorMin        = new Vector2(0.5f, 0.5f);
+                    rt.anchorMax        = new Vector2(0.5f, 0.5f);
+                    rt.pivot            = new Vector2(0.5f, 0.5f);
+                    rt.anchoredPosition = cfg.hudLocalPx;
+                    rt.sizeDelta        = new Vector2(pillW, pillH);
+                }
+            }
+
+            if (glowT != null)
+            {
+                var rt = glowT as RectTransform;
+                if (rt != null)
+                {
+                    rt.anchorMin        = new Vector2(0.5f, 0.5f);
+                    rt.anchorMax        = new Vector2(0.5f, 0.5f);
+                    rt.pivot            = new Vector2(0.5f, 0.5f);
+                    rt.anchoredPosition = cfg.hudLocalPx;
+                    rt.sizeDelta        = new Vector2(pillW + glowSpread * 2f, pillH + glowSpread * 2f);
+                }
+
+                var glowGfx = glowT.GetComponent<HudPanelGlowGraphic>();
+                if (glowGfx != null)
+                {
+                    glowGfx.PanelWidthPx  = pillW;
+                    glowGfx.PanelHeightPx = pillH;
+                }
             }
         }
 
@@ -446,15 +497,16 @@ namespace TexasHoldem
             RectTransform rt0 = view.GetCardRect(0);
             RectTransform rt1 = view.GetCardRect(1);
 
-            float cx = CardSize.x * 0.5f + _cardGap * 0.5f;
-            float cy = cfg.card0LocalPos.y + HoleCardsAreaCenterY;
+            float cx  = CardSize.x * 0.5f + _cardGap * 0.5f;
+            float cy0 = cfg.card0LocalPos.y + HoleCardsAreaCenterY;
+            float cy1 = cfg.card1LocalPos.y + HoleCardsAreaCenterY;
 
             if (rt0 != null)
             {
                 rt0.anchorMin        = new Vector2(0.5f, 0.5f);
                 rt0.anchorMax        = new Vector2(0.5f, 0.5f);
                 rt0.pivot            = new Vector2(0.5f, 0.5f);
-                rt0.anchoredPosition = new Vector2(-cx, cy);
+                rt0.anchoredPosition = new Vector2(-cx, cy0);
                 rt0.sizeDelta        = CardSize;
                 rt0.localScale       = Vector3.one;
             }
@@ -464,7 +516,7 @@ namespace TexasHoldem
                 rt1.anchorMin        = new Vector2(0.5f, 0.5f);
                 rt1.anchorMax        = new Vector2(0.5f, 0.5f);
                 rt1.pivot            = new Vector2(0.5f, 0.5f);
-                rt1.anchoredPosition = new Vector2(cx, cy);
+                rt1.anchoredPosition = new Vector2(cx, cy1);
                 rt1.sizeDelta        = CardSize;
                 rt1.localScale       = Vector3.one;
             }
@@ -599,6 +651,7 @@ namespace TexasHoldem
                     size               = panel,
                     card0LocalPos      = new Vector2(-cx, cy),
                     card1LocalPos      = new Vector2( cx, cy),
+                    hudLocalPx         = new Vector2(14f, 0f),
                     betLabelLocalPos   = new Vector2(  0f, 86f),
                     playerName         = "Ace Maverick",
                 },
@@ -609,6 +662,7 @@ namespace TexasHoldem
                     size               = panel,
                     card0LocalPos      = new Vector2(-cx, cy),
                     card1LocalPos      = new Vector2( cx, cy),
+                    hudLocalPx         = new Vector2(-14f, 0f),
                     betLabelLocalPos   = new Vector2( 70f, 86f),
                     mirrorHud          = true,
                     playerName         = "Lady Luck",
@@ -620,6 +674,7 @@ namespace TexasHoldem
                     size               = panel,
                     card0LocalPos      = new Vector2(-cx, cy),
                     card1LocalPos      = new Vector2( cx, cy),
+                    hudLocalPx         = new Vector2(-14f, 0f),
                     betLabelLocalPos   = new Vector2( 70f, -86f),
                     mirrorHud          = true,
                     playerName         = "Prince Beaumont",
@@ -631,6 +686,7 @@ namespace TexasHoldem
                     size               = panel,
                     card0LocalPos      = new Vector2(-cx, cy),
                     card1LocalPos      = new Vector2( cx, cy),
+                    hudLocalPx         = new Vector2(14f, 0f),
                     betLabelLocalPos   = new Vector2(  0f, -86f),
                     playerName         = "Victor Shark",
                 },
@@ -641,6 +697,7 @@ namespace TexasHoldem
                     size               = panel,
                     card0LocalPos      = new Vector2(-cx, cy),
                     card1LocalPos      = new Vector2( cx, cy),
+                    hudLocalPx         = new Vector2(14f, 0f),
                     betLabelLocalPos   = new Vector2(-70f, -86f),
                     playerName         = "Jasmine Vale",
                 },
@@ -651,6 +708,7 @@ namespace TexasHoldem
                     size               = panel,
                     card0LocalPos      = new Vector2(-cx, cy),
                     card1LocalPos      = new Vector2( cx, cy),
+                    hudLocalPx         = new Vector2(14f, 0f),
                     betLabelLocalPos   = new Vector2(-70f, 86f),
                     playerName         = "Alex Hunter",
                 },
