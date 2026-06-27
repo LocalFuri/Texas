@@ -8,9 +8,12 @@ Shader "UI/ActionBadgeSDF"
         _PillSize ("Pill Size (px)", Vector) = (120, 40, 0, 0)
         _CornerRadiusPx ("Corner Radius (px)", Float) = 20
         _BorderWidthPx ("Border Width (px)", Float) = 5
-        _GlowSpreadPx ("Glow Spread (px)", Float) = 28
-        _GlowStrength ("Glow Strength", Range(0, 4)) = 2.4
-        _GlowFalloff ("Glow Falloff", Range(0.8, 3)) = 1.15
+        //_GlowSpreadPx ("Glow Spread (px)", Float) = 28
+        _GlowSpreadPx ("Glow Spread (px)", Float) = 60
+        //_GlowStrength ("Glow Strength", Range(0, 4)) = 2.4
+        _GlowStrength ("Glow Strength", Range(0, 4)) = 1.0
+        //_GlowFalloff ("Glow Falloff", Range(0.8, 3)) = 1.15
+        _GlowFalloff ("Glow Falloff", Range(0.8, 3)) = 2.0
         _BorderColor ("Border Color", Color) = (0, 0.6666667, 1, 1)
         _FillColorTop ("Fill Top", Color) = (0, 0, 0, 1)
         _FillColorBot ("Fill Bottom", Color) = (0, 0, 0, 1)
