@@ -47,12 +47,12 @@ namespace TexasHoldem
         [SerializeField] private ActionBadge          _actionBadge;   // neon pill when player acts
         [SerializeField] private SeatActionMenu     _seatActionMenu; // human Check/Fold/Raise above name
         [SerializeField] private RectTransform        _avatarFrame;   // chip animation origin
-        [SerializeField] private HudPanelGlowGraphic _hudGlow; // SDF outer bloom behind HudPanel; soft pulse on active turn
+        [SerializeField] private HudPanelGlowGraphic _hudGlow; // SDF outer bloom; GGPoker-style smooth bright↔invisible pulse on active turn
 
         [Header("HUD Glow Pulse")]
         [FormerlySerializedAs("_hudGlowBlinkIntensity")]
-        [SerializeField, Range(0.2f, 1.5f)] private float _hudGlowMaxIntensity = 0.9f;
-        [SerializeField, Range(0.1f, 1f)]     private float _hudGlowMinIntensity = 0.38f;
+        [SerializeField, Range(0.2f, 1.5f)] private float _hudGlowMaxIntensity = 1.1f;
+        [SerializeField, Range(0f, 1f)]     private float _hudGlowMinIntensity = 0f;
         [FormerlySerializedAs("_hudGlowBlinkHz")]
         [SerializeField, Min(0.1f)]           private float _hudGlowPulseHz    = 1f;
         [SerializeField] private Color        _hudGlowColor                    = Color.white;
@@ -333,13 +333,13 @@ namespace TexasHoldem
             _hudGlow.GlowIntensity = 0f;
         }
 
-        /// <summary>Smooth sine breathing — always between min and max, no square-wave jumps.</summary>
+        /// <summary>Smooth sine pulse — GGPoker-style fade between invisible and bright, no square-wave jumps.</summary>
         private float SampleHudGlowBreath(float elapsed)
         {
             float wave = 0.5f + 0.5f * Mathf.Sin(elapsed * _hudGlowPulseHz * Mathf.PI * 2f);
             wave = wave * wave * (3f - 2f * wave);
-            float min = Mathf.Clamp(_hudGlowMinIntensity, 0.1f, 1.5f);
-            float max = Mathf.Clamp(_hudGlowMaxIntensity, min + 0.05f, 1.5f);
+            float min = Mathf.Clamp(_hudGlowMinIntensity, 0f, 1.5f);
+            float max = Mathf.Clamp(_hudGlowMaxIntensity, min + 0.01f, 1.5f);
             return Mathf.Lerp(min, max, wave);
         }
 

@@ -2740,8 +2740,8 @@ MonoBehaviour:
   _seatActionMenu: {fileID: 1426520243099577894}
   _avatarFrame: {fileID: 6421569901092307460}
   _hudGlow: {fileID: 8800011000222333447}
-  _hudGlowMaxIntensity: 0.621
-  _hudGlowMinIntensity: 0.38
+  _hudGlowMaxIntensity: 1.1
+  _hudGlowMinIntensity: 0
   _hudGlowPulseHz: 1
   _hudGlowColor: {r: 1, g: 1, b: 1, a: 1}
   _ringUrgencyWindowFrac: 0.25
