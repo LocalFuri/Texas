@@ -29,6 +29,13 @@ namespace TexasHoldem
 
             EditorGUILayout.Space(10);
 
+            EditorGUILayout.HelpBox(
+                "HudPanel width/X come from Card_1. Width adds RoundedRect border (14px) so dark fill " +
+                "covers the card corner — Apply Layout to refresh.",
+                MessageType.Info);
+
+            EditorGUILayout.Space(4);
+
             GUI.backgroundColor = new Color(0.45f, 0.95f, 0.55f);
             if (GUILayout.Button("Apply Layout", GUILayout.Height(32)))
             {

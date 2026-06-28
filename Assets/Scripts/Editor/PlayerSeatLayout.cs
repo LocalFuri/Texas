@@ -395,12 +395,17 @@ namespace TexasHoldem
             }
 
             // Fallback to mirrored default
-            float pillX = ResolveHudMirrored(view) ? -14f : 14f;
-            return new Vector2(pillX, 0f);
+            return new Vector2(0f, 0f);
         }
 
-        private static float ResolvePillW(PlayerView view, Vector2 hudLocalPx, bool mirrored)
+        private static void ResolveHoleCardLayout(
+            PlayerView view, Vector2 hudLocalPx, bool mirrored,
+            out float card0X, out float card1X, out float cardW, out float cardH)
         {
+            cardW = 120f;
+            cardH = cardW * (95f / 65f);
+            float cardGap = 16f;
+
 #if UNITY_2022_2_OR_NEWER
             TableLayoutManager layout = Object.FindFirstObjectByType<TableLayoutManager>(
                 FindObjectsInactive.Include);
@@ -408,9 +413,14 @@ namespace TexasHoldem
             TableLayoutManager layout = Object.FindObjectOfType<TableLayoutManager>(true);
 #endif
             if (layout != null)
-                return layout.ComputePillWidth(hudLocalPx, mirrored, view);
+            {
+                cardW   = layout.HoleCardWidth;
+                cardH   = cardW * (95f / 65f);
+                cardGap = layout.HoleCardGap;
+            }
 
-            return PlayerHudLayout.ComputePillWidthFromCards(view, hudLocalPx.x, mirrored);
+            PlayerHudLayout.ComputeHoleCardCenterX(
+                hudLocalPx.x, cardW, cardGap, out card0X, out card1X);
         }
 
         // ── Per-seat logic ────────────────────────────────────────────────────
@@ -447,14 +457,26 @@ namespace TexasHoldem
                     ReparentTo(card.transform, root);
             }
             if (cards.Count > 0 && cards[0] != null)
-                SetRect(cards[0].gameObject, CardsAreaX - 32f, CardsAreaY, 58f, 82f);
-            if (cards.Count > 1 && cards[1] != null)
-                SetRect(cards[1].gameObject, CardsAreaX + 32f, CardsAreaY, 58f, 82f);
+            {
+                Vector2 hudLocalPxEarly = ResolveHudLocalPx(view);
+                ResolveHoleCardLayout(view, hudLocalPxEarly, mirrored,
+                    out float x0, out float x1, out float cardW, out float cardH);
+                SetRect(cards[0].gameObject, x0, CardsAreaY, cardW, cardH);
+                if (cards.Count > 1 && cards[1] != null)
+                    SetRect(cards[1].gameObject, x1, CardsAreaY, cardW, cardH);
+            }
+            else if (cards.Count > 1 && cards[1] != null)
+            {
+                Vector2 hudLocalPxEarly = ResolveHudLocalPx(view);
+                ResolveHoleCardLayout(view, hudLocalPxEarly, mirrored,
+                    out float x0, out float x1, out float cardW, out float cardH);
+                SetRect(cards[1].gameObject, x1, CardsAreaY, cardW, cardH);
+            }
 
             // 1b. Remove legacy CardDimmer if it still exists.
             DestroyIfExists(root, "CardDimmer");
 
-            // 2. HudGlow — SDF outer bloom behind the pill; blinked by PlayerView during active turn.
+            // 2. HudGlow + HudPanel — width/position derived from Card_1 after cards are placed.
             GameObject         hudGlowGo  = GetOrCreate(root, "HudGlow");
             var                staleGlowImg = hudGlowGo.GetComponent<Image>();
             if (staleGlowImg != null) DestroyObj(staleGlowImg);
@@ -462,23 +484,24 @@ namespace TexasHoldem
             RecordObj(hudGlowGo);
             RecordObj(hudGlowGfx);
             Vector2 hudLocalPx = ResolveHudLocalPx(view);
-            float   pillW      = ResolvePillW(view, hudLocalPx, mirrored);
-            hudGlowGfx.PanelWidthPx   = pillW;
-            hudGlowGfx.PanelHeightPx  = PillH;
             hudGlowGfx.GlowSpreadPx   = HudGlowSpreadPx;
             hudGlowGfx.GlowIntensity  = 0f;
             hudGlowGfx.color          = Color.white;
             hudGlowGfx.raycastTarget  = false;
-            SetRect(hudGlowGo, hudLocalPx.x, hudLocalPx.y, pillW + HudGlowSpreadPx * 2f, PillH + HudGlowSpreadPx * 2f);
 
             //    HudPanel — dark rounded-rect pill (renders on top of HudGlow).
             GameObject hudGo  = GetOrCreate(root, "HudPanel");
+            CleanupHudPanelComponents(hudGo);
             var        hudImg = GetOrAdd<Image>(hudGo);
             RecordObj(hudImg);
             hudImg.sprite = roundedRect;
             hudImg.type   = Image.Type.Sliced;
             hudImg.color  = PillColor;
-            SetRect(hudGo, hudLocalPx.x, hudLocalPx.y, pillW, PillH);
+
+            RectTransform card1Rt = cards.Count > 1 && cards[1] != null
+                ? (RectTransform)cards[1].transform
+                : null;
+            PlayerHudLayout.ApplyHudPanelFromCard1(root, card1Rt, hudLocalPx);
 
             DestroyIfExists(root, "TimerBar");
             DestroyIfExists(root, "ActiveGlow");
@@ -1486,6 +1509,18 @@ namespace TexasHoldem
             if (t == null) return;
             RecordObj(t.gameObject);
             t.gameObject.SetActive(false);
+        }
+
+        private static void CleanupHudPanelComponents(GameObject hudGo)
+        {
+            if (hudGo == null) return;
+
+#if UNITY_EDITOR
+            GameObjectUtility.RemoveMonoBehavioursWithMissingScript(hudGo);
+#endif
+            var staleCam = hudGo.GetComponent<Camera>();
+            if (staleCam != null)
+                DestroyObj(staleCam);
         }
 
         private static void DestroyIfExists(Transform parent, string name)
