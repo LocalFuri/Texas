@@ -92,7 +92,9 @@ namespace TexasHoldem
         private const string ChromeRingPath  = "Assets/Graphic/UI/ChromeRing.png";
         private const string CromeTransPath  = "Assets/Graphic/crome_trans.png";
         private const string CircleGoldPath  = "Assets/Graphic/CircleGold_trans.png";
-        private const string ChipSpritePath  = "Assets/Graphic/UI/PokerChip.png";
+        private const string Chip1Path       = "Assets/Graphic/Chips/chip1.png";
+        private const string Chip5Path       = "Assets/Graphic/Chips/chip5.png";
+        private const string Chip25Path      = "Assets/Graphic/Chips/chip25.png";
         private const string PrefabPath      = "Assets/Prefabs/PlayerView.prefab";
 
         // ── Undo mode — disabled when editing the prefab asset directly ───────
@@ -228,13 +230,12 @@ namespace TexasHoldem
             Sprite circle      = EnsureCircleSprite();
             Sprite roundedRect = EnsureRoundedRectSprite();
             Sprite chromeRing  = EnsureChromeRingSprite();
-            Sprite chipSprite  = EnsureChipSprite();
 
             // 1. Edit the prefab asset directly (Undo does not apply to asset contents).
             try
             {
                 _useUndo = false;
-                ApplyToPrefabAsset(circle, roundedRect, chromeRing, chipSprite);
+                ApplyToPrefabAsset(circle, roundedRect, chromeRing);
             }
             finally
             {
@@ -250,7 +251,7 @@ namespace TexasHoldem
 
             PlayerView[] views = Object.FindObjectsOfType<PlayerView>(true);
             foreach (PlayerView v in views)
-                ApplyToView(v, circle, roundedRect, chromeRing, chipSprite);
+                ApplyToView(v, circle, roundedRect, chromeRing);
 
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             Debug.Log($"[PlayerSeatLayout] Applied to prefab + {views.Length} scene seat(s).");
@@ -279,7 +280,7 @@ namespace TexasHoldem
 
         // ── Prefab asset editing ──────────────────────────────────────────────
 
-        private static void ApplyToPrefabAsset(Sprite circle, Sprite roundedRect, Sprite chromeRing, Sprite chipSprite)
+        private static void ApplyToPrefabAsset(Sprite circle, Sprite roundedRect, Sprite chromeRing)
         {
             GameObject contents = PrefabUtility.LoadPrefabContents(PrefabPath);
             if (contents == null)
@@ -290,7 +291,7 @@ namespace TexasHoldem
             try
             {
                 PlayerView view = contents.GetComponent<PlayerView>();
-                if (view != null) ApplyToView(view, circle, roundedRect, chromeRing, chipSprite);
+                if (view != null) ApplyToView(view, circle, roundedRect, chromeRing);
                 PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
             }
             finally
@@ -425,7 +426,7 @@ namespace TexasHoldem
 
         // ── Per-seat logic ────────────────────────────────────────────────────
 
-        private static void ApplyToView(PlayerView view, Sprite circle, Sprite roundedRect, Sprite chromeRing, Sprite chipSprite)
+        private static void ApplyToView(PlayerView view, Sprite circle, Sprite roundedRect, Sprite chromeRing)
         {
             Transform root = view.transform;
             bool mirrored  = ResolveHudMirrored(view);
@@ -865,33 +866,28 @@ namespace TexasHoldem
             betShadow.effectColor    = new Color(0f, 0f, 0f, 0.65f);
             betShadow.effectDistance = new Vector2(2f, -3f);
 
-            // ── ChipStack: 3 poker chip Images stacked to simulate depth ─────────────
-            //    UGUI draw order: Chip_0 (sibling 0) renders first = furthest back.
-            //    Offset per depth level: +6 px right, +5 px up — gives a top-down
-            //    isometric "stack going away from viewer" appearance.
+            // ── ChipStack: Chip_0 / Chip_1 / Chip_2 — fixed stack layers (layout unchanged) ─
             const float ChipD  = 38f;
             const float ChipDx =  6f;
             const float ChipDy =  5f;
+
+            Sprite chip1Sprite  = AssetDatabase.LoadAssetAtPath<Sprite>(Chip1Path);
+            Sprite chip5Sprite  = AssetDatabase.LoadAssetAtPath<Sprite>(Chip5Path);
+            Sprite chip25Sprite = AssetDatabase.LoadAssetAtPath<Sprite>(Chip25Path);
 
             GameObject chipStackGo = GetOrCreate(betDisplayGo.transform, "ChipStack");
             RecordObj(chipStackGo);
             var chipStackBg = chipStackGo.GetComponent<Image>();
             if (chipStackBg != null) DestroyObj(chipStackBg);
-            // Size the container to exactly hold the 3 chips with their offsets.
             SetRect(chipStackGo, -52f, 4f, ChipD + ChipDx * 2f, ChipD + ChipDy * 2f);
 
-            // Three chip layers — increasingly darker going toward the back.
-            string[] chipNames  = { "Chip_0", "Chip_1", "Chip_2" };
-            Color[]  chipColors =
-            {
-                new Color(0.10f, 0.35f, 0.16f, 1f),  // Chip_0 back  — darkest
-                new Color(0.13f, 0.44f, 0.20f, 1f),  // Chip_1 mid
-                new Color(0.16f, 0.52f, 0.24f, 1f),  // Chip_2 front — brightest
-            };
+            string[] chipNames   = { "Chip_0", "Chip_1", "Chip_2" };
+            Sprite[] slotSprites = { chip1Sprite, chip5Sprite, chip25Sprite };
+            Image[]  slotImages  = new Image[3];
+
             for (int ci = 0; ci < chipNames.Length; ci++)
             {
-                // Chip_0 = back (largest offset), Chip_2 = front (no offset).
-                float backness = chipNames.Length - 1 - ci;   // 2, 1, 0
+                float backness = chipNames.Length - 1 - ci;
                 float ox = ChipDx * backness;
                 float oy = ChipDy * backness;
 
@@ -899,13 +895,20 @@ namespace TexasHoldem
                 var        chipImg = GetOrAdd<Image>(chipGo);
                 RecordObj(chipGo);
                 RecordObj(chipImg);
-                chipImg.sprite        = chipSprite;
-                chipImg.type          = Image.Type.Simple;
-                chipImg.color         = chipColors[ci];
-                chipImg.raycastTarget = false;
+                chipImg.sprite         = slotSprites[ci];
+                chipImg.type           = Image.Type.Simple;
+                chipImg.color          = Color.white;
+                chipImg.preserveAspect = true;
+                chipImg.raycastTarget  = false;
                 SetRect(chipGo, ox, oy, ChipD, ChipD);
-                chipGo.transform.SetSiblingIndex(ci);  // 0 = behind, 2 = in front
+                chipGo.transform.SetSiblingIndex(ci);
+                slotImages[ci] = chipImg;
             }
+
+            var chipStackView = GetOrAdd<ChipStackView>(chipStackGo);
+            RecordObj(chipStackView);
+            WireChipStackView(chipStackView, slotImages, chip1Sprite, chip5Sprite, chip25Sprite);
+            chipStackView.Clear();
 
             // ── AmountBadge: dark rounded pill with the euro amount ───────────────
             GameObject badgeGo  = GetOrCreate(betDisplayGo.transform, "AmountBadge");
@@ -941,6 +944,7 @@ namespace TexasHoldem
             var betDispSo = new SerializedObject(betDisplayComp);
             betDispSo.Update();
             SetRef(betDispSo, "_amountText",    amountTMP);
+            SetRef(betDispSo, "_chipStackView", chipStackView);
             SetRef(betDispSo, "_chipStackRoot", (RectTransform)chipStackGo.transform);
             betDispSo.ApplyModifiedProperties();
 
@@ -1110,62 +1114,18 @@ namespace TexasHoldem
             return AssetDatabase.LoadAssetAtPath<Sprite>(RoundedRectPath);
         }
 
-        /// <summary>
-        /// Generates a 64×64 poker chip PNG — dark border, white stripe ring, green body.
-        /// Always regenerates so colour tweaks take effect immediately.
-        ///
-        /// Layer structure (from outer edge inward):
-        ///   1px anti-aliased edge → 2px dark border → 4px white stripe →
-        ///   4px green band → 3px white stripe → green centre
-        /// </summary>
-        private static Sprite EnsureChipSprite()
+        private static void WireChipStackView(
+            ChipStackView view, Image[] slots, Sprite sprite1, Sprite sprite5, Sprite sprite25)
         {
-            if (AssetDatabase.LoadAssetAtPath<Sprite>(ChipSpritePath) != null)
-                AssetDatabase.DeleteAsset(ChipSpritePath);
-
-            const int   size   = 64;
-            const float half   = (size - 1) * 0.5f;   // 31.5
-            const float rOuter = 30f;
-
-            var edgeColor   = new Color(0.07f, 0.07f, 0.09f, 1f);  // dark rim
-            var stripeColor = new Color(0.90f, 0.90f, 0.92f, 1f);  // white stripe
-            var chipGreen   = new Color(0.16f, 0.52f, 0.24f, 1f);  // outer green band
-            var chipGreenDk = new Color(0.11f, 0.38f, 0.17f, 1f);  // centre — slightly darker
-
-            var tex    = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            var pixels = new Color[size * size];
-
-            for (int y = 0; y < size; y++)
-            for (int x = 0; x < size; x++)
-            {
-                float dist = Mathf.Sqrt((x - half) * (x - half) + (y - half) * (y - half));
-
-                Color col;
-                if      (dist > rOuter)          col = Color.clear;
-                else if (dist > rOuter - 2f)     col = edgeColor;
-                else if (dist > rOuter - 6f)     col = stripeColor;
-                else if (dist > rOuter - 10f)    col = chipGreen;
-                else if (dist > rOuter - 13f)    col = stripeColor;
-                else                             col = chipGreenDk;
-
-                // 1 px soft alpha on the very outer edge.
-                if (dist > rOuter - 1f && dist <= rOuter)
-                    col.a = Mathf.Clamp01(rOuter - dist + 1f);
-
-                pixels[y * size + x] = col;
-            }
-
-            tex.SetPixels(pixels);
-            tex.Apply();
-            SavePng(tex, ChipSpritePath);
-
-            var imp = (TextureImporter)AssetImporter.GetAtPath(ChipSpritePath);
-            imp.textureType      = TextureImporterType.Sprite;
-            imp.spriteImportMode = SpriteImportMode.Single;
-            imp.filterMode       = FilterMode.Bilinear;
-            imp.SaveAndReimport();
-
-            return AssetDatabase.LoadAssetAtPath<Sprite>(ChipSpritePath);
+            var so = new SerializedObject(view);
+            so.Update();
+            if (slots.Length > 0) SetRef(so, "_chip0", slots[0]);
+            if (slots.Length > 1) SetRef(so, "_chip1", slots[1]);
+            if (slots.Length > 2) SetRef(so, "_chip2", slots[2]);
+            SetRef(so, "_sprite1",  sprite1);
+            SetRef(so, "_sprite5",  sprite5);
+            SetRef(so, "_sprite25", sprite25);
+            so.ApplyModifiedProperties();
         }
 
         /// <summary>

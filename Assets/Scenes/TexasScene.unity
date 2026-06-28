@@ -568,7 +568,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -856,7 +856,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor32.rgba
@@ -1289,7 +1289,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -1581,7 +1581,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor32.rgba
@@ -4062,6 +4062,10 @@ PrefabInstance:
       propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
       value: 1801810542
       objectReference: {fileID: 0}
+    - target: {fileID: 4419212906768352384, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 77c3e0f73fb0cb046a2a44ebc59f8589, type: 3}
     - target: {fileID: 4707508664972511652, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_Pivot.y
       value: 0.5
@@ -4104,7 +4108,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -4202,6 +4206,10 @@ PrefabInstance:
       propertyPath: 'm_fontSharedMaterials.Array.data[0]'
       value: 
       objectReference: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+    - target: {fileID: 6066092962169289639, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 1070cb8ed34a8a44ab2278d315550141, type: 3}
     - target: {fileID: 6446264736246770531, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -4222,6 +4230,10 @@ PrefabInstance:
       propertyPath: m_Color.r
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 6566956493469980932, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 9f3185af6595a2f48be7100a9e7a651f, type: 3}
     - target: {fileID: 6963176066214608332, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_Name
       value: Seat_You
@@ -4460,7 +4472,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor32.rgba
@@ -6863,7 +6875,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -7155,7 +7167,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor32.rgba
@@ -10577,7 +10589,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -10865,7 +10877,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor32.rgba
@@ -11611,7 +11623,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -11899,7 +11911,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor32.rgba
