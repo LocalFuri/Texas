@@ -1990,7 +1990,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.13, g: 0.13, b: 0.16, a: 0.95}
+  m_Color: {r: 0.13, g: 0.13, b: 0.16, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -3320,6 +3320,7 @@ MonoBehaviour:
   _panelHeightPx: 76
   _cornerRadiusPx: 14
   _panelRightBorderPx: 14
+  _panelBottomBorderPx: 14
   _glowSpreadPx: 14
   _rimCorePx: 3
   _glowPeakIntensity: 0

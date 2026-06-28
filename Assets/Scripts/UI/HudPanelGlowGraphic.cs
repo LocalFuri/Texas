@@ -30,6 +30,9 @@ namespace TexasHoldem
         [Tooltip("Extra HudPanel width past Card_1 right edge — matches RoundedRect 9-slice (14px); hides the card corner.")]
         [SerializeField, Range(0f, 30f)]
         private float _panelRightBorderPx = 14f;
+        [Tooltip("Extra HudPanel height below Card_1 bottom — matches RoundedRect 9-slice (14px); hides the bottom card edge.")]
+        [SerializeField, Range(0f, 30f)]
+        private float _panelBottomBorderPx = 14f;
 
         [Header("Glow")]
         [SerializeField, Range(8f, 80f)]
@@ -63,6 +66,13 @@ namespace TexasHoldem
         {
             get => _panelRightBorderPx;
             set { _panelRightBorderPx = Mathf.Clamp(value, 0f, 30f); MarkRenderDirty(); }
+        }
+
+        /// <summary>Layout extends HudPanel this far below Card_1 bottom (Seat_You).</summary>
+        public float PanelBottomBorderPx
+        {
+            get => _panelBottomBorderPx;
+            set { _panelBottomBorderPx = Mathf.Clamp(value, 0f, 30f); MarkRenderDirty(); }
         }
 
         public float GlowSpreadPx
@@ -235,6 +245,7 @@ namespace TexasHoldem
         {
             _glowPeakIntensity = Mathf.Clamp(_glowPeakIntensity, 0f, 1.5f);
             _panelRightBorderPx = Mathf.Clamp(_panelRightBorderPx, 0f, 30f);
+            _panelBottomBorderPx = Mathf.Clamp(_panelBottomBorderPx, 0f, 30f);
             if (!Application.isPlaying)
             {
                 _appliedIntensity = _glowPeakIntensity;

@@ -89,8 +89,8 @@ namespace TexasHoldem
         }
 
         /// <summary>
-        /// Sizes HudPanel from Card_1. Width extends past Card_1 by Panel Right Border on HudGlow.
-        /// Seat_You: bottom edge aligned to Card_1 bottom, compact PillH band upward over the cards.
+        /// Sizes HudPanel from Card_1. Borders on HudGlow extend past Card_1 so RoundedRect opaque fill covers card edges.
+        /// Seat_You: compact PillH band over cards, bottom inset by Panel Bottom Border.
         /// </summary>
         public static void ApplyHudPanelFromCard1(Transform root, RectTransform card1, Vector2 hudLocalPx)
         {
@@ -114,9 +114,11 @@ namespace TexasHoldem
 
                 if (root.name == "Seat_You")
                 {
-                    float cardBottom = GetRectBottomY(card1);
+                    float cardBottom   = GetRectBottomY(card1);
+                    float bottomBorder = ResolvePanelBottomBorderPx(hudGlow);
+                    float panelBottom  = cardBottom - bottomBorder;
                     panelHeight  = SeatYouPanelMinHeight;
-                    panelCenterY = cardBottom + panelHeight * 0.5f;
+                    panelCenterY = panelBottom + panelHeight * 0.5f;
                 }
             }
 
@@ -145,6 +147,13 @@ namespace TexasHoldem
         {
             if (hudGlow != null)
                 return hudGlow.PanelRightBorderPx;
+            return RoundedRectBorderPx;
+        }
+
+        private static float ResolvePanelBottomBorderPx(HudPanelGlowGraphic hudGlow)
+        {
+            if (hudGlow != null)
+                return hudGlow.PanelBottomBorderPx;
             return RoundedRectBorderPx;
         }
 
@@ -194,6 +203,41 @@ namespace TexasHoldem
             var pv = root.GetComponent<PlayerView>();
             RectTransform card1 = pv != null ? pv.GetCardRect(1) : null;
             ApplyHudPanelFromCard1(root, card1, hudLocalPx);
+            ApplyHudDrawOrder(root, pv);
+        }
+
+        /// <summary>UGUI draw order: cards → HudGlow → HudPanel → avatar/text (back to front).</summary>
+        public static void ApplyHudDrawOrder(Transform root, PlayerView pv)
+        {
+            if (root == null) return;
+
+            int idx = 0;
+            if (pv != null)
+            {
+                for (int i = 0; i < 2; i++)
+                {
+                    RectTransform card = pv.GetCardRect(i);
+                    if (card != null)
+                        card.SetSiblingIndex(idx++);
+                }
+            }
+
+            Transform hudGlow  = FindChild(root, "HudGlow");
+            Transform hudPanel = FindChild(root, "HudPanel");
+            if (hudGlow != null)  hudGlow.SetSiblingIndex(idx++);
+            if (hudPanel != null) hudPanel.SetSiblingIndex(idx++);
+
+            string[] frontOrder =
+            {
+                "AvatarFrame", "NameText", "ChipsText", "StatusText",
+                "SeatActionMenu", "ActionBadge", "BetDisplay"
+            };
+            foreach (string name in frontOrder)
+            {
+                Transform t = FindChild(root, name);
+                if (t != null)
+                    t.SetSiblingIndex(idx++);
+            }
         }
 
         private static void ApplyText(Transform t, float x, float y, float w, float h, TextAlignmentOptions align)
