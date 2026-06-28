@@ -22,12 +22,16 @@ namespace TexasHoldem
         public const float TextX     = 25f;
         public const float TextW     = 155f;
         /// <summary>Wider name row; inner edge lines up with the chips row beside the avatar.</summary>
-        public const float NameTextW = 200f;
+        public const float NameTextW = TextW;
         public const float NameTextH = 36f;
         public const float TextAvatarPad = 10f; // horizontal gap between text and avatar ring
         public const float NameChipsGap = 8f; // vertical space between name and chips rows
         public const float NameY     = 16f;
         public const float ChipsY    = -12f - NameChipsGap * 0.5f;
+
+        public static float GetCenteredNameY(float panelCenterY) => panelCenterY + 13.5f;
+        public static float GetCenteredChipsY(float panelCenterY) => panelCenterY - 18.5f;
+
         public const float ActionBadgeY = 32f;
         public const float ActionBadgeGlowW = 156f;
         public const float ActionBadgeGlowH = 64f;
@@ -232,16 +236,24 @@ namespace TexasHoldem
             Vector2 hudLocalPx = ResolveHudLocalPx(root);
 
             SetRect(FindChild(root, "AvatarFrame"), avatarX, PillY, AvatarD, AvatarD);
-            ApplyText(FindChild(root, "NameText"),   nameTextX, NameY, NameTextW, NameTextH, align);
-            ApplyText(FindChild(root, "ChipsText"),  textX, ChipsY, TextW, 26f, align);
-            ApplyText(FindChild(root, "StatusText"), textX, ChipsY, TextW, 22f, align);
-
-            SetRect(FindChild(root, "ActionBadge"),    textX, ActionBadgeY, ActionBadgeGlowW, ActionBadgeGlowH);
-            SetRect(FindChild(root, "SeatActionMenu"), textX, SeatActionMenuY, SeatActionMenuW, SeatActionMenuH);
 
             var pv = root.GetComponent<PlayerView>();
             RectTransform card1 = pv != null ? pv.GetCardRect(1) : null;
             ApplyHudPanelFromCard1(root, card1, hudLocalPx);
+
+            Transform hudPanel = FindChild(root, "HudPanel");
+            float panelCenterY = hudPanel != null ? ((RectTransform)hudPanel).anchoredPosition.y : 0f;
+
+            float nameY  = GetCenteredNameY(panelCenterY);
+            float chipsY = GetCenteredChipsY(panelCenterY);
+
+            ApplyText(FindChild(root, "NameText"),   nameTextX, nameY, NameTextW, NameTextH, align);
+            ApplyText(FindChild(root, "ChipsText"),  textX, chipsY, TextW, 26f, align);
+            ApplyText(FindChild(root, "StatusText"), textX, chipsY, TextW, 22f, align);
+
+            SetRect(FindChild(root, "ActionBadge"),    textX, ActionBadgeY, ActionBadgeGlowW, ActionBadgeGlowH);
+            SetRect(FindChild(root, "SeatActionMenu"), textX, SeatActionMenuY, SeatActionMenuW, SeatActionMenuH);
+
             ApplyHudDrawOrder(root, pv);
         }
 

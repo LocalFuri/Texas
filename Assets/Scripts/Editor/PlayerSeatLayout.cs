@@ -78,7 +78,7 @@ namespace TexasHoldem
 
         // ── Colours ──────────────────────────────────────────────────────────
 
-        private static readonly Color PillColor      = new Color(0.13f, 0.13f, 0.16f, 0.95f);
+        private static readonly Color PillColor      = new Color(0.1235f, 0.1235f, 0.152f, 0.95f);
         private static readonly Color BadgeBgColor   = new Color(0.08f, 0.08f, 0.10f, 0.94f);
         private static readonly Color NameColor      = Color.white;
         private static readonly Color ChipsColor     = new Color(0.87f, 0.69f, 0.20f, 1f);
@@ -588,12 +588,18 @@ namespace TexasHoldem
             chromeRingGo.transform.SetSiblingIndex(1);
             goldRingGo.transform.SetSiblingIndex(2);
 
+            Transform hudPanel = FindDeep(root, "HudPanel");
+            float panelCenterY = hudPanel != null ? ((RectTransform)hudPanel).anchoredPosition.y : 0f;
+
+            float nameY  = PlayerHudLayout.GetCenteredNameY(panelCenterY);
+            float chipsY = PlayerHudLayout.GetCenteredChipsY(panelCenterY);
+
             // 7. NameText — upper row, right of avatar.
             Transform nameT = FindDeep(root, "NameText");
             if (nameT != null)
             {
                 ReparentTo(nameT, root);
-                SetRect(nameT.gameObject, PlayerHudLayout.NameTextPosX(mirrored), PlayerHudLayout.NameY, PlayerHudLayout.NameTextW, PlayerHudLayout.NameTextH);
+                SetRect(nameT.gameObject, PlayerHudLayout.NameTextPosX(mirrored), nameY, PlayerHudLayout.NameTextW, PlayerHudLayout.NameTextH);
                 var txt = nameT.GetComponent<TMP_Text>();
                 if (txt != null)
                 {
@@ -625,7 +631,7 @@ namespace TexasHoldem
             if (chipsT != null)
             {
                 ReparentTo(chipsT, root);
-                SetRect(chipsT.gameObject, textX, PlayerHudLayout.ChipsY, TextW, 26f);
+                SetRect(chipsT.gameObject, textX, chipsY, TextW, 26f);
                 var txt = chipsT.GetComponent<TMP_Text>();
                 if (txt != null)
                 {
@@ -645,7 +651,7 @@ namespace TexasHoldem
             if (statusT != null)
             {
                 ReparentTo(statusT, root);
-                SetRect(statusT.gameObject, textX, PlayerHudLayout.ChipsY, TextW, 22f);
+                SetRect(statusT.gameObject, textX, chipsY, TextW, 22f);
                 RecordObj(statusT.gameObject);
                 statusT.gameObject.SetActive(true);
                 var txt = statusT.GetComponent<TMP_Text>();
