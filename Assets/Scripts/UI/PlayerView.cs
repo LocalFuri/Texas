@@ -52,9 +52,11 @@ namespace TexasHoldem
         [Header("HUD Glow Pulse")]
         [FormerlySerializedAs("_hudGlowBlinkIntensity")]
         [SerializeField, Range(0.2f, 1.5f)] private float _hudGlowMaxIntensity = 1.1f;
-        [SerializeField, Range(0f, 1f)]     private float _hudGlowMinIntensity = 0f;
-        [FormerlySerializedAs("_hudGlowBlinkHz")]
-        [SerializeField, Min(0.1f)]           private float _hudGlowPulseHz    = 1f;
+        [SerializeField, Range(0f, 1f)]       private float _hudGlowMinIntensity = 0f;
+        [Tooltip("Seconds to hold at min and at max each cycle (GGPoker-style plateaus).")]
+        [SerializeField, Range(0.05f, 0.6f)]  private float _hudGlowHoldSecs   = 0.25f;
+        [Tooltip("Seconds for each fade between min and max.")]
+        [SerializeField, Range(0.05f, 0.6f)] private float _hudGlowFadeSecs  = 0.25f;
         [SerializeField] private Color        _hudGlowColor                    = Color.white;
 
         [Header("Gold Ring Urgency")]
@@ -333,14 +335,31 @@ namespace TexasHoldem
             _hudGlow.GlowIntensity = 0f;
         }
 
-        /// <summary>Smooth sine pulse — GGPoker-style fade between invisible and bright, no square-wave jumps.</summary>
+        /// <summary>GGPoker-style pulse: hold dark, fade up, hold bright, fade down.</summary>
         private float SampleHudGlowBreath(float elapsed)
         {
-            float wave = 0.5f + 0.5f * Mathf.Sin(elapsed * _hudGlowPulseHz * Mathf.PI * 2f);
-            wave = wave * wave * (3f - 2f * wave);
+            float hold   = _hudGlowHoldSecs;
+            float fade   = _hudGlowFadeSecs;
+            float period = hold * 2f + fade * 2f;
+            if (period <= 0f) return _hudGlowMinIntensity;
+
+            float t = elapsed % period;
             float min = Mathf.Clamp(_hudGlowMinIntensity, 0f, 1.5f);
             float max = Mathf.Clamp(_hudGlowMaxIntensity, min + 0.01f, 1.5f);
-            return Mathf.Lerp(min, max, wave);
+
+            if (t < hold) return min;
+            t -= hold;
+            if (t < fade) return Mathf.Lerp(min, max, SmoothStep01(t / fade));
+            t -= fade;
+            if (t < hold) return max;
+            t -= hold;
+            return Mathf.Lerp(max, min, SmoothStep01(t / fade));
+        }
+
+        private static float SmoothStep01(float t)
+        {
+            t = Mathf.Clamp01(t);
+            return t * t * (3f - 2f * t);
         }
 
         /// <summary>Clears hole-card reveal tracking (call at the start of a new round).</summary>

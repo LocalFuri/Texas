@@ -2742,7 +2742,8 @@ MonoBehaviour:
   _hudGlow: {fileID: 8800011000222333447}
   _hudGlowMaxIntensity: 1.1
   _hudGlowMinIntensity: 0
-  _hudGlowPulseHz: 1
+  _hudGlowHoldSecs: 0.25
+  _hudGlowFadeSecs: 0.25
   _hudGlowColor: {r: 1, g: 1, b: 1, a: 1}
   _ringUrgencyWindowFrac: 0.25
   _ringUrgentColorTop: {r: 1, g: 0.35, b: 0.25, a: 1}
