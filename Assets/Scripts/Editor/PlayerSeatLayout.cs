@@ -23,7 +23,7 @@ namespace TexasHoldem
         ///   ├── StatusText        — overlays ChipsText when Folded / All In / Eliminated
         ///   ├── SeatActionMenu    — tappable Check / Fold / Raise / All-In above the name (human turn)
         ///   ├── ActionBadge       — neon pill when player Checks / Folds / Raises / All-In
-        ///   └── BetDisplay        — floating chip badge toward table centre
+        ///   └── BetDisplay        — chip stack + amount badge beside avatar
     ///
     /// Re-running is safe: existing GameObjects are reused, old ones renamed or hidden.
     ///
@@ -845,8 +845,7 @@ namespace TexasHoldem
 
             seatMenuGo.SetActive(false);
 
-            // 10. BetDisplay — PokerStars-style: chip stack (left) + dark amount badge (right).
-            //     Positioned between seat and table centre by TableLayoutManager.
+            // 10. BetDisplay — chip stack beside avatar + amount badge (position from TableLayoutManager).
             //     Destroy legacy BetBadge GO from previous layout versions if still present.
             Transform oldBadge = root.Find("BetBadge");
             if (oldBadge != null) DestroyObj(oldBadge.gameObject);
@@ -858,7 +857,7 @@ namespace TexasHoldem
             // BetDisplay root has no background — it's a pure positional anchor.
             var betDisplayImg = betDisplayGo.GetComponent<Image>();
             if (betDisplayImg != null) DestroyObj(betDisplayImg);
-            SetRect(betDisplayGo, BadgeX, BadgeY, 160f, 52f);
+            SetRect(betDisplayGo, BadgeX, BadgeY, 146f, 52f);
 
             // Drop shadow on the root so both children inherit it visually.
             var betShadow = GetOrAdd<Shadow>(betDisplayGo);
@@ -879,7 +878,7 @@ namespace TexasHoldem
             RecordObj(chipStackGo);
             var chipStackBg = chipStackGo.GetComponent<Image>();
             if (chipStackBg != null) DestroyObj(chipStackBg);
-            SetRect(chipStackGo, -52f, 4f, ChipD + ChipDx * 2f, ChipD + ChipDy * 2f);
+            SetRect(chipStackGo, -48f, 0f, ChipD + ChipDx * 2f, ChipD + ChipDy * 2f);
 
             string[] chipNames   = { "Chip_0", "Chip_1", "Chip_2" };
             Sprite[] slotSprites = { chip1Sprite, chip5Sprite, chip25Sprite };
@@ -919,7 +918,7 @@ namespace TexasHoldem
             badgeImg.type          = Image.Type.Sliced;
             badgeImg.color         = new Color(0.06f, 0.06f, 0.08f, 0.93f);
             badgeImg.raycastTarget = false;
-            SetRect(badgeGo, 38f, 0f, 90f, 30f);
+            SetRect(badgeGo, 28f, 0f, 90f, 30f);
 
             // AmountText inside the badge — bold gold euro label.
             GameObject amountGo  = GetOrCreate(badgeGo.transform, "AmountText");

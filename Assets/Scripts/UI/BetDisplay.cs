@@ -8,10 +8,8 @@ namespace TexasHoldem
 {
     /// <summary>
     /// Displays a player's current round bet as a chip stack + amount badge.
-    /// Layout (managed by PlayerSeatLayout):
-    ///   BetDisplay root
-    ///   ├── ChipStack   — Chip_0 / Chip_1 / Chip_2 show bet chips (€1 / €5 / €25 sprites)
-    ///   └── AmountBadge — dark rounded pill with bold euro text
+    /// Layout (managed by TableLayoutManager + PlayerSeatLayout):
+    ///   BetDisplay root — beside avatar (chip stack toward table centre, badge beside stack)
     ///
     /// When the bet increases, a chip graphic flies from the player's avatar to ChipStack.
     /// </summary>

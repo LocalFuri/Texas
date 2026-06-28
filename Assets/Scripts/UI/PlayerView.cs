@@ -43,7 +43,7 @@ namespace TexasHoldem
         [SerializeField] private AvatarRingSdfGraphic _avatarRingChrome; // always-on silver chrome base ring
         [SerializeField] private AvatarRingSdfGraphic _avatarRingGold;   // gold countdown overlay on active turn
         [SerializeField] private Image                _avatarImage;   // AvatarCircleImage — shader-clipped avatar photo
-        [SerializeField] private BetDisplay           _betDisplay;    // floats between seat and table centre
+        [SerializeField] private BetDisplay           _betDisplay;    // chip stack + amount beside avatar
         [SerializeField] private ActionBadge          _actionBadge;   // neon pill when player acts
         [SerializeField] private SeatActionMenu     _seatActionMenu; // human Check/Fold/Raise above name
         [SerializeField] private RectTransform        _avatarFrame;   // chip animation origin

@@ -30,8 +30,7 @@ namespace TexasHoldem
                  "(anchor at panel centre). Y is relative to the card-area centre (+55 px).")]
         public Vector2 card1LocalPos;
 
-        [Tooltip("Legacy per-seat bet offset — no longer used for placement. " +
-                 "BetDisplay is positioned dynamically between avatar and pot.")]
+        [Tooltip("Legacy per-seat bet offset — fallback only when avatar rect is missing.")]
         public Vector2 betLabelLocalPos;
 
         [Tooltip("AnchoredPosition of the HudPanel inside the seat root (anchor at panel center).")]
@@ -101,8 +100,8 @@ namespace TexasHoldem
         [SerializeField] private RectTransform _potLabel;
 
         [Header("Bet Label")]
-        [Tooltip("0 = at avatar center, 1 = at pot center.")]
-        [SerializeField, Range(0f, 1f)] private float _betLabelTrackT = 0.42f;
+        [Tooltip("Horizontal gap between the avatar edge and the chip stack.")]
+        [SerializeField, Range(10f, 20f)] private float _betLabelAvatarGap = 15f;
 
         [Header("Dealer Button")]
         [SerializeField] private RectTransform _dealerButton;
@@ -390,59 +389,48 @@ namespace TexasHoldem
             return worldPos;
         }
 
-        private void EnsureCanvasRect(PlayerView view = null)
+        private const float BetChipStackWidth      = 50f;
+        private const float BetChipStackHeight     = 48f;
+        private const float BetChipBadgeGap        = 6f;
+        private const float BetAmountBadgeWidth    = 90f;
+        private const float BetAmountBadgeHeight   = 30f;
+        private const float BetDisplayWidth        = BetChipStackWidth + BetChipBadgeGap + BetAmountBadgeWidth;
+        private const float BetDisplayHeight       = 52f;
+        private const float BetChipStackCenterX    = -BetDisplayWidth * 0.5f + BetChipStackWidth * 0.5f;
+        private const float BetAmountBadgeCenterX  = -BetDisplayWidth * 0.5f + BetChipStackWidth + BetChipBadgeGap + BetAmountBadgeWidth * 0.5f;
+        private const float BetChipStackLeftFromRootCenter  = -BetDisplayWidth * 0.5f;
+        private const float BetChipStackRightFromRootCenter = BetChipStackLeftFromRootCenter + BetChipStackWidth;
+
+        private static void SetBetDisplayChildRect(RectTransform rt, float x, float y, float w, float h)
         {
-            if (_canvasRect != null) return;
-
-            if (view != null)
-            {
-                Canvas canvas = view.GetComponentInParent<Canvas>();
-                if (canvas != null)
-                {
-                    _canvasRect = (RectTransform)canvas.transform;
-                    return;
-                }
-            }
-
-            if (_potLabel != null)
-            {
-                Canvas canvas = _potLabel.GetComponentInParent<Canvas>();
-                if (canvas != null)
-                {
-                    _canvasRect = (RectTransform)canvas.transform;
-                    return;
-                }
-            }
-
-            if (_playerViews == null) return;
-
-            for (int i = 0; i < _playerViews.Length; i++)
-            {
-                if (_playerViews[i] == null) continue;
-                Canvas canvas = _playerViews[i].GetComponentInParent<Canvas>();
-                if (canvas == null) continue;
-                _canvasRect = (RectTransform)canvas.transform;
-                return;
-            }
+            rt.anchorMin        = new Vector2(0.5f, 0.5f);
+            rt.anchorMax        = new Vector2(0.5f, 0.5f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(x, y);
+            rt.sizeDelta        = new Vector2(w, h);
         }
 
-        private Vector2 GetAvatarCanvasCenter(PlayerView view)
+        private static void ApplyBetDisplayContentLayout(RectTransform betDisplayRt)
         {
-            RectTransform avatar = view.AvatarRect;
-            EnsureCanvasRect(view);
-            if (_canvasRect == null || avatar == null) return Vector2.zero;
+            if (betDisplayRt == null) return;
 
-            Vector3 canvasLocal = _canvasRect.InverseTransformPoint(avatar.position);
-            return new Vector2(canvasLocal.x, canvasLocal.y);
-        }
+            betDisplayRt.sizeDelta = new Vector2(BetDisplayWidth, BetDisplayHeight);
 
-        private Vector2 GetPotCanvasCenter() => _potLabelPosition;
+            Transform chipStack = betDisplayRt.Find("ChipStack");
+            if (chipStack != null)
+            {
+                SetBetDisplayChildRect(
+                    (RectTransform)chipStack,
+                    BetChipStackCenterX, 0f, BetChipStackWidth, BetChipStackHeight);
+            }
 
-        private Vector2 ComputeBetLabelCanvasPosition(PlayerView view)
-        {
-            Vector2 avatarCanvas = GetAvatarCanvasCenter(view);
-            Vector2 potCanvas    = GetPotCanvasCenter();
-            return Vector2.Lerp(avatarCanvas, potCanvas, _betLabelTrackT);
+            Transform amountBadge = betDisplayRt.Find("AmountBadge");
+            if (amountBadge != null)
+            {
+                SetBetDisplayChildRect(
+                    (RectTransform)amountBadge,
+                    BetAmountBadgeCenterX, 0f, BetAmountBadgeWidth, BetAmountBadgeHeight);
+            }
         }
 
         private Vector2 ComputeBetLabelSeatLocal(PlayerView view, SeatConfig cfg)
@@ -451,14 +439,17 @@ namespace TexasHoldem
             if (avatar == null)
                 return cfg.betLabelLocalPos;
 
-            EnsureCanvasRect(view);
-            if (_canvasRect == null)
-                return cfg.betLabelLocalPos;
+            float avatarHalfW = avatar.rect.width * 0.5f;
+            float avatarX     = avatar.anchoredPosition.x;
+            float avatarY     = avatar.anchoredPosition.y;
+            float avatarLeft  = avatarX - avatarHalfW;
+            float avatarRight = avatarX + avatarHalfW;
 
-            Vector2 betCanvas = ComputeBetLabelCanvasPosition(view);
-            Vector3 betWorld  = _canvasRect.TransformPoint(new Vector3(betCanvas.x, betCanvas.y, 0f));
-            Vector3 seatLocal = ((RectTransform)view.transform).InverseTransformPoint(betWorld);
-            return new Vector2(seatLocal.x, seatLocal.y);
+            float rootX = cfg.mirrorHud
+                ? avatarLeft - _betLabelAvatarGap + BetChipStackRightFromRootCenter
+                : avatarRight + _betLabelAvatarGap - BetChipStackLeftFromRootCenter;
+
+            return new Vector2(rootX, avatarY);
         }
 
         // ── Unity Callbacks ───────────────────────────────────────────────
@@ -605,6 +596,8 @@ namespace TexasHoldem
         {
             RectTransform rt = view.BetLabelRect;
             if (rt == null) return;
+
+            ApplyBetDisplayContentLayout(rt);
 
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
