@@ -1,10 +1,9 @@
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace TexasHoldem
 {
-    /// <summary>Soft outer bloom around a rounded HUD panel — SDF falloff, no sprite.</summary>
+    /// <summary>Soft outer bloom around a rounded HUD panel — uniform SDF rim, no sprite.</summary>
     [ExecuteAlways]
     [RequireComponent(typeof(RectTransform))]
     [RequireComponent(typeof(CanvasRenderer))]
@@ -14,31 +13,30 @@ namespace TexasHoldem
         private static readonly int PanelSizeId      = Shader.PropertyToID("_PanelSize");
         private static readonly int CornerRadiusPxId = Shader.PropertyToID("_CornerRadiusPx");
         private static readonly int GlowSpreadPxId   = Shader.PropertyToID("_GlowSpreadPx");
+        private static readonly int RimCorePxId      = Shader.PropertyToID("_RimCorePx");
         private static readonly int GlowIntensityId  = Shader.PropertyToID("_GlowIntensity");
         private static readonly int GlowColorId      = Shader.PropertyToID("_GlowColor");
         private static readonly int GlowFalloffId    = Shader.PropertyToID("_GlowFalloff");
-        private static readonly int SideBoostId      = Shader.PropertyToID("_SideBoost");
-        private static readonly int TopAttenId       = Shader.PropertyToID("_TopAtten");
 
         private Material _glowMaterial;
 
+        [Header("Panel (px)")]
         [SerializeField] private Shader _shader;
         [SerializeField] private float _panelWidthPx  = 220f;
         [SerializeField] private float _panelHeightPx = 70f;
         [SerializeField, Range(1f, 40f)]
         private float _cornerRadiusPx = 14f;
+
+        [Header("Glow")]
         [SerializeField, Range(8f, 80f)]
-        private float _glowSpreadPx = 30f;
+        private float _glowSpreadPx = 14f;
+        [SerializeField, Range(0.5f, 12f)]
+        private float _rimCorePx = 3f;
         [SerializeField, Range(0f, 1.5f)]
         private float _glowIntensity;
         [SerializeField] private Color _glowColor = Color.white;
         [SerializeField, Range(0.8f, 2.5f)]
-        private float _glowFalloff = 1.4f;
-        [SerializeField, Range(0f, 1f)]
-        private float _sideBoost = 0.72f;
-        [FormerlySerializedAs("_vertAtten")]
-        [SerializeField, Range(0f, 1f)]
-        private float _topAtten = 0.85f;
+        private float _glowFalloff = 1.1f;
 
         public float PanelWidthPx
         {
@@ -196,11 +194,10 @@ namespace TexasHoldem
             mat.SetVector(PanelSizeId,     new Vector2(_panelWidthPx, _panelHeightPx));
             mat.SetFloat(CornerRadiusPxId, _cornerRadiusPx);
             mat.SetFloat(GlowSpreadPxId,   _glowSpreadPx);
+            mat.SetFloat(RimCorePxId,      _rimCorePx);
             mat.SetFloat(GlowIntensityId,  _glowIntensity);
             mat.SetColor(GlowColorId,      _glowColor);
             mat.SetFloat(GlowFalloffId,    _glowFalloff);
-            mat.SetFloat(SideBoostId,      _sideBoost);
-            mat.SetFloat(TopAttenId,       _topAtten);
         }
 
 #if UNITY_EDITOR

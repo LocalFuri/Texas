@@ -332,6 +332,10 @@ namespace TexasHoldem
         private void ApplyHudGlowIdle()
         {
             if (_hudGlow == null || _ringCountdown != null) return;
+#if UNITY_EDITOR
+            // Edit mode: keep HudGlow intensity as set in the Inspector (layout/preview).
+            if (!Application.isPlaying) return;
+#endif
             _hudGlow.GlowIntensity = 0f;
         }
 

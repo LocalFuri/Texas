@@ -7,11 +7,10 @@ Shader "UI/HudPanelGlow"
         _PanelSize ("Panel Size (px)", Vector) = (220, 70, 0, 0)
         _CornerRadiusPx ("Corner Radius (px)", Float) = 14
         _GlowSpreadPx ("Glow Spread (px)", Float) = 30
+        _RimCorePx ("Rim Core (px)", Float) = 3
         _GlowIntensity ("Glow Intensity", Range(0, 1.5)) = 0
         _GlowColor ("Glow Color", Color) = (1, 1, 1, 1)
-        _GlowFalloff ("Glow Falloff", Range(0.8, 2.5)) = 1.4
-        _SideBoost ("Side Boost", Range(0, 1)) = 0.72
-        _TopAtten ("Top Atten", Range(0, 1)) = 0.85
+        _GlowFalloff ("Glow Falloff", Range(0.8, 2.5)) = 1.1
         _StencilComp ("Stencil Comparison", Float) = 8
         _Stencil ("Stencil ID", Float) = 0
         _StencilOp ("Stencil Operation", Float) = 0
@@ -87,11 +86,10 @@ Shader "UI/HudPanelGlow"
             float2 _PanelSize;
             float _CornerRadiusPx;
             float _GlowSpreadPx;
+            float _RimCorePx;
             float _GlowIntensity;
             fixed4 _GlowColor;
             float _GlowFalloff;
-            float _SideBoost;
-            float _TopAtten;
 
             float sdRoundedBox(float2 p, float2 halfSize, float radius)
             {
@@ -117,25 +115,24 @@ Shader "UI/HudPanelGlow"
                 float2 halfPanel   = max(_PanelSize * 0.5, float2(0.001, 0.001));
                 float  cornerR     = max(_CornerRadiusPx, 0.001);
                 float  spread      = max(_GlowSpreadPx, 0.001);
+                float  rimCore     = clamp(_RimCorePx, 0.5, spread - 0.5);
 
                 float dist = sdRoundedBox(pixelOffset, halfPanel, cornerR);
 
-                // Outer bloom — bright sides + bottom; fade toward top (cards sit above pill).
+                // Uniform outer rim: even-width bright core + smooth fade (isotropic SDF distance).
                 float glow = 0.0;
                 if (_GlowIntensity > 0.001)
                 {
                     float aa      = max(fwidth(dist), 0.5);
                     float outside = smoothstep(0.0, aa, dist);
+                    float d       = max(dist, 0.0);
 
-                    float t = 1.0 - saturate(dist / spread);
+                    float core = 1.0 - smoothstep(0.0, rimCore, d);
+                    float halo = 1.0 - smoothstep(rimCore, spread, d);
+                    float t    = max(core, halo * 0.55);
                     t = pow(max(t, 0.0), max(_GlowFalloff, 0.8));
 
-                    float sideT   = abs(pixelOffset.x) / halfPanel.x;
-                    float boost   = 1.0 + _SideBoost * smoothstep(0.2, 1.0, sideT);
-                    float topT    = saturate((pixelOffset.y + halfPanel.y * 0.15) / (halfPanel.y * 1.15));
-                    float topGate = lerp(1.0, 1.0 - smoothstep(0.35, 1.0, topT), _TopAtten);
-
-                    glow = t * outside * boost * topGate * _GlowIntensity;
+                    glow = t * outside * _GlowIntensity;
                 }
 
                 fixed3 rgb = _GlowColor.rgb * IN.color.rgb;

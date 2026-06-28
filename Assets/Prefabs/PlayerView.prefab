@@ -3320,11 +3320,10 @@ MonoBehaviour:
   _panelHeightPx: 76
   _cornerRadiusPx: 14
   _glowSpreadPx: 14
+  _rimCorePx: 3
   _glowIntensity: 0
   _glowColor: {r: 1, g: 1, b: 1, a: 1}
-  _glowFalloff: 1.4
-  _sideBoost: 0.72
-  _topAtten: 0.85
+  _glowFalloff: 1.1
 --- !u!1 &8924560129755818660
 GameObject:
   m_ObjectHideFlags: 0
