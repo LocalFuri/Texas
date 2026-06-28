@@ -30,9 +30,8 @@ namespace TexasHoldem
                  "(anchor at panel centre). Y is relative to the card-area centre (+55 px).")]
         public Vector2 card1LocalPos;
 
-        [Tooltip("AnchoredPosition of the bet label inside the seat panel " +
-                 "(anchor at panel center). Set outside panel bounds to float it " +
-                 "between the player and the table center.")]
+        [Tooltip("Legacy per-seat bet offset — no longer used for placement. " +
+                 "BetDisplay is positioned dynamically between avatar and pot.")]
         public Vector2 betLabelLocalPos;
 
         [Tooltip("AnchoredPosition of the HudPanel inside the seat root (anchor at panel center).")]
@@ -100,6 +99,10 @@ namespace TexasHoldem
         [Tooltip("AnchoredPosition of the pot label relative to canvas center.")]
         [SerializeField] private Vector2 _potLabelPosition = new Vector2(0f, 70f);
         [SerializeField] private RectTransform _potLabel;
+
+        [Header("Bet Label")]
+        [Tooltip("0 = at avatar center, 1 = at pot center.")]
+        [SerializeField, Range(0f, 1f)] private float _betLabelTrackT = 0.42f;
 
         [Header("Dealer Button")]
         [SerializeField] private RectTransform _dealerButton;
@@ -387,6 +390,77 @@ namespace TexasHoldem
             return worldPos;
         }
 
+        private void EnsureCanvasRect(PlayerView view = null)
+        {
+            if (_canvasRect != null) return;
+
+            if (view != null)
+            {
+                Canvas canvas = view.GetComponentInParent<Canvas>();
+                if (canvas != null)
+                {
+                    _canvasRect = (RectTransform)canvas.transform;
+                    return;
+                }
+            }
+
+            if (_potLabel != null)
+            {
+                Canvas canvas = _potLabel.GetComponentInParent<Canvas>();
+                if (canvas != null)
+                {
+                    _canvasRect = (RectTransform)canvas.transform;
+                    return;
+                }
+            }
+
+            if (_playerViews == null) return;
+
+            for (int i = 0; i < _playerViews.Length; i++)
+            {
+                if (_playerViews[i] == null) continue;
+                Canvas canvas = _playerViews[i].GetComponentInParent<Canvas>();
+                if (canvas == null) continue;
+                _canvasRect = (RectTransform)canvas.transform;
+                return;
+            }
+        }
+
+        private Vector2 GetAvatarCanvasCenter(PlayerView view)
+        {
+            RectTransform avatar = view.AvatarRect;
+            EnsureCanvasRect(view);
+            if (_canvasRect == null || avatar == null) return Vector2.zero;
+
+            Vector3 canvasLocal = _canvasRect.InverseTransformPoint(avatar.position);
+            return new Vector2(canvasLocal.x, canvasLocal.y);
+        }
+
+        private Vector2 GetPotCanvasCenter() => _potLabelPosition;
+
+        private Vector2 ComputeBetLabelCanvasPosition(PlayerView view)
+        {
+            Vector2 avatarCanvas = GetAvatarCanvasCenter(view);
+            Vector2 potCanvas    = GetPotCanvasCenter();
+            return Vector2.Lerp(avatarCanvas, potCanvas, _betLabelTrackT);
+        }
+
+        private Vector2 ComputeBetLabelSeatLocal(PlayerView view, SeatConfig cfg)
+        {
+            RectTransform avatar = view.AvatarRect;
+            if (avatar == null)
+                return cfg.betLabelLocalPos;
+
+            EnsureCanvasRect(view);
+            if (_canvasRect == null)
+                return cfg.betLabelLocalPos;
+
+            Vector2 betCanvas = ComputeBetLabelCanvasPosition(view);
+            Vector3 betWorld  = _canvasRect.TransformPoint(new Vector3(betCanvas.x, betCanvas.y, 0f));
+            Vector3 seatLocal = ((RectTransform)view.transform).InverseTransformPoint(betWorld);
+            return new Vector2(seatLocal.x, seatLocal.y);
+        }
+
         // ── Unity Callbacks ───────────────────────────────────────────────
 
         private void Reset()
@@ -535,7 +609,7 @@ namespace TexasHoldem
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = cfg.betLabelLocalPos;
+            rt.anchoredPosition = ComputeBetLabelSeatLocal(view, cfg);
         }
 
         private void ApplyPotLabel()
@@ -576,10 +650,11 @@ namespace TexasHoldem
                 DrawCardGizmo(wPos, HoleCardGizmoOffset(cfg.card0LocalPos), scale);
                 DrawCardGizmo(wPos, HoleCardGizmoOffset(cfg.card1LocalPos), scale);
 
-                // Bet-label dot.
+                // Bet-label dot (avatar → pot track).
                 Gizmos.color = new Color(0.9f, 0.5f, 1f, 0.75f);
+                Vector2 betLocal = ComputeBetLabelSeatLocal(_playerViews[i], cfg);
                 Gizmos.DrawWireSphere(
-                    CanvasToWorld(seatRt.anchoredPosition + cfg.betLabelLocalPos), r * 0.2f);
+                    CanvasToWorld(seatRt.anchoredPosition + betLocal), r * 0.2f);
 
                 // Dealer button marker + line.
                 Gizmos.color = new Color(1f, 0.85f, 0.1f, 0.85f);
