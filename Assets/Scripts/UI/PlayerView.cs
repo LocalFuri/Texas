@@ -176,7 +176,7 @@ namespace TexasHoldem
             _nameText.fontSizeMax        = _nameFontSize;
             _nameText.enableWordWrapping = false;
             _nameText.overflowMode       = TextOverflowModes.Ellipsis;
-            _nameText.alignment          = PlayerHudLayout.TextAlign(_hudMirrored);
+            _nameText.alignment          = PlayerHudLayout.HudPanelTextAlign;
         }
 
         /// <summary>Sets a fixed font size on the text element without altering its RectTransform dimensions.</summary>

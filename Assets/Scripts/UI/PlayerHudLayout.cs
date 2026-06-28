@@ -26,6 +26,7 @@ namespace TexasHoldem
         public const float NameTextH = 36f;
         public const float TextAvatarPad = 10f; // horizontal gap between text and avatar ring
         public const float NameChipsGap = 8f; // vertical space between name and chips rows
+        public const float HudTextPadPx = 12f; // inset when centering text inside HudPanel
         public const float NameY     = 16f;
         public const float ChipsY    = -12f - NameChipsGap * 0.5f;
 
@@ -58,6 +59,8 @@ namespace TexasHoldem
 
         public static TextAlignmentOptions TextAlign(bool mirrored)
             => mirrored ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
+
+        public static TextAlignmentOptions HudPanelTextAlign => TextAlignmentOptions.Midline;
 
         /// <summary>Fixed left edge of the HUD content band (avatar overlap side).</summary>
         public static float ComputePanelLeftX(float hudCenterX) => hudCenterX - PillW * 0.5f;
@@ -231,8 +234,6 @@ namespace TexasHoldem
 
             float avatarX   = AvatarPosX(mirrored);
             float textX     = TextPosX(mirrored);
-            float nameTextX = NameTextPosX(mirrored);
-            var   align     = TextAlign(mirrored);
             Vector2 hudLocalPx = ResolveHudLocalPx(root);
 
             SetRect(FindChild(root, "AvatarFrame"), avatarX, PillY, AvatarD, AvatarD);
@@ -242,14 +243,25 @@ namespace TexasHoldem
             ApplyHudPanelFromCard1(root, card1, hudLocalPx);
 
             Transform hudPanel = FindChild(root, "HudPanel");
-            float panelCenterY = hudPanel != null ? ((RectTransform)hudPanel).anchoredPosition.y : 0f;
+            float panelCenterX = 0f;
+            float panelCenterY = 0f;
+            float panelWidth   = PillW;
+            if (hudPanel != null)
+            {
+                var panelRt = (RectTransform)hudPanel;
+                panelCenterX = panelRt.anchoredPosition.x;
+                panelCenterY = panelRt.anchoredPosition.y;
+                panelWidth   = panelRt.sizeDelta.x > 0f ? panelRt.sizeDelta.x : panelRt.rect.width;
+            }
 
+            float textCenterX = panelCenterX;
+            float textWidth   = Mathf.Max(panelWidth - HudTextPadPx * 2f, TextW);
             float nameY  = GetCenteredNameY(panelCenterY);
             float chipsY = GetCenteredChipsY(panelCenterY);
 
-            ApplyText(FindChild(root, "NameText"),   nameTextX, nameY, NameTextW, NameTextH, align);
-            ApplyText(FindChild(root, "ChipsText"),  textX, chipsY, TextW, 26f, align);
-            ApplyText(FindChild(root, "StatusText"), textX, chipsY, TextW, 22f, align);
+            ApplyText(FindChild(root, "NameText"),   textCenterX, nameY, textWidth, NameTextH, HudPanelTextAlign);
+            ApplyText(FindChild(root, "ChipsText"),  textCenterX, chipsY, textWidth, 26f, HudPanelTextAlign);
+            ApplyText(FindChild(root, "StatusText"), textCenterX, chipsY, textWidth, 22f, HudPanelTextAlign);
 
             SetRect(FindChild(root, "ActionBadge"),    textX, ActionBadgeY, ActionBadgeGlowW, ActionBadgeGlowH);
             SetRect(FindChild(root, "SeatActionMenu"), textX, SeatActionMenuY, SeatActionMenuW, SeatActionMenuH);

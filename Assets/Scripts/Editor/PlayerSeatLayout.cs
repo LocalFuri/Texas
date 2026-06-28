@@ -589,22 +589,33 @@ namespace TexasHoldem
             goldRingGo.transform.SetSiblingIndex(2);
 
             Transform hudPanel = FindDeep(root, "HudPanel");
-            float panelCenterY = hudPanel != null ? ((RectTransform)hudPanel).anchoredPosition.y : 0f;
+            float panelCenterX = 0f;
+            float panelCenterY = 0f;
+            float panelWidth   = PlayerHudLayout.PillW;
+            if (hudPanel != null)
+            {
+                var panelRt = (RectTransform)hudPanel;
+                panelCenterX = panelRt.anchoredPosition.x;
+                panelCenterY = panelRt.anchoredPosition.y;
+                panelWidth   = panelRt.sizeDelta.x > 0f ? panelRt.sizeDelta.x : panelRt.rect.width;
+            }
 
+            float textCenterX = panelCenterX;
+            float textWidth   = Mathf.Max(panelWidth - PlayerHudLayout.HudTextPadPx * 2f, TextW);
             float nameY  = PlayerHudLayout.GetCenteredNameY(panelCenterY);
             float chipsY = PlayerHudLayout.GetCenteredChipsY(panelCenterY);
 
-            // 7. NameText — upper row, right of avatar.
+            // 7. NameText — centered in HudPanel, above chips.
             Transform nameT = FindDeep(root, "NameText");
             if (nameT != null)
             {
                 ReparentTo(nameT, root);
-                SetRect(nameT.gameObject, PlayerHudLayout.NameTextPosX(mirrored), nameY, PlayerHudLayout.NameTextW, PlayerHudLayout.NameTextH);
+                SetRect(nameT.gameObject, textCenterX, nameY, textWidth, PlayerHudLayout.NameTextH);
                 var txt = nameT.GetComponent<TMP_Text>();
                 if (txt != null)
                 {
                     RecordObj(txt);
-                    txt.alignment          = textAlign;
+                    txt.alignment          = PlayerHudLayout.HudPanelTextAlign;
                     txt.fontStyle          = FontStyles.Bold;
                     if (!_useUndo)
                     {
@@ -626,17 +637,17 @@ namespace TexasHoldem
                     view.SetDisplayName(txt.text);
             }
 
-            // 8. ChipsText — lower row, right of avatar.
+            // 8. ChipsText — centered in HudPanel, below name.
             Transform chipsT = FindDeep(root, "ChipsText");
             if (chipsT != null)
             {
                 ReparentTo(chipsT, root);
-                SetRect(chipsT.gameObject, textX, chipsY, TextW, 26f);
+                SetRect(chipsT.gameObject, textCenterX, chipsY, textWidth, 26f);
                 var txt = chipsT.GetComponent<TMP_Text>();
                 if (txt != null)
                 {
                     RecordObj(txt);
-                    txt.alignment          = textAlign;
+                    txt.alignment          = PlayerHudLayout.HudPanelTextAlign;
                     txt.fontStyle          = FontStyles.Bold;
                     if (!_useUndo) { txt.enableAutoSizing = false; txt.fontSize = 13f; }
                     txt.color              = ChipsColor;
@@ -651,14 +662,14 @@ namespace TexasHoldem
             if (statusT != null)
             {
                 ReparentTo(statusT, root);
-                SetRect(statusT.gameObject, textX, chipsY, TextW, 22f);
+                SetRect(statusT.gameObject, textCenterX, chipsY, textWidth, 22f);
                 RecordObj(statusT.gameObject);
                 statusT.gameObject.SetActive(true);
                 var txt = statusT.GetComponent<TMP_Text>();
                 if (txt != null)
                 {
                     RecordObj(txt);
-                    txt.alignment          = textAlign;
+                    txt.alignment          = PlayerHudLayout.HudPanelTextAlign;
                     if (!_useUndo) { txt.enableAutoSizing = false; txt.fontSize = 10f; }
                     txt.color              = StatusColor;
                     txt.overflowMode       = TextOverflowModes.Ellipsis;
