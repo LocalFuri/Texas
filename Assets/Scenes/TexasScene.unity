@@ -4471,6 +4471,14 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8917840347550367181, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: _hudGlowFadeSecs
+      value: 0.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 8917840347550367181, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: _hudGlowHoldSecs
+      value: 0.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 8917840347550367181, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _showAvatarImages
       value: 1
       objectReference: {fileID: 0}
@@ -4480,7 +4488,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8917840347550367181, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _hudGlowMaxIntensity
-      value: 1.122
+      value: 1.164
       objectReference: {fileID: 0}
     - target: {fileID: 8917840347550367181, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _hudGlowMinIntensity
