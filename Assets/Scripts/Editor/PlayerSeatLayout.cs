@@ -484,7 +484,8 @@ namespace TexasHoldem
             RecordObj(hudGlowGo);
             RecordObj(hudGlowGfx);
             Vector2 hudLocalPx = ResolveHudLocalPx(view);
-            hudGlowGfx.GlowSpreadPx   = HudGlowSpreadPx;
+            if (hudGlowGfx.GlowSpreadPx < 8f)
+                hudGlowGfx.GlowSpreadPx = HudGlowSpreadPx;
             hudGlowGfx.GlowIntensity  = 0f;
             hudGlowGfx.color          = Color.white;
             hudGlowGfx.raycastTarget  = false;

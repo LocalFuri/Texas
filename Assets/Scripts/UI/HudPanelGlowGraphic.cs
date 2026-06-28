@@ -225,10 +225,23 @@ namespace TexasHoldem
         {
             _glowPeakIntensity = Mathf.Clamp(_glowPeakIntensity, 0f, 1.5f);
             if (!Application.isPlaying)
+            {
                 _appliedIntensity = _glowPeakIntensity;
+                SyncGlowRectSize();
+            }
             base.OnValidate();
             EnsureRendererSettings();
             MarkRenderDirty();
+        }
+
+        private void SyncGlowRectSize()
+        {
+            if (_panelWidthPx <= 0f || _panelHeightPx <= 0f) return;
+            var rt = rectTransform;
+            if (rt == null) return;
+            rt.sizeDelta = new Vector2(
+                _panelWidthPx + _glowSpreadPx * 2f,
+                _panelHeightPx + _glowSpreadPx * 2f);
         }
 #endif
     }

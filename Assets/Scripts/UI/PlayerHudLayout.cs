@@ -105,17 +105,26 @@ namespace TexasHoldem
                 }
             }
 
+            var hudGlow = FindChild(root, "HudGlow")?.GetComponent<HudPanelGlowGraphic>();
+            float glowSpread = ResolveGlowSpreadPx(hudGlow);
+
             SetRect(FindChild(root, "HudPanel"), panelCenterX, panelCenterY, panelWidth, panelHeight);
             SetRect(FindChild(root, "HudGlow"), panelCenterX, panelCenterY,
-                panelWidth + HudGlowSpreadPx * 2f, panelHeight + HudGlowSpreadPx * 2f);
+                panelWidth + glowSpread * 2f, panelHeight + glowSpread * 2f);
 
-            var hudGlow = FindChild(root, "HudGlow")?.GetComponent<HudPanelGlowGraphic>();
             if (hudGlow != null)
             {
                 hudGlow.PanelWidthPx  = panelWidth;
                 hudGlow.PanelHeightPx = panelHeight;
-                hudGlow.GlowSpreadPx  = HudGlowSpreadPx;
             }
+        }
+
+        /// <summary>Uses the HudGlow component spread when set; default constant for new seats.</summary>
+        private static float ResolveGlowSpreadPx(HudPanelGlowGraphic hudGlow)
+        {
+            if (hudGlow != null && hudGlow.GlowSpreadPx >= 8f)
+                return hudGlow.GlowSpreadPx;
+            return HudGlowSpreadPx;
         }
 
         private static Vector2 ResolveHudLocalPx(Transform root)
