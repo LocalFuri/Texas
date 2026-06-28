@@ -47,13 +47,15 @@ namespace TexasHoldem
         [SerializeField] private ActionBadge          _actionBadge;   // neon pill when player acts
         [SerializeField] private SeatActionMenu     _seatActionMenu; // human Check/Fold/Raise above name
         [SerializeField] private RectTransform        _avatarFrame;   // chip animation origin
-        [SerializeField] private HudPanelGlowGraphic _hudGlow; // SDF outer bloom behind HudPanel; blinks on active turn
+        [SerializeField] private HudPanelGlowGraphic _hudGlow; // SDF outer bloom behind HudPanel; soft pulse on active turn
 
-        [Header("HUD Glow Blink")]
-        [SerializeField, Range(0f, 1.5f)] private float _hudGlowBlinkIntensity = 1.1f;
-        [SerializeField, Min(0.1f)]       private float _hudGlowBlinkHz        = 1.5f;
-        [SerializeField, Range(0f, 1f)]   private float _hudGlowBlinkOnFrac    = 0.5f;
-        [SerializeField] private Color    _hudGlowColor                      = Color.white;
+        [Header("HUD Glow Pulse")]
+        [FormerlySerializedAs("_hudGlowBlinkIntensity")]
+        [SerializeField, Range(0.2f, 1.5f)] private float _hudGlowMaxIntensity = 0.9f;
+        [SerializeField, Range(0.1f, 1f)]     private float _hudGlowMinIntensity = 0.38f;
+        [FormerlySerializedAs("_hudGlowBlinkHz")]
+        [SerializeField, Min(0.1f)]           private float _hudGlowPulseHz    = 1f;
+        [SerializeField] private Color        _hudGlowColor                    = Color.white;
 
         [Header("Gold Ring Urgency")]
         [SerializeField, Range(0.05f, 0.5f)] private float _ringUrgencyWindowFrac = 0.25f;
@@ -331,6 +333,16 @@ namespace TexasHoldem
             _hudGlow.GlowIntensity = 0f;
         }
 
+        /// <summary>Smooth sine breathing — always between min and max, no square-wave jumps.</summary>
+        private float SampleHudGlowBreath(float elapsed)
+        {
+            float wave = 0.5f + 0.5f * Mathf.Sin(elapsed * _hudGlowPulseHz * Mathf.PI * 2f);
+            wave = wave * wave * (3f - 2f * wave);
+            float min = Mathf.Clamp(_hudGlowMinIntensity, 0.1f, 1.5f);
+            float max = Mathf.Clamp(_hudGlowMaxIntensity, min + 0.05f, 1.5f);
+            return Mathf.Lerp(min, max, wave);
+        }
+
         /// <summary>Clears hole-card reveal tracking (call at the start of a new round).</summary>
         public void ResetHoleCardReveal() => _revealedHoleCount = 0;
 
@@ -464,7 +476,7 @@ namespace TexasHoldem
             }
         }
 
-        /// <summary>Drains the gold ring and blinks the HUD glow over the given duration.</summary>
+        /// <summary>Drains the gold ring and softly pulses the HUD glow over the given duration.</summary>
         private IEnumerator RunRingCountdown(float duration)
         {
             float elapsed = 0f;
@@ -480,12 +492,7 @@ namespace TexasHoldem
                 }
 
                 if (_hudGlow != null)
-                {
-                    float phase = (elapsed * _hudGlowBlinkHz) % 1f;
-                    _hudGlow.GlowIntensity = phase < _hudGlowBlinkOnFrac
-                        ? Mathf.Clamp(_hudGlowBlinkIntensity, 0f, 1.5f)
-                        : 0f;
-                }
+                    _hudGlow.GlowIntensity = SampleHudGlowBreath(elapsed);
 
                 yield return null;
             }
@@ -607,14 +614,8 @@ namespace TexasHoldem
                     _avatarRingGold.color = new Color(1f, 1f, 1f, pulse);
                 }
 
-                // Blink HUD glow on the same rhythm as the active-turn countdown.
                 if (_hudGlow != null)
-                {
-                    float phase = (elapsed * _hudGlowBlinkHz) % 1f;
-                    _hudGlow.GlowIntensity = phase < _hudGlowBlinkOnFrac
-                        ? Mathf.Clamp(_hudGlowBlinkIntensity, 0f, 1.5f)
-                        : 0f;
-                }
+                    _hudGlow.GlowIntensity = SampleHudGlowBreath(elapsed);
 
                 yield return null;
             }
