@@ -11,6 +11,8 @@ namespace TexasHoldem
     {
         public const float PillW     = 220f;
         public const float PillH     = 76f;
+        /// <summary>Minimum HudPanel height for Seat_You — band over card rank area + name/chips.</summary>
+        public const float SeatYouPanelMinHeight = PillH;
         public const float PillY     = 0f;
         /// <summary>RoundedRect.png spriteBorder — panel rect extends this far past Card_1 so opaque fill reaches the card edge.</summary>
         public const float RoundedRectBorderPx = 14f;
@@ -66,6 +68,16 @@ namespace TexasHoldem
             return rt.anchoredPosition.x + w * 0.5f;
         }
 
+        /// <summary>Rect bottom edge for a centre-anchored, centre-pivot RectTransform.</summary>
+        public static float GetRectBottomY(RectTransform rt)
+        {
+            if (rt == null) return 0f;
+            float h = rt.rect.height;
+            if (h <= 0f)
+                h = rt.sizeDelta.y;
+            return rt.anchoredPosition.y - h * 0.5f;
+        }
+
         /// <summary>Symmetric hole-card centres — independent of HudPanel width.</summary>
         public static void ComputeHoleCardCenterX(
             float hudCenterX, float cardWidth, float cardGap,
@@ -77,12 +89,14 @@ namespace TexasHoldem
         }
 
         /// <summary>
-        /// Sizes HudPanel from Card_1. Rect extends RoundedRectBorderPx past the card so 9-slice
-        /// opaque fill (not the transparent corner) covers Card_1 lower-right.
+        /// Sizes HudPanel from Card_1. Width extends past Card_1 by Panel Right Border on HudGlow.
+        /// Seat_You: bottom edge aligned to Card_1 bottom, compact PillH band upward over the cards.
         /// </summary>
         public static void ApplyHudPanelFromCard1(Transform root, RectTransform card1, Vector2 hudLocalPx)
         {
             if (root == null) return;
+
+            var hudGlow = FindChild(root, "HudGlow")?.GetComponent<HudPanelGlowGraphic>();
 
             float panelLeft  = ComputePanelLeftX(hudLocalPx.x);
             float panelWidth = PillW;
@@ -93,19 +107,19 @@ namespace TexasHoldem
             if (card1 != null)
             {
                 float card1Right     = GetRectRightX(card1);
-                float border         = (root.name == "Seat_You") ? 0f : RoundedRectBorderPx;
+                float border         = ResolvePanelRightBorderPx(hudGlow);
                 float panelRectRight = card1Right + border;
                 panelWidth  = Mathf.Max(PillW, panelRectRight - panelLeft);
                 panelCenterX = panelLeft + panelWidth * 0.5f;
 
                 if (root.name == "Seat_You")
                 {
-                    panelHeight = 104f;
-                    panelCenterY = hudLocalPx.y - 14f;
+                    float cardBottom = GetRectBottomY(card1);
+                    panelHeight  = SeatYouPanelMinHeight;
+                    panelCenterY = cardBottom + panelHeight * 0.5f;
                 }
             }
 
-            var hudGlow = FindChild(root, "HudGlow")?.GetComponent<HudPanelGlowGraphic>();
             float glowSpread = ResolveGlowSpreadPx(hudGlow);
 
             SetRect(FindChild(root, "HudPanel"), panelCenterX, panelCenterY, panelWidth, panelHeight);
@@ -125,6 +139,13 @@ namespace TexasHoldem
             if (hudGlow != null && hudGlow.GlowSpreadPx >= 8f)
                 return hudGlow.GlowSpreadPx;
             return HudGlowSpreadPx;
+        }
+
+        private static float ResolvePanelRightBorderPx(HudPanelGlowGraphic hudGlow)
+        {
+            if (hudGlow != null)
+                return hudGlow.PanelRightBorderPx;
+            return RoundedRectBorderPx;
         }
 
         private static Vector2 ResolveHudLocalPx(Transform root)

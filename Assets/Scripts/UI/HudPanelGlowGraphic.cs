@@ -27,6 +27,9 @@ namespace TexasHoldem
         [SerializeField] private float _panelHeightPx = 70f;
         [SerializeField, Range(1f, 40f)]
         private float _cornerRadiusPx = 14f;
+        [Tooltip("Extra HudPanel width past Card_1 right edge — matches RoundedRect 9-slice (14px); hides the card corner.")]
+        [SerializeField, Range(0f, 30f)]
+        private float _panelRightBorderPx = 14f;
 
         [Header("Glow")]
         [SerializeField, Range(8f, 80f)]
@@ -53,6 +56,13 @@ namespace TexasHoldem
         {
             get => _panelHeightPx;
             set { _panelHeightPx = Mathf.Max(value, 1f); MarkRenderDirty(); }
+        }
+
+        /// <summary>Layout extends HudPanel this far past Card_1 right — tunable per seat in Inspector.</summary>
+        public float PanelRightBorderPx
+        {
+            get => _panelRightBorderPx;
+            set { _panelRightBorderPx = Mathf.Clamp(value, 0f, 30f); MarkRenderDirty(); }
         }
 
         public float GlowSpreadPx
@@ -224,14 +234,28 @@ namespace TexasHoldem
         protected override void OnValidate()
         {
             _glowPeakIntensity = Mathf.Clamp(_glowPeakIntensity, 0f, 1.5f);
+            _panelRightBorderPx = Mathf.Clamp(_panelRightBorderPx, 0f, 30f);
             if (!Application.isPlaying)
             {
                 _appliedIntensity = _glowPeakIntensity;
                 SyncGlowRectSize();
+                RequestParentHudLayout();
             }
             base.OnValidate();
             EnsureRendererSettings();
             MarkRenderDirty();
+        }
+
+        private void RequestParentHudLayout()
+        {
+            UnityEditor.EditorApplication.delayCall -= DelayedParentHudLayout;
+            UnityEditor.EditorApplication.delayCall += DelayedParentHudLayout;
+        }
+
+        private void DelayedParentHudLayout()
+        {
+            if (this == null || Application.isPlaying) return;
+            GetComponentInParent<PlayerView>()?.ApplyHudLayout();
         }
 
         private void SyncGlowRectSize()

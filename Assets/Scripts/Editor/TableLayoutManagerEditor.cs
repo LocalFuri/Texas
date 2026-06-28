@@ -30,8 +30,8 @@ namespace TexasHoldem
             EditorGUILayout.Space(10);
 
             EditorGUILayout.HelpBox(
-                "HudPanel width/X come from Card_1. Width adds RoundedRect border (14px) so dark fill " +
-                "covers the card corner — Apply Layout to refresh.",
+                "HudPanel width/X come from Card_1. Per-seat HudGlow → Panel Right Border Px (default 14) " +
+                "extends the dark fill past the card corner — Apply Layout to refresh.",
                 MessageType.Info);
 
             EditorGUILayout.Space(4);

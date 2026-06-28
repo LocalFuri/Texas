@@ -3319,6 +3319,7 @@ MonoBehaviour:
   _panelWidthPx: 220
   _panelHeightPx: 76
   _cornerRadiusPx: 14
+  _panelRightBorderPx: 14
   _glowSpreadPx: 14
   _rimCorePx: 3
   _glowPeakIntensity: 0
