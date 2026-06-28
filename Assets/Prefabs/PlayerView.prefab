@@ -2642,8 +2642,8 @@ RectTransform:
   m_Children:
   - {fileID: 7296532806555784172}
   - {fileID: 5722628635521418230}
-  - {fileID: 8800011000222333445}
   - {fileID: 9170533961590793105}
+  - {fileID: 8800011000222333445}
   - {fileID: 6421569901092307460}
   - {fileID: 4707508664972511652}
   - {fileID: 2586677165799754989}
@@ -2740,7 +2740,7 @@ MonoBehaviour:
   _seatActionMenu: {fileID: 1426520243099577894}
   _avatarFrame: {fileID: 6421569901092307460}
   _hudGlow: {fileID: 8800011000222333447}
-  _legacyHudGlowMaxIntensity: 1.1
+  _legacyHudGlowMaxIntensity: 0
   _hudGlowMinIntensity: 0
   _hudGlowHoldSecs: 0.25
   _hudGlowFadeSecs: 0.25

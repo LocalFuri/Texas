@@ -206,7 +206,7 @@ namespace TexasHoldem
             ApplyHudDrawOrder(root, pv);
         }
 
-        /// <summary>UGUI draw order: cards → HudGlow → HudPanel → avatar/text (back to front).</summary>
+        /// <summary>UGUI draw order: cards → HudPanel → HudGlow → avatar → rings → text (back to front).</summary>
         public static void ApplyHudDrawOrder(Transform root, PlayerView pv)
         {
             if (root == null) return;
@@ -222,19 +222,39 @@ namespace TexasHoldem
                 }
             }
 
-            Transform hudGlow  = FindChild(root, "HudGlow");
             Transform hudPanel = FindChild(root, "HudPanel");
-            if (hudGlow != null)  hudGlow.SetSiblingIndex(idx++);
+            Transform hudGlow  = FindChild(root, "HudGlow");
             if (hudPanel != null) hudPanel.SetSiblingIndex(idx++);
+            if (hudGlow != null)  hudGlow.SetSiblingIndex(idx++);
+
+            Transform avatarFrame = FindChild(root, "AvatarFrame");
+            if (avatarFrame != null)
+            {
+                avatarFrame.SetSiblingIndex(idx++);
+                ApplyAvatarFrameDrawOrder(avatarFrame);
+            }
 
             string[] frontOrder =
             {
-                "AvatarFrame", "NameText", "ChipsText", "StatusText",
+                "NameText", "ChipsText", "StatusText",
                 "SeatActionMenu", "ActionBadge", "BetDisplay"
             };
             foreach (string name in frontOrder)
             {
                 Transform t = FindChild(root, name);
+                if (t != null)
+                    t.SetSiblingIndex(idx++);
+            }
+        }
+
+        /// <summary>Inside AvatarFrame: portrait → chrome ring → gold ring (back to front).</summary>
+        private static void ApplyAvatarFrameDrawOrder(Transform avatarFrame)
+        {
+            int idx = 0;
+            string[] order = { "Avatar", "AvatarRingChrome", "AvatarRingGold" };
+            foreach (string name in order)
+            {
+                Transform t = avatarFrame.Find(name);
                 if (t != null)
                     t.SetSiblingIndex(idx++);
             }

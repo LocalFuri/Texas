@@ -15,9 +15,9 @@ namespace TexasHoldem
     /// Target hierarchy (siblings listed back to front for UGUI draw order):
     ///   PlayerView            — pure positional anchor; no Image background
     ///   ├── Card_0 / Card_1   — hole cards; render behind HudPanel
-    ///   ├── HudGlow           — blinking white bloom behind HudPanel on active turn
-    ///   ├── HudPanel          — dark rounded-rect pill
-    ///   ├── Avatar            — circular Image; sprite set manually per seat in Inspector
+    ///   ├── HudPanel          — dark rounded-rect pill over cards
+    ///   ├── HudGlow           — turn pulse rim over panel edge, under avatar
+    ///   ├── AvatarFrame       — Avatar → AvatarRingChrome → AvatarRingGold
     ///   ├── NameText
     ///   ├── ChipsText
         ///   ├── StatusText        — overlays ChipsText when Folded / All In / Eliminated
@@ -956,7 +956,7 @@ namespace TexasHoldem
             DestroyIfExists(avatarFrameGo.transform, "RingCrome"); // typo duplicate of AvatarRingChrome
 
             // 12. Sibling render order (back → front):
-            //     Card slots → HudGlow → HudPanel → AvatarFrame
+            //     Card slots → HudPanel → HudGlow → AvatarFrame (Avatar → Chrome → Gold)
             //     → NameText → ChipsText → StatusText → SeatActionMenu → ActionBadge → BetDisplay
             int idx = 0;
             foreach (CardView card in cards)
@@ -964,8 +964,8 @@ namespace TexasHoldem
                 if (card == null) continue;
                 card.transform.SetSiblingIndex(idx++);
             }
-            hudGlowGo.transform.SetSiblingIndex(idx++);
             hudGo.transform.SetSiblingIndex(idx++);
+            hudGlowGo.transform.SetSiblingIndex(idx++);
             avatarFrameGo.transform.SetSiblingIndex(idx++);
             if (nameT   != null) nameT.SetSiblingIndex(idx++);
             if (chipsT  != null) chipsT.SetSiblingIndex(idx++);
