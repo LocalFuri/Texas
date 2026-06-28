@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace TexasHoldem
@@ -32,11 +33,15 @@ namespace TexasHoldem
         private float _glowSpreadPx = 14f;
         [SerializeField, Range(0.5f, 12f)]
         private float _rimCorePx = 3f;
+        [Tooltip("Peak bloom brightness — edit-mode preview and in-game pulse maximum.")]
+        [FormerlySerializedAs("_glowIntensity")]
         [SerializeField, Range(0f, 1.5f)]
-        private float _glowIntensity;
+        private float _glowPeakIntensity = 1.1f;
         [SerializeField] private Color _glowColor = Color.white;
         [SerializeField, Range(0.8f, 2.5f)]
         private float _glowFalloff = 1.1f;
+
+        private float _appliedIntensity;
 
         public float PanelWidthPx
         {
@@ -56,11 +61,24 @@ namespace TexasHoldem
             set { _glowSpreadPx = Mathf.Clamp(value, 8f, 80f); MarkRenderDirty(); }
         }
 
-        /// <summary>0 = hidden; 1 = full bloom. Animated by PlayerView during active turn.</summary>
+        /// <summary>Inspector peak — preview in edit mode; pulse ceiling at runtime.</summary>
+        public float PeakGlowIntensity
+        {
+            get => _glowPeakIntensity;
+            set
+            {
+                _glowPeakIntensity = Mathf.Clamp(value, 0f, 1.5f);
+                if (!Application.isPlaying)
+                    _appliedIntensity = _glowPeakIntensity;
+                MarkRenderDirty();
+            }
+        }
+
+        /// <summary>Current shader intensity. PlayerView animates this during active turn.</summary>
         public float GlowIntensity
         {
-            get => _glowIntensity;
-            set { _glowIntensity = Mathf.Clamp(value, 0f, 1.5f); MarkRenderDirty(); }
+            get => _appliedIntensity;
+            set { _appliedIntensity = Mathf.Clamp(value, 0f, 1.5f); MarkRenderDirty(); }
         }
 
         public Color GlowColor
@@ -112,6 +130,8 @@ namespace TexasHoldem
         protected override void OnEnable()
         {
             base.OnEnable();
+            if (!Application.isPlaying)
+                _appliedIntensity = _glowPeakIntensity;
             EnsureRendererSettings();
             MarkRenderDirty();
 #if UNITY_EDITOR
@@ -195,7 +215,7 @@ namespace TexasHoldem
             mat.SetFloat(CornerRadiusPxId, _cornerRadiusPx);
             mat.SetFloat(GlowSpreadPxId,   _glowSpreadPx);
             mat.SetFloat(RimCorePxId,      _rimCorePx);
-            mat.SetFloat(GlowIntensityId,  _glowIntensity);
+            mat.SetFloat(GlowIntensityId,  _appliedIntensity);
             mat.SetColor(GlowColorId,      _glowColor);
             mat.SetFloat(GlowFalloffId,    _glowFalloff);
         }
@@ -203,6 +223,9 @@ namespace TexasHoldem
 #if UNITY_EDITOR
         protected override void OnValidate()
         {
+            _glowPeakIntensity = Mathf.Clamp(_glowPeakIntensity, 0f, 1.5f);
+            if (!Application.isPlaying)
+                _appliedIntensity = _glowPeakIntensity;
             base.OnValidate();
             EnsureRendererSettings();
             MarkRenderDirty();

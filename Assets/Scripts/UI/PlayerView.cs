@@ -50,9 +50,9 @@ namespace TexasHoldem
         [SerializeField] private HudPanelGlowGraphic _hudGlow; // SDF outer bloom; GGPoker-style smooth bright↔invisible pulse on active turn
 
         [Header("HUD Glow Pulse")]
-        [FormerlySerializedAs("_hudGlowBlinkIntensity")]
-        [SerializeField, Range(0.2f, 1.5f)] private float _hudGlowMaxIntensity = 1.1f;
-        [SerializeField, Range(0f, 1f)]       private float _hudGlowMinIntensity = 0f;
+        [FormerlySerializedAs("_hudGlowMaxIntensity")]
+        [SerializeField, HideInInspector] private float _legacyHudGlowMaxIntensity;
+        [SerializeField, Range(0f, 1f)] private float _hudGlowMinIntensity = 0f;
         [Tooltip("Seconds to hold at min and at max each cycle (GGPoker-style plateaus).")]
         [SerializeField, Range(0.05f, 0.6f)]  private float _hudGlowHoldSecs   = 0.25f;
         [Tooltip("Seconds for each fade between min and max.")]
@@ -326,6 +326,7 @@ namespace TexasHoldem
         {
             if (_hudGlow == null) return;
             _hudGlow.GlowColor = _hudGlowColor;
+            _legacyHudGlowMaxIntensity = 0f;
         }
 
         /// <summary>Hides the HUD glow when this seat is not on an active countdown.</summary>
@@ -349,7 +350,9 @@ namespace TexasHoldem
 
             float t = elapsed % period;
             float min = Mathf.Clamp(_hudGlowMinIntensity, 0f, 1.5f);
-            float max = Mathf.Clamp(_hudGlowMaxIntensity, min + 0.01f, 1.5f);
+            float peak = _hudGlow != null ? _hudGlow.PeakGlowIntensity : 0f;
+            if (peak < 0.01f) peak = 1.1f;
+            float max = Mathf.Clamp(peak, min + 0.01f, 1.5f);
 
             if (t < hold) return min;
             t -= hold;
