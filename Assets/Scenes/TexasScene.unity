@@ -632,7 +632,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5722628635521418230, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 40
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5979627444200257175, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSize
@@ -700,7 +700,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7296532806555784172, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 40
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 8217202399524031640, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchorMax.x
@@ -1345,7 +1345,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5722628635521418230, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 40
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5979627444200257175, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSize
@@ -1417,7 +1417,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7296532806555784172, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 40
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 8217202399524031640, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchorMax.x
@@ -6843,7 +6843,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5722628635521418230, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 40
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5979627444200257175, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSize
@@ -6915,7 +6915,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7296532806555784172, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 40
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 8217202399524031640, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchorMax.x
@@ -10545,7 +10545,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5722628635521418230, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 40
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5979627444200257175, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSize
@@ -10613,7 +10613,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7296532806555784172, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 40
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 8217202399524031640, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchorMax.x
@@ -11567,7 +11567,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5722628635521418230, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 40
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5979627444200257175, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSize
@@ -11635,7 +11635,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7296532806555784172, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 40
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 8217202399524031640, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchorMax.x
@@ -12457,8 +12457,8 @@ MonoBehaviour:
     playerName: Ace Maverick
   - pivot: {x: 1, y: 1}
     size: {x: 185, y: 152}
-    card0LocalPos: {x: -35, y: -15}
-    card1LocalPos: {x: 35, y: -15}
+    card0LocalPos: {x: -35, y: -5}
+    card1LocalPos: {x: 35, y: -5}
     betLabelLocalPos: {x: 70, y: 86}
     hudLocalPx: {x: 0, y: 0}
     dealerButtonOffset: {x: 0, y: 0}
@@ -12466,8 +12466,8 @@ MonoBehaviour:
     playerName: Lady Luck
   - pivot: {x: 1, y: 0}
     size: {x: 185, y: 152}
-    card0LocalPos: {x: -35, y: -15}
-    card1LocalPos: {x: 35, y: -15}
+    card0LocalPos: {x: -35, y: -5}
+    card1LocalPos: {x: 35, y: -5}
     betLabelLocalPos: {x: 70, y: -86}
     hudLocalPx: {x: 0, y: 0}
     dealerButtonOffset: {x: 0, y: 0}
@@ -12475,8 +12475,8 @@ MonoBehaviour:
     playerName: Prince Beaumont
   - pivot: {x: 0.5, y: 0}
     size: {x: 185, y: 152}
-    card0LocalPos: {x: -35, y: -15}
-    card1LocalPos: {x: 35, y: -15}
+    card0LocalPos: {x: -35, y: -5}
+    card1LocalPos: {x: 35, y: -5}
     betLabelLocalPos: {x: 0, y: -86}
     hudLocalPx: {x: 0, y: 0}
     dealerButtonOffset: {x: 0, y: 0}
@@ -12484,8 +12484,8 @@ MonoBehaviour:
     playerName: Victor Shark
   - pivot: {x: 0, y: 0}
     size: {x: 185, y: 152}
-    card0LocalPos: {x: -35, y: -15}
-    card1LocalPos: {x: 35, y: -15}
+    card0LocalPos: {x: -35, y: -5}
+    card1LocalPos: {x: 35, y: -5}
     betLabelLocalPos: {x: -70, y: -86}
     hudLocalPx: {x: 0, y: 0}
     dealerButtonOffset: {x: 0, y: 0}
@@ -12493,8 +12493,8 @@ MonoBehaviour:
     playerName: Jasmine Vale
   - pivot: {x: 0, y: 1}
     size: {x: 185, y: 152}
-    card0LocalPos: {x: -35, y: -15}
-    card1LocalPos: {x: 35, y: -15}
+    card0LocalPos: {x: -35, y: -5}
+    card1LocalPos: {x: 35, y: -5}
     betLabelLocalPos: {x: -70, y: 86}
     hudLocalPx: {x: 0, y: 0}
     dealerButtonOffset: {x: 0, y: 0}
