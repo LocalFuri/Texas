@@ -27,11 +27,14 @@ namespace TexasHoldem
         public const float TextAvatarPad = 10f; // horizontal gap between text and avatar ring
         public const float NameChipsGap = 8f; // vertical space between name and chips rows
         public const float HudTextPadPx = 12f; // inset when centering text inside HudPanel
-        public const float NameY     = 16f;
-        public const float ChipsY    = -12f - NameChipsGap * 0.5f;
+        public const float ChipsTextH   = 26f;
 
-        public static float GetCenteredNameY(float panelCenterY) => panelCenterY + 13.5f;
-        public static float GetCenteredChipsY(float panelCenterY) => panelCenterY - 18.5f;
+        /// <summary>Name/chips block centered vertically on HudPanel center.</summary>
+        public static float GetCenteredNameY(float panelCenterY)
+            => panelCenterY + (NameChipsGap + ChipsTextH) * 0.5f;
+
+        public static float GetCenteredChipsY(float panelCenterY)
+            => panelCenterY - (NameChipsGap + NameTextH) * 0.5f;
 
         public const float ActionBadgeY = 32f;
         public const float ActionBadgeGlowW = 156f;
@@ -45,8 +48,7 @@ namespace TexasHoldem
             => mirrored ? -(TextX + TextAvatarPad) : (TextX + TextAvatarPad);
 
         /// <summary>
-        /// Name row X — wide rect shares the chips row inner edge (toward the avatar) so both columns align.
-        /// Long names grow away from the avatar into the extra width.
+        /// Legacy avatar-side name X — not used for HudPanel name/chips (see ApplyHudPanelTextBlock).
         /// </summary>
         public static float NameTextPosX(bool mirrored)
         {
@@ -61,6 +63,56 @@ namespace TexasHoldem
             => mirrored ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
 
         public static TextAlignmentOptions HudPanelTextAlign => TextAlignmentOptions.Midline;
+
+        /// <summary>Reads HudPanel center and width after layout.</summary>
+        public static void GetHudPanelLayout(Transform root, out float centerX, out float centerY, out float width)
+        {
+            centerX = 0f;
+            centerY = 0f;
+            width   = PillW;
+            Transform hudPanel = FindChild(root, "HudPanel");
+            if (hudPanel == null) return;
+            var panelRt = (RectTransform)hudPanel;
+            centerX = panelRt.anchoredPosition.x;
+            centerY = panelRt.anchoredPosition.y;
+            width   = panelRt.sizeDelta.x > 0f ? panelRt.sizeDelta.x : panelRt.rect.width;
+        }
+
+        /// <summary>
+        /// NameText + ChipsText share the center of the uncovered HudPanel area (excluding avatar), stacked vertically.
+        /// </summary>
+        public static void ApplyHudPanelTextBlock(Transform root, float panelCenterX, float panelCenterY, float panelWidth)
+        {
+            var pv = root != null ? root.GetComponent<PlayerView>() : null;
+            bool mirrored = pv != null ? pv.HudMirrored : false;
+
+            float avatarX = AvatarPosX(mirrored);
+            float textCenterX;
+            float uncoveredWidth;
+
+            if (mirrored)
+            {
+                float panelLeft = panelCenterX - panelWidth * 0.5f;
+                float avatarLeft = avatarX - AvatarD * 0.5f;
+                textCenterX = (panelLeft + avatarLeft) * 0.5f;
+                uncoveredWidth = avatarLeft - panelLeft;
+            }
+            else
+            {
+                float panelRight = panelCenterX + panelWidth * 0.5f;
+                float avatarRight = avatarX + AvatarD * 0.5f;
+                textCenterX = (avatarRight + panelRight) * 0.5f;
+                uncoveredWidth = panelRight - avatarRight;
+            }
+
+            float textWidth   = Mathf.Max(uncoveredWidth - HudTextPadPx * 2f, TextW);
+            float nameY       = GetCenteredNameY(panelCenterY);
+            float chipsY      = GetCenteredChipsY(panelCenterY);
+
+            ApplyText(FindChild(root, "NameText"),   textCenterX, nameY, textWidth, NameTextH, HudPanelTextAlign);
+            ApplyText(FindChild(root, "ChipsText"),  textCenterX, chipsY, textWidth, ChipsTextH, HudPanelTextAlign);
+            ApplyText(FindChild(root, "StatusText"), textCenterX, chipsY, textWidth, 22f, HudPanelTextAlign);
+        }
 
         /// <summary>Fixed left edge of the HUD content band (avatar overlap side).</summary>
         public static float ComputePanelLeftX(float hudCenterX) => hudCenterX - PillW * 0.5f;
@@ -242,26 +294,8 @@ namespace TexasHoldem
             RectTransform card1 = pv != null ? pv.GetCardRect(1) : null;
             ApplyHudPanelFromCard1(root, card1, hudLocalPx);
 
-            Transform hudPanel = FindChild(root, "HudPanel");
-            float panelCenterX = 0f;
-            float panelCenterY = 0f;
-            float panelWidth   = PillW;
-            if (hudPanel != null)
-            {
-                var panelRt = (RectTransform)hudPanel;
-                panelCenterX = panelRt.anchoredPosition.x;
-                panelCenterY = panelRt.anchoredPosition.y;
-                panelWidth   = panelRt.sizeDelta.x > 0f ? panelRt.sizeDelta.x : panelRt.rect.width;
-            }
-
-            float textCenterX = panelCenterX;
-            float textWidth   = Mathf.Max(panelWidth - HudTextPadPx * 2f, TextW);
-            float nameY  = GetCenteredNameY(panelCenterY);
-            float chipsY = GetCenteredChipsY(panelCenterY);
-
-            ApplyText(FindChild(root, "NameText"),   textCenterX, nameY, textWidth, NameTextH, HudPanelTextAlign);
-            ApplyText(FindChild(root, "ChipsText"),  textCenterX, chipsY, textWidth, 26f, HudPanelTextAlign);
-            ApplyText(FindChild(root, "StatusText"), textCenterX, chipsY, textWidth, 22f, HudPanelTextAlign);
+            GetHudPanelLayout(root, out float panelCenterX, out float panelCenterY, out float panelWidth);
+            ApplyHudPanelTextBlock(root, panelCenterX, panelCenterY, panelWidth);
 
             SetRect(FindChild(root, "ActionBadge"),    textX, ActionBadgeY, ActionBadgeGlowW, ActionBadgeGlowH);
             SetRect(FindChild(root, "SeatActionMenu"), textX, SeatActionMenuY, SeatActionMenuW, SeatActionMenuH);

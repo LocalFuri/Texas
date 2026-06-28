@@ -588,29 +588,11 @@ namespace TexasHoldem
             chromeRingGo.transform.SetSiblingIndex(1);
             goldRingGo.transform.SetSiblingIndex(2);
 
-            Transform hudPanel = FindDeep(root, "HudPanel");
-            float panelCenterX = 0f;
-            float panelCenterY = 0f;
-            float panelWidth   = PlayerHudLayout.PillW;
-            if (hudPanel != null)
-            {
-                var panelRt = (RectTransform)hudPanel;
-                panelCenterX = panelRt.anchoredPosition.x;
-                panelCenterY = panelRt.anchoredPosition.y;
-                panelWidth   = panelRt.sizeDelta.x > 0f ? panelRt.sizeDelta.x : panelRt.rect.width;
-            }
-
-            float textCenterX = panelCenterX;
-            float textWidth   = Mathf.Max(panelWidth - PlayerHudLayout.HudTextPadPx * 2f, TextW);
-            float nameY  = PlayerHudLayout.GetCenteredNameY(panelCenterY);
-            float chipsY = PlayerHudLayout.GetCenteredChipsY(panelCenterY);
-
-            // 7. NameText — centered in HudPanel, above chips.
+            // 7. NameText — centered in HudPanel, above chips (rects applied in ApplyHudLayout at end).
             Transform nameT = FindDeep(root, "NameText");
             if (nameT != null)
             {
                 ReparentTo(nameT, root);
-                SetRect(nameT.gameObject, textCenterX, nameY, textWidth, PlayerHudLayout.NameTextH);
                 var txt = nameT.GetComponent<TMP_Text>();
                 if (txt != null)
                 {
@@ -642,7 +624,6 @@ namespace TexasHoldem
             if (chipsT != null)
             {
                 ReparentTo(chipsT, root);
-                SetRect(chipsT.gameObject, textCenterX, chipsY, textWidth, 26f);
                 var txt = chipsT.GetComponent<TMP_Text>();
                 if (txt != null)
                 {
@@ -662,7 +643,6 @@ namespace TexasHoldem
             if (statusT != null)
             {
                 ReparentTo(statusT, root);
-                SetRect(statusT.gameObject, textCenterX, chipsY, textWidth, 22f);
                 RecordObj(statusT.gameObject);
                 statusT.gameObject.SetActive(true);
                 var txt = statusT.GetComponent<TMP_Text>();
@@ -1029,6 +1009,8 @@ namespace TexasHoldem
             var mirroredProp = so.FindProperty("_hudMirrored");
             if (mirroredProp != null) mirroredProp.boolValue = mirrored;
             so.ApplyModifiedProperties();
+
+            view.ApplyHudLayout();
 
             if (_useUndo) EditorUtility.SetDirty(view);
         }

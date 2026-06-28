@@ -141,10 +141,15 @@ namespace TexasHoldem
             ApplyChromeRingVisibility();
             ApplyGoldRingIdle();
             ApplyHudGlowIdle();
-            ApplyHudLayout();
         }
 
-        private void Start() => SyncRingGeometry();
+        private void Start()
+        {
+            SyncRingGeometry();
+            // Fallback when no TableLayoutManager drives seat layout (TableLayoutManager.Start applies all seats).
+            if (FindFirstObjectByType<TableLayoutManager>() == null)
+                ApplyHudLayout();
+        }
 
         /// <summary>Applies font size and visibility changes immediately when Inspector values are modified.</summary>
         private void OnValidate()
@@ -180,11 +185,12 @@ namespace TexasHoldem
         }
 
         /// <summary>Sets a fixed font size on the text element without altering its RectTransform dimensions.</summary>
-        private static void ApplyFontSize(TMP_Text text, float size)
+        private void ApplyFontSize(TMP_Text text, float size)
         {
             if (text == null) return;
             text.enableAutoSizing = false;
             text.fontSize         = size;
+            text.alignment        = PlayerHudLayout.HudPanelTextAlign;
         }
 
         private void EnsureDisplayNameFromLabel()

@@ -407,6 +407,12 @@ namespace TexasHoldem
             }
         }
 
+        private void Start()
+        {
+            if (!Application.isPlaying) return;
+            ApplyLayout();
+        }
+
 #if UNITY_EDITOR
         private void OnValidate()
         {
