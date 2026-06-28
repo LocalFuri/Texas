@@ -87,24 +87,33 @@ namespace TexasHoldem
             float panelLeft  = ComputePanelLeftX(hudLocalPx.x);
             float panelWidth = PillW;
             float panelCenterX = hudLocalPx.x;
+            float panelHeight = PillH;
+            float panelCenterY = hudLocalPx.y;
 
             if (card1 != null)
             {
                 float card1Right     = GetRectRightX(card1);
-                float panelRectRight = card1Right + RoundedRectBorderPx;
+                float border         = (root.name == "Seat_You") ? 0f : RoundedRectBorderPx;
+                float panelRectRight = card1Right + border;
                 panelWidth  = Mathf.Max(PillW, panelRectRight - panelLeft);
                 panelCenterX = panelLeft + panelWidth * 0.5f;
+
+                if (root.name == "Seat_You")
+                {
+                    panelHeight = 90f;
+                    panelCenterY = hudLocalPx.y - 7f;
+                }
             }
 
-            SetRect(FindChild(root, "HudPanel"), panelCenterX, hudLocalPx.y, panelWidth, PillH);
-            SetRect(FindChild(root, "HudGlow"), panelCenterX, hudLocalPx.y,
-                panelWidth + HudGlowSpreadPx * 2f, PillH + HudGlowSpreadPx * 2f);
+            SetRect(FindChild(root, "HudPanel"), panelCenterX, panelCenterY, panelWidth, panelHeight);
+            SetRect(FindChild(root, "HudGlow"), panelCenterX, panelCenterY,
+                panelWidth + HudGlowSpreadPx * 2f, panelHeight + HudGlowSpreadPx * 2f);
 
             var hudGlow = FindChild(root, "HudGlow")?.GetComponent<HudPanelGlowGraphic>();
             if (hudGlow != null)
             {
                 hudGlow.PanelWidthPx  = panelWidth;
-                hudGlow.PanelHeightPx = PillH;
+                hudGlow.PanelHeightPx = panelHeight;
             }
         }
 
