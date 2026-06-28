@@ -58,6 +58,16 @@ namespace TexasHoldem
         /// <summary>Fixed left edge of the HUD content band (avatar overlap side).</summary>
         public static float ComputePanelLeftX(float hudCenterX) => hudCenterX - PillW * 0.5f;
 
+        /// <summary>Rect left edge for a centre-anchored, centre-pivot RectTransform.</summary>
+        public static float GetRectLeftX(RectTransform rt)
+        {
+            if (rt == null) return 0f;
+            float w = rt.rect.width;
+            if (w <= 0f)
+                w = rt.sizeDelta.x;
+            return rt.anchoredPosition.x - w * 0.5f;
+        }
+
         /// <summary>Rect right edge for a centre-anchored, centre-pivot RectTransform.</summary>
         public static float GetRectRightX(RectTransform rt)
         {
@@ -96,29 +106,58 @@ namespace TexasHoldem
         {
             if (root == null) return;
 
+            var pv = root.GetComponent<PlayerView>();
+            bool mirrored = pv != null ? pv.HudMirrored : false;
+            RectTransform card0 = pv != null ? pv.GetCardRect(0) : null;
+            if (card1 == null && pv != null) card1 = pv.GetCardRect(1);
+
             var hudGlow = FindChild(root, "HudGlow")?.GetComponent<HudPanelGlowGraphic>();
 
-            float panelLeft  = ComputePanelLeftX(hudLocalPx.x);
             float panelWidth = PillW;
-            float panelCenterX = hudLocalPx.x;
             float panelHeight = PillH;
+            float panelCenterX = hudLocalPx.x;
             float panelCenterY = hudLocalPx.y;
 
-            if (card1 != null)
+            if (mirrored)
             {
-                float card1Right     = GetRectRightX(card1);
-                float border         = ResolvePanelRightBorderPx(hudGlow);
-                float panelRectRight = card1Right + border;
-                panelWidth  = Mathf.Max(PillW, panelRectRight - panelLeft);
-                panelCenterX = panelLeft + panelWidth * 0.5f;
-
-                if (root.name.StartsWith("Seat_") || root.name == "PlayerView")
+                float panelRight = hudLocalPx.x + PillW * 0.5f;
+                if (card0 != null)
                 {
-                    float cardBottom   = GetRectBottomY(card1);
-                    float bottomBorder = ResolvePanelBottomBorderPx(hudGlow);
-                    float panelBottom  = cardBottom - bottomBorder;
-                    panelHeight  = SeatYouPanelMinHeight;
-                    panelCenterY = panelBottom + panelHeight * 0.5f;
+                    float card0Left = GetRectLeftX(card0);
+                    float border = ResolvePanelRightBorderPx(hudGlow);
+                    float panelRectLeft = card0Left - border;
+                    panelWidth = Mathf.Max(PillW, panelRight - panelRectLeft);
+                    panelCenterX = panelRight - panelWidth * 0.5f;
+
+                    if (root.name.StartsWith("Seat_") || root.name == "PlayerView")
+                    {
+                        float cardBottom = GetRectBottomY(card0);
+                        float bottomBorder = ResolvePanelBottomBorderPx(hudGlow);
+                        float panelBottom = cardBottom - bottomBorder;
+                        panelHeight = SeatYouPanelMinHeight;
+                        panelCenterY = panelBottom + panelHeight * 0.5f;
+                    }
+                }
+            }
+            else
+            {
+                float panelLeft = ComputePanelLeftX(hudLocalPx.x);
+                if (card1 != null)
+                {
+                    float card1Right = GetRectRightX(card1);
+                    float border = ResolvePanelRightBorderPx(hudGlow);
+                    float panelRectRight = card1Right + border;
+                    panelWidth = Mathf.Max(PillW, panelRectRight - panelLeft);
+                    panelCenterX = panelLeft + panelWidth * 0.5f;
+
+                    if (root.name.StartsWith("Seat_") || root.name == "PlayerView")
+                    {
+                        float cardBottom = GetRectBottomY(card1);
+                        float bottomBorder = ResolvePanelBottomBorderPx(hudGlow);
+                        float panelBottom = cardBottom - bottomBorder;
+                        panelHeight = SeatYouPanelMinHeight;
+                        panelCenterY = panelBottom + panelHeight * 0.5f;
+                    }
                 }
             }
 
