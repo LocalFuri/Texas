@@ -14,7 +14,7 @@ namespace TexasHoldem
         public const float PillY     = 0f;
         /// <summary>RoundedRect.png spriteBorder — panel rect extends this far past Card_1 so opaque fill reaches the card edge.</summary>
         public const float RoundedRectBorderPx = 14f;
-        public const float HudGlowSpreadPx = 30f;
+        public const float HudGlowSpreadPx = 14f;
         public const float AvatarD   = 162f;
         public const float AvatarX   = -133f;
         public const float TextX     = 25f;
@@ -100,8 +100,8 @@ namespace TexasHoldem
 
                 if (root.name == "Seat_You")
                 {
-                    panelHeight = 90f;
-                    panelCenterY = hudLocalPx.y - 7f;
+                    panelHeight = 104f;
+                    panelCenterY = hudLocalPx.y - 14f;
                 }
             }
 
@@ -114,6 +114,7 @@ namespace TexasHoldem
             {
                 hudGlow.PanelWidthPx  = panelWidth;
                 hudGlow.PanelHeightPx = panelHeight;
+                hudGlow.GlowSpreadPx  = HudGlowSpreadPx;
             }
         }
 

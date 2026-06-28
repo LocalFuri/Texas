@@ -37,7 +37,7 @@ namespace TexasHoldem
         private const float PillW = 220f;
         private const float PillH =  76f;
         private const float PillY =   0f;   // pill centre Y
-        private const float HudGlowSpreadPx = 30f; // tight side-wing bloom outside the pill edge
+        private const float HudGlowSpreadPx = 14f; // tight side-wing bloom outside the pill edge
 
         private const float CardsAreaX = 25f;   // card-dimmer footprint centre X (root space)
         private const float CardsAreaY = 55f;   // card-dimmer footprint centre Y (root space)

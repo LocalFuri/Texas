@@ -564,7 +564,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -816,7 +816,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 308
+      value: 276
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -1277,7 +1277,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -1533,7 +1533,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 308
+      value: 276
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -4080,7 +4080,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -4360,11 +4360,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 294
+      value: 262
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 150
+      value: 132
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -4372,7 +4372,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -7
+      value: -14
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_Color.b
@@ -4388,7 +4388,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _panelWidthPx
-      value: 248
+      value: 234
+      objectReference: {fileID: 0}
+    - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: _panelHeightPx
+      value: 104
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_text
@@ -4504,7 +4508,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9170533961590793105, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 90
+      value: 104
       objectReference: {fileID: 0}
     - target: {fileID: 9170533961590793105, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -4512,7 +4516,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9170533961590793105, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -7
+      value: -14
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
@@ -6791,7 +6795,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -7047,7 +7051,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 308
+      value: 276
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -10493,7 +10497,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -10745,7 +10749,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 308
+      value: 276
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -11515,7 +11519,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5309167095648279648, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_VerticalAlignment
@@ -11767,7 +11771,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 308
+      value: 276
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
