@@ -112,7 +112,7 @@ namespace TexasHoldem
                 panelWidth  = Mathf.Max(PillW, panelRectRight - panelLeft);
                 panelCenterX = panelLeft + panelWidth * 0.5f;
 
-                if (root.name == "Seat_You")
+                if (root.name.StartsWith("Seat_") || root.name == "PlayerView")
                 {
                     float cardBottom   = GetRectBottomY(card1);
                     float bottomBorder = ResolvePanelBottomBorderPx(hudGlow);
