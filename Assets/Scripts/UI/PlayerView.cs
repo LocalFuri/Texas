@@ -124,7 +124,12 @@ namespace TexasHoldem
         }
 
         /// <summary>Repositions avatar and name/chips for default or mirrored HUD band.</summary>
-        public void ApplyHudLayout() => PlayerHudLayout.Apply(transform, _hudMirrored);
+        public void ApplyHudLayout()
+        {
+            EnsureHudGlowRef();
+            ApplyHudGlowSettings();
+            PlayerHudLayout.Apply(transform, _hudMirrored);
+        }
 
         private void Awake()
         {
@@ -327,11 +332,11 @@ namespace TexasHoldem
             _hudGlow = transform.Find("HudGlow")?.GetComponent<HudPanelGlowGraphic>();
         }
 
-        /// <summary>Pushes glow color from PlayerView into the HudGlow graphic.</summary>
+        /// <summary>Pushes shared glow settings and pulse color into the HudGlow graphic.</summary>
         private void ApplyHudGlowSettings()
         {
             if (_hudGlow == null) return;
-            _hudGlow.GlowColor = _hudGlowColor;
+            PlayerHudLayout.ApplyStandardHudGlow(_hudGlow, _hudGlowColor);
             _legacyHudGlowMaxIntensity = 0f;
         }
 

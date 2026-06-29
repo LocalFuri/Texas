@@ -3343,7 +3343,7 @@ MonoBehaviour:
   _panelBottomBorderPx: 14
   _glowSpreadPx: 14
   _rimCorePx: 3
-  _glowPeakIntensity: 0
+  _glowPeakIntensity: 1.1
   _glowColor: {r: 1, g: 1, b: 1, a: 1}
   _glowFalloff: 1.1
 --- !u!1 &8924560129755818660

@@ -4742,11 +4742,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 264
+      value: 276
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 92
+      value: 104
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333445, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -4777,24 +4777,12 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
-      propertyPath: _glowSpreadPx
-      value: 8
-      objectReference: {fileID: 0}
-    - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _panelWidthPx
       value: 248
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _panelHeightPx
       value: 76
-      objectReference: {fileID: 0}
-    - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
-      propertyPath: _appliedIntensity
-      value: 1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
-      propertyPath: _glowPeakIntensity
-      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_text

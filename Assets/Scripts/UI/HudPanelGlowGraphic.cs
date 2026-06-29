@@ -107,6 +107,12 @@ namespace TexasHoldem
             set { _glowColor = value; MarkRenderDirty(); }
         }
 
+        public float GlowFalloff
+        {
+            get => _glowFalloff;
+            set { _glowFalloff = Mathf.Clamp(value, 0.8f, 2.5f); MarkRenderDirty(); }
+        }
+
         protected override void UpdateMaterial()
         {
             if (!IsActive())

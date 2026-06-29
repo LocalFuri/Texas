@@ -17,6 +17,8 @@ namespace TexasHoldem
         /// <summary>RoundedRect.png spriteBorder — panel rect extends this far past Card_1 so opaque fill reaches the card edge.</summary>
         public const float RoundedRectBorderPx = 14f;
         public const float HudGlowSpreadPx = 14f;
+        public const float HudGlowPeakIntensity = 1.1f;
+        public const float HudGlowFalloff = 1.1f;
         public const float AvatarD   = 162f;
         public const float AvatarX   = -133f;
         public const float TextX     = 25f;
@@ -231,6 +233,20 @@ namespace TexasHoldem
                 hudGlow.PanelWidthPx  = panelWidth;
                 hudGlow.PanelHeightPx = panelHeight;
             }
+        }
+
+        /// <summary>Same rim bloom on every seat — overrides per-seat Inspector drift.</summary>
+        public static void ApplyStandardHudGlow(HudPanelGlowGraphic glow, Color glowColor)
+        {
+            if (glow == null)
+                return;
+
+            glow.GlowSpreadPx        = HudGlowSpreadPx;
+            glow.PeakGlowIntensity   = HudGlowPeakIntensity;
+            glow.GlowFalloff         = HudGlowFalloff;
+            glow.GlowColor           = glowColor;
+            glow.PanelRightBorderPx  = RoundedRectBorderPx;
+            glow.PanelBottomBorderPx = RoundedRectBorderPx;
         }
 
         /// <summary>Uses the HudGlow component spread when set; default constant for new seats.</summary>
