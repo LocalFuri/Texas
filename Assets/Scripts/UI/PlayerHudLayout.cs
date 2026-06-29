@@ -350,7 +350,7 @@ namespace TexasHoldem
             string[] frontOrder =
             {
                 "NameText", "ChipsText", "StatusText",
-                "SeatActionMenu", "ActionBadge", "BetDisplay"
+                "SeatActionMenu", "ActionBadge", "BetAnchor", "BetDisplay"
             };
             foreach (string name in frontOrder)
             {

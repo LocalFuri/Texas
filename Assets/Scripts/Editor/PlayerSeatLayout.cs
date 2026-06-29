@@ -23,7 +23,8 @@ namespace TexasHoldem
         ///   ├── StatusText        — overlays ChipsText when Folded / All In / Eliminated
         ///   ├── SeatActionMenu    — tappable Check / Fold / Raise / All-In above the name (human turn)
         ///   ├── ActionBadge       — neon pill when player Checks / Folds / Raises / All-In
-        ///   └── BetDisplay        — chip stack + amount badge beside avatar
+        ///   └── BetAnchor         — chip stack anchor between avatar and table centre
+        ///       └── BetDisplay    — ChipStack + AmountBadge
     ///
     /// Re-running is safe: existing GameObjects are reused, old ones renamed or hidden.
     ///
@@ -56,11 +57,6 @@ namespace TexasHoldem
         private const float NameFontSize   = 20f;
         private const float ChipsFontSize  = 13f;
         private const float StatusFontSize = 10f;
-
-        private const float BadgeW =  80f;
-        private const float BadgeH =  28f;
-        private const float BadgeX =  25f;
-        private const float BadgeY = 105f;  // floating above the seat root
 
         private const float ActionBadgeW     = 120f;
         private const float ActionBadgeH     =  40f;
@@ -845,19 +841,32 @@ namespace TexasHoldem
 
             seatMenuGo.SetActive(false);
 
-            // 10. BetDisplay — chip stack beside avatar + amount badge (position from TableLayoutManager).
-            //     Destroy legacy BetBadge GO from previous layout versions if still present.
+            // 10. BetAnchor + BetDisplay — chip stack on anchor; position from TableLayoutManager.
             Transform oldBadge = root.Find("BetBadge");
             if (oldBadge != null) DestroyObj(oldBadge.gameObject);
 
-            GameObject betDisplayGo   = GetOrCreate(root, "BetDisplay");
-            var        betDisplayComp = GetOrAdd<BetDisplay>(betDisplayGo);
+            GameObject betAnchorGo = GetOrCreate(root, "BetAnchor");
+            RecordObj(betAnchorGo);
+            SetRect(betAnchorGo, 0f, 0f, 1f, 1f);
+
+            Transform legacyBet = root.Find("BetDisplay");
+            GameObject betDisplayGo;
+            if (legacyBet != null && legacyBet.parent == root.transform)
+            {
+                legacyBet.SetParent(betAnchorGo.transform, false);
+                betDisplayGo = legacyBet.gameObject;
+            }
+            else
+            {
+                betDisplayGo = GetOrCreate(betAnchorGo.transform, "BetDisplay");
+            }
+
+            var betDisplayComp = GetOrAdd<BetDisplay>(betDisplayGo);
             RecordObj(betDisplayGo);
             RecordObj(betDisplayComp);
-            // BetDisplay root has no background — it's a pure positional anchor.
             var betDisplayImg = betDisplayGo.GetComponent<Image>();
             if (betDisplayImg != null) DestroyObj(betDisplayImg);
-            SetRect(betDisplayGo, BadgeX, BadgeY, 146f, 52f);
+            SetRect(betDisplayGo, 0f, 0f, 146f, 52f);
 
             // Drop shadow on the root so both children inherit it visually.
             var betShadow = GetOrAdd<Shadow>(betDisplayGo);
@@ -878,7 +887,7 @@ namespace TexasHoldem
             RecordObj(chipStackGo);
             var chipStackBg = chipStackGo.GetComponent<Image>();
             if (chipStackBg != null) DestroyObj(chipStackBg);
-            SetRect(chipStackGo, -48f, 0f, ChipD + ChipDx * 2f, ChipD + ChipDy * 2f);
+            SetRect(chipStackGo, 0f, 0f, ChipD + ChipDx * 2f, ChipD + ChipDy * 2f);
 
             string[] chipNames   = { "Chip_0", "Chip_1", "Chip_2" };
             Sprite[] slotSprites = { chip1Sprite, chip5Sprite, chip25Sprite };
@@ -918,7 +927,7 @@ namespace TexasHoldem
             badgeImg.type          = Image.Type.Sliced;
             badgeImg.color         = new Color(0.06f, 0.06f, 0.08f, 0.93f);
             badgeImg.raycastTarget = false;
-            SetRect(badgeGo, 28f, 0f, 90f, 30f);
+            SetRect(badgeGo, 76f, 0f, 90f, 30f);
 
             // AmountText inside the badge — bold gold euro label.
             GameObject amountGo  = GetOrCreate(badgeGo.transform, "AmountText");
@@ -957,7 +966,7 @@ namespace TexasHoldem
 
             // 12. Sibling render order (back → front):
             //     Card slots → HudPanel → HudGlow → AvatarFrame (Avatar → Chrome → Gold)
-            //     → NameText → ChipsText → StatusText → SeatActionMenu → ActionBadge → BetDisplay
+            //     → NameText → ChipsText → StatusText → SeatActionMenu → ActionBadge → BetAnchor
             int idx = 0;
             foreach (CardView card in cards)
             {
@@ -972,7 +981,7 @@ namespace TexasHoldem
             if (statusT != null) statusT.SetSiblingIndex(idx++);
             seatMenuGo.transform.SetSiblingIndex(idx++);
             actionBadgeGo.transform.SetSiblingIndex(idx++);
-            betDisplayGo.transform.SetSiblingIndex(idx);
+            betAnchorGo.transform.SetSiblingIndex(idx);
 
             // 13. Wire serialized fields on PlayerView.
             var so = new SerializedObject(view);

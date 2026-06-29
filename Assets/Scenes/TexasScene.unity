@@ -275,7 +275,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 36
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -1069,7 +1069,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 14
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -4174,7 +4174,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 36
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -6808,7 +6808,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 14
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -11570,7 +11570,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 36
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -13082,7 +13082,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 36
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 611000097550137944, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -14879,7 +14879,6 @@ MonoBehaviour:
   - {fileID: 583757664}
   _potLabelPosition: {x: 0, y: 110}
   _potLabel: {fileID: 659163742}
-  _betLabelAvatarGap: 15
   _dealerButton: {fileID: 38756582}
   _dealerButtonSprite: {fileID: 21300000, guid: 16c593780667db44584a399f61858984, type: 3}
   _dealerButtonSize: 48

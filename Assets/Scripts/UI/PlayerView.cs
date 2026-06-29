@@ -43,7 +43,7 @@ namespace TexasHoldem
         [SerializeField] private AvatarRingSdfGraphic _avatarRingChrome; // always-on silver chrome base ring
         [SerializeField] private AvatarRingSdfGraphic _avatarRingGold;   // gold countdown overlay on active turn
         [SerializeField] private Image                _avatarImage;   // AvatarCircleImage — shader-clipped avatar photo
-        [SerializeField] private BetDisplay           _betDisplay;    // chip stack + amount beside avatar
+        [SerializeField] private BetDisplay           _betDisplay;    // chip stack + amount on BetAnchor
         [SerializeField] private ActionBadge          _actionBadge;   // neon pill when player acts
         [SerializeField] private SeatActionMenu     _seatActionMenu; // human Check/Fold/Raise above name
         [SerializeField] private RectTransform        _avatarFrame;   // chip animation origin
@@ -233,11 +233,28 @@ namespace TexasHoldem
         }
 
         /// <summary>
-        /// RectTransform used by TableLayoutManager to position the bet display between
-        /// this seat and the table centre.
+        /// BetAnchor in seat local space — chip stack sits here (TableLayoutManager.ApplyBetAnchor).
         /// </summary>
-        public RectTransform BetLabelRect =>
-            _betDisplay != null ? (RectTransform)_betDisplay.transform : null;
+        public RectTransform BetAnchorRect
+        {
+            get
+            {
+                // Prefer the anchor that owns BetDisplay (ignore empty scene overrides).
+                foreach (Transform child in transform)
+                {
+                    if (child.name != "BetAnchor")
+                        continue;
+                    if (child.Find("BetDisplay") != null)
+                        return (RectTransform)child;
+                }
+
+                Transform fallback = transform.Find("BetAnchor");
+                return fallback != null ? (RectTransform)fallback : null;
+            }
+        }
+
+        /// <summary>Alias for layout gizmos — same as <see cref="BetAnchorRect"/>.</summary>
+        public RectTransform BetLabelRect => BetAnchorRect;
 
         /// <summary>RectTransform of the avatar frame — used as the chip animation origin.</summary>
         public RectTransform AvatarRect =>
