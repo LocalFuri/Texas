@@ -11,7 +11,6 @@ using TexasHoldem;
 /// </summary>
 public static class OptionsMenuBuilder
 {
-    private const float PanelWidth    = 248f;
     private const float RowHeight     = 20f;
     private const float DefaultRowSpacing = 3f;
     private const float CheckboxSize  = 15f;
@@ -88,7 +87,7 @@ public static class OptionsMenuBuilder
         rt.anchorMax        = new Vector2(0.5f, 0.5f);
         rt.pivot            = new Vector2(0.5f, 0.5f);
         rt.anchoredPosition = panelPos;
-        rt.sizeDelta        = new Vector2(PanelWidth, PanelHeight(rowSpacing));
+        rt.sizeDelta        = new Vector2(OptionsMenu.PanelWidth, PanelHeight(rowSpacing));
 
         var bg = GetOrAdd<Image>(panel);
         bg.color         = PanelBg;

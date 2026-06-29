@@ -39,7 +39,7 @@ namespace TexasHoldem
             var sliderGo = CreateRect("BotThinkSlider", row.transform);
             var sliderLe = sliderGo.AddComponent<LayoutElement>();
             sliderLe.flexibleWidth   = 1f;
-            sliderLe.minWidth        = 72f;
+            sliderLe.minWidth        = OptionsMenuSliderStyle.SliderMinWidth;
             sliderLe.minHeight       = OptionsMenuSliderStyle.HandleHeight;
             sliderLe.preferredHeight = OptionsMenuSliderStyle.HandleHeight;
 
@@ -65,6 +65,7 @@ namespace TexasHoldem
             Stretch((RectTransform)handleLabelGo.transform);
             var handleTmp = handleLabelGo.AddComponent<TextMeshProUGUI>();
             handleTmp.text               = OptionsMenuSliderStyle.FormatHandleValue(initialValue);
+            handleTmp.color              = Color.black;
             handleTmp.raycastTarget      = false;
             handleTmp.enableWordWrapping = false;
 

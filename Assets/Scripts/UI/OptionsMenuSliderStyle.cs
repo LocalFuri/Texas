@@ -9,9 +9,10 @@ namespace TexasHoldem
     {
         public const string BotThinkLabelText = "Bots think";
         public const float  TrackHeight       = 14f;
-        public const float  HandleWidth       = 38f;
+        public const float  HandleWidth       = 40f;
         public const float  HandleHeight      = 26f;
-        public const float  LabelWidth        = 94f;
+        public const float  LabelWidth        = 78f;
+        public const float  SliderMinWidth    = 120f;
 
         public static float LabelFontSize => OptionsMenu.MenuRowFontSize;
 

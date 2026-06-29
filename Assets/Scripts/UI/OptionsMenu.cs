@@ -21,7 +21,8 @@ namespace TexasHoldem
         /// <summary>Shared label size for all options-menu rows (Restart, toggles, bot slider).</summary>
         public const float MenuRowFontSize = 20f;
 
-        private const float PanelWidth   = 248f;
+        /// <summary>Wide enough for a long bot-think slider track (reference layout).</summary>
+        public const float PanelWidth = 380f;
         private const float RowHeight    = 20f;
         private const float CheckboxSize = 15f;
         private const float PanelPadding = 10f;
@@ -650,7 +651,7 @@ namespace TexasHoldem
                     if (sliderLe == null)
                         sliderLe = sliderT.gameObject.AddComponent<LayoutElement>();
                     sliderLe.flexibleWidth   = 1f;
-                    sliderLe.minWidth        = 72f;
+                    sliderLe.minWidth        = OptionsMenuSliderStyle.SliderMinWidth;
                     sliderLe.minHeight       = OptionsMenuSliderStyle.HandleHeight;
                     sliderLe.preferredHeight = OptionsMenuSliderStyle.HandleHeight;
 
