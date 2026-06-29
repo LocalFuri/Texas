@@ -14820,7 +14820,7 @@ MonoBehaviour:
     card1LocalPos: {x: 35, y: -5}
     betLabelLocalPos: {x: 0, y: 86}
     hudLocalPx: {x: 0, y: 0}
-    dealerButtonOffset: {x: 0, y: 0}
+    dealerButtonLocalPos: {x: -133, y: -113}
     mirrorHud: 0
     playerName: Ace Maverick
   - pivot: {x: 1, y: 1}
@@ -14829,7 +14829,7 @@ MonoBehaviour:
     card1LocalPos: {x: 35, y: -5}
     betLabelLocalPos: {x: 70, y: 86}
     hudLocalPx: {x: 0, y: 0}
-    dealerButtonOffset: {x: 0, y: 0}
+    dealerButtonLocalPos: {x: 133, y: -113}
     mirrorHud: 1
     playerName: Lady Luck
   - pivot: {x: 1, y: 0}
@@ -14838,7 +14838,7 @@ MonoBehaviour:
     card1LocalPos: {x: 35, y: -5}
     betLabelLocalPos: {x: 70, y: -86}
     hudLocalPx: {x: 0, y: 0}
-    dealerButtonOffset: {x: 0, y: 0}
+    dealerButtonLocalPos: {x: 133, y: 113}
     mirrorHud: 1
     playerName: Prince Beaumont
   - pivot: {x: 0.5, y: 0}
@@ -14847,7 +14847,7 @@ MonoBehaviour:
     card1LocalPos: {x: 35, y: -5}
     betLabelLocalPos: {x: 0, y: -86}
     hudLocalPx: {x: 0, y: 0}
-    dealerButtonOffset: {x: 0, y: 0}
+    dealerButtonLocalPos: {x: -133, y: 113}
     mirrorHud: 0
     playerName: Victor Shark
   - pivot: {x: 0, y: 0}
@@ -14856,7 +14856,7 @@ MonoBehaviour:
     card1LocalPos: {x: 35, y: -5}
     betLabelLocalPos: {x: -70, y: -86}
     hudLocalPx: {x: 0, y: 0}
-    dealerButtonOffset: {x: 0, y: 0}
+    dealerButtonLocalPos: {x: -133, y: 113}
     mirrorHud: 0
     playerName: Jasmine Vale
   - pivot: {x: 0, y: 1}
@@ -14865,7 +14865,7 @@ MonoBehaviour:
     card1LocalPos: {x: 35, y: -5}
     betLabelLocalPos: {x: -70, y: 86}
     hudLocalPx: {x: 0, y: 0}
-    dealerButtonOffset: {x: 0, y: 0}
+    dealerButtonLocalPos: {x: -133, y: -113}
     mirrorHud: 0
     playerName: Alex Hunter
   _cardWidth: 120
@@ -14882,7 +14882,6 @@ MonoBehaviour:
   _dealerButton: {fileID: 38756582}
   _dealerButtonSprite: {fileID: 21300000, guid: 16c593780667db44584a399f61858984, type: 3}
   _dealerButtonSize: 48
-  _dealerButtonGapBelowAvatar: 8
 --- !u!1 &2135107749
 GameObject:
   m_ObjectHideFlags: 0

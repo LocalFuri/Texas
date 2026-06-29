@@ -25,6 +25,7 @@ namespace TexasHoldem
         ///   ├── ActionBadge       — neon pill when player Checks / Folds / Raises / All-In
         ///   └── BetAnchor         — chip stack anchor between avatar and table centre
         ///       └── BetDisplay    — ChipStack + AmountBadge
+        ///   └── DealerButtonAnchor — dealer token anchor below avatar
     ///
     /// Re-running is safe: existing GameObjects are reused, old ones renamed or hidden.
     ///
@@ -958,15 +959,21 @@ namespace TexasHoldem
 
             betDisplayGo.SetActive(false);
 
-            // 11. Hide any remaining legacy elements not covered by cleanup.
+            // 11. DealerButtonAnchor — position from TableLayoutManager.
+            GameObject dealerAnchorGo = GetOrCreate(root, "DealerButtonAnchor");
+            RecordObj(dealerAnchorGo);
+            SetRect(dealerAnchorGo, 0f, 0f, 1f, 1f);
+
+            // 12. Hide any remaining legacy elements not covered by cleanup.
             HideIfExists(root, "AvatarIcon");   // very old name from pre-AvatarFrame runs
             HideIfExists(root, "BetText");      // stale BetText that escaped BetBadge destruction
             HideIfExists(root, "ChipIcon");     // old single-icon approach replaced by ChipStack
             DestroyIfExists(avatarFrameGo.transform, "RingCrome"); // typo duplicate of AvatarRingChrome
 
-            // 12. Sibling render order (back → front):
+            // 13. Sibling render order (back → front):
             //     Card slots → HudPanel → HudGlow → AvatarFrame (Avatar → Chrome → Gold)
-            //     → NameText → ChipsText → StatusText → SeatActionMenu → ActionBadge → BetAnchor
+            //     → NameText → ChipsText → StatusText → SeatActionMenu → ActionBadge
+            //     → BetAnchor → DealerButtonAnchor
             int idx = 0;
             foreach (CardView card in cards)
             {
@@ -981,9 +988,10 @@ namespace TexasHoldem
             if (statusT != null) statusT.SetSiblingIndex(idx++);
             seatMenuGo.transform.SetSiblingIndex(idx++);
             actionBadgeGo.transform.SetSiblingIndex(idx++);
-            betAnchorGo.transform.SetSiblingIndex(idx);
+            betAnchorGo.transform.SetSiblingIndex(idx++);
+            dealerAnchorGo.transform.SetSiblingIndex(idx);
 
-            // 13. Wire serialized fields on PlayerView.
+            // 14. Wire serialized fields on PlayerView.
             var so = new SerializedObject(view);
             so.Update();
             SetRef(so, "_nameText",    nameT   != null ? nameT.GetComponent<TMP_Text>()   : null);

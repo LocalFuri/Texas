@@ -256,6 +256,18 @@ namespace TexasHoldem
         /// <summary>Alias for layout gizmos — same as <see cref="BetAnchorRect"/>.</summary>
         public RectTransform BetLabelRect => BetAnchorRect;
 
+        /// <summary>
+        /// DealerButtonAnchor in seat local space — dealer token is placed here (TableLayoutManager).
+        /// </summary>
+        public RectTransform DealerButtonAnchorRect
+        {
+            get
+            {
+                Transform t = transform.Find("DealerButtonAnchor");
+                return t != null ? (RectTransform)t : null;
+            }
+        }
+
         /// <summary>RectTransform of the avatar frame — used as the chip animation origin.</summary>
         public RectTransform AvatarRect =>
             _avatarFrame != null ? _avatarFrame : (RectTransform)transform;

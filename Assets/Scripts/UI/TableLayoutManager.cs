@@ -7,9 +7,8 @@ namespace TexasHoldem
 {
     /// <summary>
     /// Inspector-configurable layout data for a single player seat on the oval table.
-    /// Offset fields (card0LocalPos, card1LocalPos, betLabelLocalPos) are in the seat
-    /// panel's local space with anchor at center. dealerButtonOffset is an extra nudge
-    /// added on top of the auto position below the avatar.
+    /// Offset fields (card0LocalPos, card1LocalPos, betLabelLocalPos,
+    /// dealerButtonLocalPos) are in the seat panel's local space with anchor at center.
     /// </summary>
     [Serializable]
     public struct SeatConfig
@@ -36,8 +35,8 @@ namespace TexasHoldem
         [Tooltip("AnchoredPosition of the HudPanel inside the seat root (anchor at panel center).")]
         public Vector2 hudLocalPx;
 
-        [Tooltip("Extra avatar-local nudge applied after placing the dealer token centred below the portrait.")]
-        public Vector2 dealerButtonOffset;
+        [Tooltip("DealerButtonAnchor position in seat local space — dealer token is placed here.")]
+        public Vector2 dealerButtonLocalPos;
 
         [Tooltip("When true, avatar sits on the right and name/chips on the left (left table seats).")]
         public bool mirrorHud;
@@ -104,8 +103,6 @@ namespace TexasHoldem
         [SerializeField, Tooltip("Legacy sprite — SDF disc is used at runtime; kept for reference only.")]
         private Sprite        _dealerButtonSprite;
         [SerializeField] private float         _dealerButtonSize = 48f;
-        [Tooltip("Gap between the avatar bottom edge and the top of the dealer token.")]
-        [SerializeField] private float         _dealerButtonGapBelowAvatar = 8f;
 
         // ── Public API ────────────────────────────────────────────────────
 
@@ -215,14 +212,13 @@ namespace TexasHoldem
 
             EnsureDealerButtonVisual();
 
-            SeatConfig cfg = _seats[seatIndex];
-            PlayerView   view = _playerViews[seatIndex];
+            PlayerView view = _playerViews[seatIndex];
 
             _dealerButton.anchorMin        = new Vector2(0.5f, 0.5f);
             _dealerButton.anchorMax        = new Vector2(0.5f, 0.5f);
             _dealerButton.pivot            = new Vector2(0.5f, 0.5f);
             _dealerButton.sizeDelta        = new Vector2(_dealerButtonSize, _dealerButtonSize);
-            _dealerButton.anchoredPosition = ComputeDealerButtonCanvasPosition(view, cfg);
+            _dealerButton.anchoredPosition = ComputeDealerButtonCanvasPosition(view);
             EnsureDealerButtonVisual();
             _dealerButton.SetAsLastSibling();
             _dealerButton.gameObject.SetActive(true);
@@ -353,36 +349,27 @@ namespace TexasHoldem
             return null;
         }
 
-        /// <summary>Avatar-local offset: centred under the portrait, plus optional per-seat nudge.</summary>
-        private Vector2 ComputeDealerButtonAvatarOffset(SeatConfig cfg)
+        /// <summary>Canvas-local position for the dealer token at the seat's DealerButtonAnchor.</summary>
+        private Vector2 ComputeDealerButtonCanvasPosition(PlayerView view)
         {
-            float dealerY = -PlayerHudLayout.AvatarD * 0.5f
-                          - _dealerButtonGapBelowAvatar
-                          - _dealerButtonSize * 0.5f;
-            return new Vector2(cfg.dealerButtonOffset.x, dealerY + cfg.dealerButtonOffset.y);
-        }
-
-        /// <summary>Canvas-local position for the dealer token below the seat avatar.</summary>
-        private Vector2 ComputeDealerButtonCanvasPosition(PlayerView view, SeatConfig cfg)
-        {
-            RectTransform avatar = view.AvatarRect;
-            Vector2       offset = ComputeDealerButtonAvatarOffset(cfg);
+            RectTransform anchor = view.DealerButtonAnchorRect;
+            if (anchor == null)
+                return Vector2.zero;
 
             if (_canvasRect == null)
             {
-                var canvas = avatar.GetComponentInParent<Canvas>();
+                var canvas = anchor.GetComponentInParent<Canvas>();
                 if (canvas != null)
                     _canvasRect = (RectTransform)canvas.transform;
             }
 
-            Vector3 worldPos = avatar.TransformPoint(new Vector3(offset.x, offset.y, 0f));
             if (_canvasRect != null)
             {
-                Vector3 canvasLocal = _canvasRect.InverseTransformPoint(worldPos);
+                Vector3 canvasLocal = _canvasRect.InverseTransformPoint(anchor.position);
                 return new Vector2(canvasLocal.x, canvasLocal.y);
             }
 
-            return worldPos;
+            return anchor.position;
         }
 
         private const float BetChipStackWidth      = 50f;
@@ -467,6 +454,18 @@ namespace TexasHoldem
             posTarget.anchoredPosition = cfg.betLabelLocalPos;
         }
 
+        private void ApplyDealerButtonAnchor(PlayerView view, SeatConfig cfg)
+        {
+            RectTransform anchor = view.DealerButtonAnchorRect;
+            if (anchor == null)
+                return;
+
+            anchor.anchorMin        = new Vector2(0.5f, 0.5f);
+            anchor.anchorMax        = new Vector2(0.5f, 0.5f);
+            anchor.pivot            = new Vector2(0.5f, 0.5f);
+            anchor.anchoredPosition = cfg.dealerButtonLocalPos;
+        }
+
         // ── Unity Callbacks ───────────────────────────────────────────────
 
         private void Reset()
@@ -534,6 +533,7 @@ namespace TexasHoldem
                 ApplyHudPanel(_playerViews[i], cfg);
                 _playerViews[i].ApplyHudLayout();
                 ApplyBetAnchor(_playerViews[i], cfg);
+                ApplyDealerButtonAnchor(_playerViews[i], cfg);
             }
         }
 
@@ -653,13 +653,10 @@ namespace TexasHoldem
                 Gizmos.DrawWireSphere(
                     CanvasToWorld(seatRt.anchoredPosition + cfg.betLabelLocalPos), r * 0.2f);
 
-                // Dealer button marker + line.
+                // Dealer button anchor.
                 Gizmos.color = new Color(1f, 0.85f, 0.1f, 0.85f);
-                Vector2 offset = ComputeDealerButtonAvatarOffset(cfg);
-                Vector3 dbWorld = _playerViews[i].AvatarRect.TransformPoint(
-                    new Vector3(offset.x, offset.y, 0f));
-                Gizmos.DrawLine(wPos, dbWorld);
-                Gizmos.DrawWireSphere(dbWorld, r * 0.22f);
+                Gizmos.DrawWireSphere(
+                    CanvasToWorld(seatRt.anchoredPosition + cfg.dealerButtonLocalPos), r * 0.22f);
             }
 
             // Pot label marker.
@@ -707,6 +704,7 @@ namespace TexasHoldem
                     card1LocalPos      = new Vector2( cx, cy),
                     hudLocalPx         = Vector2.zero,
                     betLabelLocalPos   = new Vector2(  0f, 86f),
+                    dealerButtonLocalPos = new Vector2(-133f, -113f),
                     playerName         = "Ace Maverick",
                 },
                 // Seat 1 — Bot 1  (bottom-left)
@@ -718,6 +716,7 @@ namespace TexasHoldem
                     card1LocalPos      = new Vector2( cx, cy),
                     hudLocalPx         = Vector2.zero,
                     betLabelLocalPos   = new Vector2( 70f, 86f),
+                    dealerButtonLocalPos = new Vector2(133f, -113f),
                     mirrorHud          = true,
                     playerName         = "Lady Luck",
                 },
@@ -730,6 +729,7 @@ namespace TexasHoldem
                     card1LocalPos      = new Vector2( cx, cy),
                     hudLocalPx         = Vector2.zero,
                     betLabelLocalPos   = new Vector2( 70f, -86f),
+                    dealerButtonLocalPos = new Vector2(133f, 113f),
                     mirrorHud          = true,
                     playerName         = "Prince Beaumont",
                 },
@@ -742,6 +742,7 @@ namespace TexasHoldem
                     card1LocalPos      = new Vector2( cx, cy),
                     hudLocalPx         = Vector2.zero,
                     betLabelLocalPos   = new Vector2(  0f, -86f),
+                    dealerButtonLocalPos = new Vector2(-133f, 113f),
                     playerName         = "Victor Shark",
                 },
                 // Seat 4 — Bot 4  (upper-right)
@@ -753,6 +754,7 @@ namespace TexasHoldem
                     card1LocalPos      = new Vector2( cx, cy),
                     hudLocalPx         = Vector2.zero,
                     betLabelLocalPos   = new Vector2(-70f, -86f),
+                    dealerButtonLocalPos = new Vector2(-133f, 113f),
                     playerName         = "Jasmine Vale",
                 },
                 // Seat 5 — Bot 5  (bottom-right)
@@ -764,6 +766,7 @@ namespace TexasHoldem
                     card1LocalPos      = new Vector2( cx, cy),
                     hudLocalPx         = Vector2.zero,
                     betLabelLocalPos   = new Vector2(-70f, 86f),
+                    dealerButtonLocalPos = new Vector2(-133f, -113f),
                     playerName         = "Alex Hunter",
                 },
             };
