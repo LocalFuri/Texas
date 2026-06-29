@@ -66,6 +66,12 @@ namespace TexasHoldem
         public float             ButtonHeight   => _buttonHeight;
         public float             ButtonFontSize => _buttonFontSize;
         public float             AiActionDelay          => _aiActionDelay;
+
+        /// <summary>Sets bot action delay in seconds (0 = instant).</summary>
+        public void SetAiActionDelay(float seconds)
+        {
+            _aiActionDelay = Mathf.Max(0f, seconds);
+        }
         public float             HumanThinkTime         => _humanThinkTime;
         public float             CardGap                 => _cardGap;
         public float             CommunityFlipDuration   => _communityFlipDuration;
@@ -431,13 +437,8 @@ namespace TexasHoldem
         private static bool IsTestMode =>
             OptionsMenu.Instance != null && OptionsMenu.Instance.TestMode;
 
-        private static bool IsMaxSpeed =>
-            OptionsMenu.Instance != null && OptionsMenu.Instance.AutoplayAtMaxSpeed;
-
         private static bool IsOptionsMenuOpen =>
             OptionsMenu.Instance != null && OptionsMenu.Instance.IsOpen;
-
-        private float ScaledDelay(float seconds) => IsMaxSpeed ? 0f : seconds;
 
         private IEnumerator WaitWhileOptionsMenuOpen()
         {
@@ -446,12 +447,11 @@ namespace TexasHoldem
 
         private IEnumerator DelaySeconds(float seconds)
         {
-            float delay = ScaledDelay(seconds);
-            if (delay <= 0f)
+            if (seconds <= 0f)
                 yield break;
 
             float elapsed = 0f;
-            while (elapsed < delay)
+            while (elapsed < seconds)
             {
                 if (!IsOptionsMenuOpen)
                     elapsed += Time.deltaTime;

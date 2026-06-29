@@ -48,6 +48,9 @@ namespace TexasHoldem
             ApplyInternal(toggle);
         }
 
+        /// <summary>Shared flat white sprite for checkbox backgrounds and slider parts.</summary>
+        public static Sprite GetCheckboxSprite() => GetWhiteSprite();
+
         private static void ApplyInternal(Toggle toggle)
         {
             Transform background = toggle.transform.Find("Background");

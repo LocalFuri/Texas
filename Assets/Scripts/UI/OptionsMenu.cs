@@ -14,6 +14,13 @@ namespace TexasHoldem
     {
         public const int OptionCount = 6;
 
+        public const int BotThinkSliderRowIndex = 1;
+        public const float BotThinkMinSeconds   = 0f;
+        public const float BotThinkMaxSeconds   = 30f;
+
+        /// <summary>Shared label size for all options-menu rows (Restart, toggles, bot slider).</summary>
+        public const float MenuRowFontSize = 20f;
+
         private const float PanelWidth   = 248f;
         private const float RowHeight    = 20f;
         private const float CheckboxSize = 15f;
@@ -29,8 +36,7 @@ namespace TexasHoldem
         public static OptionsMenu Instance { get; private set; }
 
         // ── Option State (readable by other systems) ───────────────────────
-        // Index 0 is Restart (action only — not a persistent toggle).
-        public bool AutoplayAtMaxSpeed => _toggleStates[1];
+        // Index 0 is Restart (action only). Index 1 is bot-think slider (not a toggle).
         public bool ShowBotCards       => _toggleStates[2];
         public bool TestMode           => _toggleStates[3];
         public bool GodMode            => _toggleStates[4];
@@ -42,6 +48,7 @@ namespace TexasHoldem
         // ── Serialized references (wired by OptionsMenuBuilder) ───────────
         [SerializeField] private CanvasGroup _canvasGroup;
         [SerializeField] private Toggle[]    _toggles = new Toggle[OptionCount];
+        [SerializeField] private Slider      _botThinkSlider;
 
         [Header("Layout")]
         [Tooltip("AnchoredPosition of the panel (canvas center anchor).")]
@@ -67,6 +74,8 @@ namespace TexasHoldem
         private float           _timeScaleBeforePause = 1f;
         private AudioSource     _audioSource;
         private Coroutine       _quitCoroutine;
+        private TMP_Text        _botThinkHandleLabel;
+        private bool            _botThinkSliderBound;
 
         // ── Unity Callbacks ───────────────────────────────────────────────
 
@@ -90,19 +99,26 @@ namespace TexasHoldem
             }
 
             SetVisible(false);
+            BindBotThinkSlider();
         }
 
         private void Start()
         {
             OptionsMenuToggleStyle.ResetRuntimeSprites();
+            EnsureBotThinkSliderRow();
             ApplyCompactLayout();
             ApplyToggleStyles();
+            ApplySliderStyles();
+            SyncBotThinkSliderFromGame();
         }
 
 #if UNITY_EDITOR
         private void OnValidate()
         {
+            if (!Application.isPlaying)
+                EnsureBotThinkSliderRow();
             ApplyCompactLayout();
+            ApplySliderStyles();
         }
 #endif
 
@@ -314,13 +330,220 @@ namespace TexasHoldem
             gm.OnPlayersUpdated?.Invoke(gm.Players);
         }
 
+        private void BindBotThinkSlider()
+        {
+            if (_botThinkSlider == null || _botThinkSliderBound)
+                return;
+
+            _botThinkSlider.onValueChanged.AddListener(OnBotThinkSliderChanged);
+            _botThinkSliderBound = true;
+        }
+
+        private void EnsureBotThinkSliderRow()
+        {
+            string expectedRowName = "Row_" + OptionsMenuSliderStyle.BotThinkLabelText;
+
+            var botThinkRows = new System.Collections.Generic.List<Transform>();
+            Transform legacyNonSliderRow = null;
+
+            foreach (Transform child in transform)
+            {
+                if (!child.name.StartsWith("Row_"))
+                    continue;
+
+                if (child.Find("BotThinkSlider") != null)
+                    botThinkRows.Add(child);
+                else if (IsLegacyBotThinkRowName(child.name) && legacyNonSliderRow == null)
+                    legacyNonSliderRow = child;
+            }
+
+            float initial = BotThinkDefaultSeconds;
+            GameManager gm = FindObjectOfType<GameManager>();
+            if (gm != null)
+                initial = gm.AiActionDelay;
+            if (_botThinkSlider != null)
+                initial = _botThinkSlider.value;
+
+            Transform keepRow = null;
+            if (_botThinkSlider != null)
+            {
+                Transform parent = _botThinkSlider.transform.parent;
+                if (parent != null && parent.Find("BotThinkSlider") == _botThinkSlider.transform)
+                    keepRow = parent;
+            }
+
+            if (keepRow == null && botThinkRows.Count > 0)
+                keepRow = botThinkRows[0];
+
+            foreach (Transform row in botThinkRows)
+            {
+                if (row != keepRow)
+                    DestroyObject(row.gameObject);
+            }
+
+            if (legacyNonSliderRow != null)
+                DestroyObject(legacyNonSliderRow.gameObject);
+
+            if (keepRow == null)
+            {
+                int insertAt = Mathf.Min(BotThinkSliderRowIndex, transform.childCount);
+                _botThinkSlider = OptionsMenuRowFactory.CreateBotThinkSliderRow(transform, initial);
+                keepRow = _botThinkSlider.transform.parent;
+                keepRow.SetSiblingIndex(insertAt);
+            }
+            else
+            {
+                _botThinkSlider = keepRow.GetComponentInChildren<Slider>(true);
+                if (keepRow.name != expectedRowName)
+                {
+                    int insertIndex = keepRow.GetSiblingIndex();
+                    float value     = _botThinkSlider != null ? _botThinkSlider.value : initial;
+                    DestroyObject(keepRow.gameObject);
+                    _botThinkSlider      = null;
+                    _botThinkHandleLabel = null;
+                    _botThinkSliderBound = false;
+                    _botThinkSlider = OptionsMenuRowFactory.CreateBotThinkSliderRow(transform, value);
+                    keepRow = _botThinkSlider.transform.parent;
+                    keepRow.SetSiblingIndex(insertIndex);
+                }
+            }
+
+            keepRow.SetSiblingIndex(BotThinkSliderRowIndex);
+
+            _botThinkSlider.minValue = BotThinkMinSeconds;
+            _botThinkSlider.maxValue = BotThinkMaxSeconds;
+
+            if (_toggles != null && BotThinkSliderRowIndex < _toggles.Length)
+                _toggles[BotThinkSliderRowIndex] = null;
+
+            _botThinkHandleLabel = null;
+            _botThinkSliderBound = false;
+            BindBotThinkSlider();
+
+            ResolveBotThinkHandleLabel();
+            OptionsMenuSliderStyle.Apply(_botThinkSlider, _botThinkHandleLabel);
+            UpdateBotThinkHandleLabel(_botThinkSlider.value);
+
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                UnityEditor.EditorUtility.SetDirty(this);
+#endif
+        }
+
+        private static bool IsLegacyBotThinkRowName(string rowName)
+        {
+            return rowName == "Row_Autoplay at max speed"
+                || rowName == "Row_Bot think time"
+                || rowName == "Row_Bot think";
+        }
+
+        private void DestroyObject(UnityEngine.Object obj)
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                UnityEngine.Object.DestroyImmediate(obj);
+                return;
+            }
+#endif
+            Destroy(obj);
+        }
+
+        private void SyncBotThinkSliderFromGame()
+        {
+            if (_botThinkSlider == null)
+                return;
+
+            ResolveBotThinkHandleLabel();
+
+            float delay = BotThinkDefaultSeconds;
+            GameManager gm = FindObjectOfType<GameManager>();
+            if (gm != null)
+                delay = gm.AiActionDelay;
+
+            delay = Mathf.Clamp(delay, BotThinkMinSeconds, BotThinkMaxSeconds);
+            _botThinkSlider.SetValueWithoutNotify(delay);
+            UpdateBotThinkHandleLabel(delay);
+        }
+
+        private const float BotThinkDefaultSeconds = 1f;
+
+        private void OnBotThinkSliderChanged(float value)
+        {
+            float delay = Mathf.Clamp(value, BotThinkMinSeconds, BotThinkMaxSeconds);
+            UpdateBotThinkHandleLabel(delay);
+
+            GameManager gm = FindObjectOfType<GameManager>();
+            gm?.SetAiActionDelay(delay);
+        }
+
+        private void ResolveBotThinkHandleLabel()
+        {
+            if (_botThinkHandleLabel != null || _botThinkSlider == null)
+                return;
+
+            Transform handle = _botThinkSlider.transform.Find("Handle Slide Area/Handle/HandleLabel");
+            if (handle != null)
+                _botThinkHandleLabel = handle.GetComponent<TMP_Text>();
+        }
+
+        private void UpdateBotThinkHandleLabel(float seconds)
+        {
+            ResolveBotThinkHandleLabel();
+            if (_botThinkHandleLabel != null)
+                _botThinkHandleLabel.text = OptionsMenuSliderStyle.FormatHandleValue(seconds);
+        }
+
+        private void ApplySliderStyles()
+        {
+            if (_botThinkSlider == null)
+                return;
+
+            ResolveBotThinkHandleLabel();
+            OptionsMenuSliderStyle.Apply(_botThinkSlider, _botThinkHandleLabel);
+        }
+
+        private static void ApplyBotThinkIcon(Image icon)
+        {
+            if (icon == null)
+                return;
+
+            icon.sprite         = OptionsMenuToggleStyle.GetCheckboxSprite();
+            icon.color          = Color.white;
+            icon.raycastTarget  = false;
+        }
+        private TMP_Text FindMenuFontReference()
+        {
+            if (_toggles == null)
+                return null;
+
+            foreach (Toggle toggle in _toggles)
+            {
+                if (toggle == null)
+                    continue;
+
+                Transform label = toggle.transform.parent?.Find("Label");
+                if (label == null)
+                    continue;
+
+                var tmp = label.GetComponent<TMP_Text>();
+                if (tmp != null && tmp.font != null)
+                    return tmp;
+            }
+
+            return null;
+        }
+
         private void ApplyToggleStyles()
         {
             if (_toggles == null)
                 return;
 
             foreach (Toggle toggle in _toggles)
-                OptionsMenuToggleStyle.Apply(toggle);
+            {
+                if (toggle != null)
+                    OptionsMenuToggleStyle.Apply(toggle);
+            }
         }
 
         /// <summary>Repairs legacy scene layout to match the compact debug checklist reference.</summary>
@@ -389,6 +612,51 @@ namespace TexasHoldem
                     hl.childForceExpandHeight = false;
                 }
 
+                Transform sliderT = child.Find("BotThinkSlider");
+                if (sliderT != null)
+                {
+                    rowLe.preferredHeight = OptionsMenuRowFactory.RowHeight;
+                    rowLe.minHeight       = OptionsMenuRowFactory.RowHeight;
+
+                    if (hl != null)
+                        hl.spacing = 6f;
+
+                    Transform icon = child.Find("Icon");
+                    if (icon != null)
+                        ApplyBotThinkIcon(icon.GetComponent<Image>());
+
+                    Transform sliderLabel = child.Find("Label");
+                    if (sliderLabel != null)
+                    {
+                        var tmp = sliderLabel.GetComponent<TMP_Text>();
+                        if (tmp != null)
+                            OptionsMenuSliderStyle.ApplyRowLabelStyle(tmp, FindMenuFontReference());
+
+                        var labelLe = sliderLabel.GetComponent<LayoutElement>();
+                        if (labelLe == null)
+                            labelLe = sliderLabel.gameObject.AddComponent<LayoutElement>();
+                        labelLe.flexibleWidth     = 0f;
+                        labelLe.minWidth          = OptionsMenuSliderStyle.LabelWidth;
+                        labelLe.preferredWidth    = OptionsMenuSliderStyle.LabelWidth;
+                        labelLe.minHeight         = OptionsMenuRowFactory.RowHeight;
+                        labelLe.preferredHeight   = OptionsMenuRowFactory.RowHeight;
+                    }
+
+                    var slider = sliderT.GetComponent<Slider>();
+                    if (slider != null)
+                        OptionsMenuSliderStyle.Apply(slider, sliderT.GetComponentInChildren<TMP_Text>(true));
+
+                    var sliderLe = sliderT.GetComponent<LayoutElement>();
+                    if (sliderLe == null)
+                        sliderLe = sliderT.gameObject.AddComponent<LayoutElement>();
+                    sliderLe.flexibleWidth   = 1f;
+                    sliderLe.minWidth        = 72f;
+                    sliderLe.minHeight       = OptionsMenuSliderStyle.HandleHeight;
+                    sliderLe.preferredHeight = OptionsMenuSliderStyle.HandleHeight;
+
+                    continue;
+                }
+
                 Transform toggle = child.Find("Toggle");
                 if (toggle != null)
                 {
@@ -409,7 +677,7 @@ namespace TexasHoldem
                     if (tmp != null)
                     {
                         tmp.color              = LabelColor;
-                        tmp.fontSize           = 20f;
+                        tmp.fontSize           = MenuRowFontSize;
                         tmp.fontStyle          = FontStyles.Normal;
                         tmp.enableWordWrapping = false;
                     }

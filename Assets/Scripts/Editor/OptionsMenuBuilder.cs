@@ -16,6 +16,13 @@ public static class OptionsMenuBuilder
     private const float DefaultRowSpacing = 3f;
     private const float CheckboxSize  = 15f;
     private const float PanelPadding  = 10f;
+    private const int   BotThinkRowIndex = 1;
+
+    private const float BotThinkMin     = 0f;
+    private const float BotThinkMax     = 30f;
+    private const float BotThinkDefault = 1f;
+    private const float SliderTrackHeight = 10f;
+    private const float SliderHandleSize  = 16f;
 
     private static readonly Color PanelBg     = new Color(0.020f, 0.173f, 0.020f, 1f);
     private static readonly Color LabelColor  = new Color(0.902f, 0.839f, 0.306f, 1f);
@@ -23,7 +30,7 @@ public static class OptionsMenuBuilder
     private static readonly string[] OptionLabels =
     {
         "Restart",
-        "Autoplay at max speed",
+        "Bots think",
         "Dealer BJ",
         "Blackjack Test",
         "BJ All Test",
@@ -107,6 +114,13 @@ public static class OptionsMenuBuilder
         var audioSource = GetOrAdd<AudioSource>(panel);
         audioSource.playOnAwake = false;
 
+#if UNITY_EDITOR
+        OptionsMenuToggleStyle.CacheSprites(
+            Resources.Load<Sprite>("UI/OptionsCheckbox"),
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Resources/UI/OptionsCheckBold.png")
+                ?? Resources.Load<Sprite>("UI/OptionsCheckBold"));
+#endif
+
         var so = new SerializedObject(menuComp);
         so.Update();
         so.FindProperty("_panelPosX").floatValue = panelPos.x;
@@ -120,12 +134,22 @@ public static class OptionsMenuBuilder
         var togglesProp = so.FindProperty("_toggles");
         togglesProp.arraySize = OptionLabels.Length;
 
+        Slider botThinkSlider = null;
         for (int i = 0; i < OptionLabels.Length; i++)
         {
-            var toggle = AddToggleRow(panel.transform, OptionLabels[i]);
-            togglesProp.GetArrayElementAtIndex(i).objectReferenceValue = toggle;
+            if (i == BotThinkRowIndex)
+            {
+                botThinkSlider = AddBotThinkSliderRow(panel.transform, OptionLabels[i]);
+                togglesProp.GetArrayElementAtIndex(i).objectReferenceValue = null;
+            }
+            else
+            {
+                Toggle toggle = AddToggleRow(panel.transform, OptionLabels[i]);
+                togglesProp.GetArrayElementAtIndex(i).objectReferenceValue = toggle;
+            }
         }
 
+        so.FindProperty("_botThinkSlider").objectReferenceValue = botThinkSlider;
         so.ApplyModifiedProperties();
 
         EditorUtility.SetDirty(menuComp);
@@ -144,20 +168,13 @@ public static class OptionsMenuBuilder
         AssetDatabase.SaveAssets();
     }
 
+    private static Slider AddBotThinkSliderRow(Transform parent, string label)
+        => OptionsMenuRowFactory.CreateBotThinkSliderRow(parent, BotThinkDefault);
+
     private static Toggle AddToggleRow(Transform parent, string label)
     {
         var row = CreateRect("Row_" + label, parent);
-        var rowLe = GetOrAdd<LayoutElement>(row);
-        rowLe.preferredHeight = RowHeight;
-        rowLe.minHeight       = RowHeight;
-
-        var hl                    = GetOrAdd<HorizontalLayoutGroup>(row);
-        hl.childAlignment         = TextAnchor.MiddleLeft;
-        hl.spacing                = 8f;
-        hl.childControlWidth      = true;
-        hl.childControlHeight     = true;
-        hl.childForceExpandWidth  = false;
-        hl.childForceExpandHeight = false;
+        AddRowLayout(row);
 
         var toggleGo = CreateRect("Toggle", row.transform);
         var toggleLe = GetOrAdd<LayoutElement>(toggleGo);
@@ -181,12 +198,6 @@ public static class OptionsMenuBuilder
         checkRt.anchoredPosition = Vector2.zero;
         GetOrAdd<Image>(checkGo);
 
-#if UNITY_EDITOR
-        OptionsMenuToggleStyle.CacheSprites(
-            Resources.Load<Sprite>("UI/OptionsCheckbox"),
-            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Resources/UI/OptionsCheckBold.png")
-                ?? Resources.Load<Sprite>("UI/OptionsCheckBold"));
-#endif
         OptionsMenuToggleStyle.Apply(toggle);
 
         toggle.isOn = false;
@@ -197,16 +208,45 @@ public static class OptionsMenuBuilder
         labelLe.minHeight     = RowHeight;
         labelLe.preferredHeight = RowHeight;
 
-        var tmp              = GetOrAdd<TextMeshProUGUI>(labelGo);
-        tmp.text               = label;
+        var tmp = GetOrAdd<TextMeshProUGUI>(labelGo);
+        StyleRowLabel(tmp, label);
+
+        return toggle;
+    }
+
+    private static void AddRowLayout(GameObject row)
+    {
+        var rowLe = GetOrAdd<LayoutElement>(row);
+        rowLe.preferredHeight = RowHeight;
+        rowLe.minHeight       = RowHeight;
+
+        var hl                    = GetOrAdd<HorizontalLayoutGroup>(row);
+        hl.childAlignment         = TextAnchor.MiddleLeft;
+        hl.spacing                = 8f;
+        hl.childControlWidth      = true;
+        hl.childControlHeight     = true;
+        hl.childForceExpandWidth  = false;
+        hl.childForceExpandHeight = false;
+    }
+
+    private static void StyleRowLabel(TextMeshProUGUI tmp, string text)
+    {
+        tmp.text               = text;
         tmp.fontSize           = 14f;
         tmp.fontStyle          = FontStyles.Normal;
         tmp.color              = LabelColor;
-        tmp.alignment        = TextAlignmentOptions.MidlineLeft;
+        tmp.alignment          = TextAlignmentOptions.MidlineLeft;
         tmp.enableWordWrapping = false;
-        tmp.overflowMode     = TextOverflowModes.Overflow;
+        tmp.overflowMode       = TextOverflowModes.Overflow;
+    }
 
-        return toggle;
+    private static void SetCenteredBar(RectTransform rt, float height)
+    {
+        rt.anchorMin        = new Vector2(0f, 0.5f);
+        rt.anchorMax        = new Vector2(1f, 0.5f);
+        rt.pivot            = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta        = new Vector2(0f, height);
+        rt.anchoredPosition = Vector2.zero;
     }
 
     private static GameObject CreateRect(string name, Transform parent)

@@ -631,9 +631,6 @@ namespace TexasHoldem
             if (_gameManager == null)
                 return 0f;
 
-            if (OptionsMenu.Instance != null && OptionsMenu.Instance.AutoplayAtMaxSpeed)
-                    return 0f;
-
             return isHumanTurn ? _gameManager.HumanThinkTime : _gameManager.AiActionDelay;
         }
 
