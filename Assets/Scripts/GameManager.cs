@@ -138,6 +138,23 @@ namespace TexasHoldem
             StartCoroutine(GameLoop());
         }
 
+        /// <summary>Stops play and returns to the pre-start state (Start button only).</summary>
+        public void ResetToStartScreen()
+        {
+            StopAllCoroutines();
+            _awaitingHumanInput = false;
+            _humanAction        = default;
+            _humanRaiseAmount   = 0;
+            DealerIndex         = 0;
+            InitializePlayers();
+            _bettingManager.ResetRound();
+            _boardManager.NewDeck();
+            SetPhase(GamePhase.WaitingToStart);
+            OnCommunityCardsUpdated?.Invoke(_boardManager.CommunityCards);
+            NotifyPlayersUpdated();
+            OnGameMessage?.Invoke(string.Empty);
+        }
+
         private void InitializePlayers()
         {
             _tableLayout?.SyncPlayerDisplayNames();
@@ -313,20 +330,7 @@ namespace TexasHoldem
                 }
                 else
                 {
-                    bool autoplay = OptionsMenu.Instance != null && OptionsMenu.Instance.Autoplay;
-                    if (autoplay)
-                    {
-                        yield return DelaySeconds(_aiActionDelay);
-                        var (action, raise) = _aiController.DecideAction(
-                            player, _boardManager.CommunityCards, _bettingManager, IsTestMode);
-                        _humanAction        = action;
-                        _humanRaiseAmount   = raise;
-                        _awaitingHumanInput = false;
-                    }
-                    else
-                    {
-                        yield return new WaitUntil(() => !_awaitingHumanInput && !IsOptionsMenuOpen);
-                    }
+                    yield return new WaitUntil(() => !_awaitingHumanInput && !IsOptionsMenuOpen);
 
                     int humanBetBefore = player.CurrentBet;
                     if (_bettingManager.ProcessAction(player, _humanAction, _humanRaiseAmount))

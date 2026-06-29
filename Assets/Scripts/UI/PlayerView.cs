@@ -378,6 +378,17 @@ namespace TexasHoldem
         /// <summary>Clears hole-card reveal tracking (call at the start of a new round).</summary>
         public void ResetHoleCardReveal() => _revealedHoleCount = 0;
 
+        /// <summary>Hides hole cards and clears reveal state (title screen / full reset).</summary>
+        public void ClearTableCards()
+        {
+            ResetHoleCardReveal();
+            HideAllCardSlots();
+            if (_canvasGroup != null)
+                _canvasGroup.alpha = 1f;
+            if (_statusText != null)
+                _statusText.text = string.Empty;
+        }
+
         /// <summary>Updates name, chips, status text, and canvas fade. Bet is handled separately via ShowBetDisplay.</summary>
         public void RefreshHud(PlayerState player)
         {

@@ -631,15 +631,53 @@ namespace TexasHoldem
             if (_gameManager == null)
                 return 0f;
 
-            if (OptionsMenu.Instance != null)
-            {
-                if (OptionsMenu.Instance.AutoplayAtMaxSpeed)
+            if (OptionsMenu.Instance != null && OptionsMenu.Instance.AutoplayAtMaxSpeed)
                     return 0f;
-                if (isHumanTurn && OptionsMenu.Instance.Autoplay)
-                    return 0f;
-            }
 
             return isHumanTurn ? _gameManager.HumanThinkTime : _gameManager.AiActionDelay;
+        }
+
+        /// <summary>Returns UI to the initial title state (Start button visible, table cleared).</summary>
+        public void ResetToStartScreen()
+        {
+            if (!Application.isPlaying)
+                return;
+
+            StopAllCoroutines();
+
+            _gameStarted          = false;
+            _humanPlayer          = null;
+            _humanSeatView        = null;
+            _revealedCommunityCount = 0;
+            _hasPendingActionBadge  = false;
+            _suppressDealerButton   = true;
+
+            _previousBets.Clear();
+            StopTurnTimer();
+            HideAllActionBadges();
+            HideAllSeatMenus();
+            HideBettingControls();
+            SetActionPanelVisible(true);
+            SetStartButtonVisible(true);
+
+            foreach (PlayerView view in ResolvePlayerViews())
+            {
+                if (view == null) continue;
+                view.SetActiveTurn(false);
+                view.HideBetDisplay();
+                view.HideActionBadge();
+                view.ClearTableCards();
+            }
+
+            _tableLayout?.HideDealerButton();
+
+            if (_communityCardSlots != null)
+            {
+                foreach (CardView slot in _communityCardSlots)
+                    slot?.Hide();
+            }
+
+            UpdatePotText();
         }
 
         private void OnRoundEnded()

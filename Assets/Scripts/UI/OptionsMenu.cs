@@ -16,7 +16,6 @@ namespace TexasHoldem
         private const float PanelWidth   = 248f;
         private const float RowHeight    = 20f;
         private const float CheckboxSize = 15f;
-        private const float RowSpacing   = 3f;
         private const float PanelPadding = 10f;
         private const float NearPanelPaddingPx = 24f;
 
@@ -29,7 +28,7 @@ namespace TexasHoldem
         public static OptionsMenu Instance { get; private set; }
 
         // ── Option State (readable by other systems) ───────────────────────
-        public bool Autoplay           => _toggleStates[0];
+        // Index 0 is Restart (action only — not a persistent toggle).
         public bool AutoplayAtMaxSpeed => _toggleStates[1];
         public bool ShowBotCards       => _toggleStates[2];
         public bool TestMode           => _toggleStates[3];
@@ -47,8 +46,15 @@ namespace TexasHoldem
         [Tooltip("AnchoredPosition of the panel (canvas center anchor).")]
         [SerializeField] private float _panelPosX;
         [SerializeField] private float _panelPosY = 157f;
+        [Tooltip("Vertical gap between option rows (VerticalLayoutGroup spacing).")]
+        [SerializeField] private float _rowSpacing = 3f;
 
         private Vector2 PanelAnchoredPosition => new Vector2(_panelPosX, _panelPosY);
+
+        private float ComputePanelHeight()
+            => PanelPadding * 2f
+               + OptionCount * RowHeight
+               + (OptionCount - 1) * _rowSpacing;
 
         [Header("Audio")]
         [SerializeField] private AudioClip _menuToggleClip;
@@ -94,9 +100,7 @@ namespace TexasHoldem
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            var rt = transform as RectTransform;
-            if (rt != null)
-                rt.anchoredPosition = PanelAnchoredPosition;
+            ApplyCompactLayout();
         }
 #endif
 
@@ -233,12 +237,34 @@ namespace TexasHoldem
             if (index < 0 || index >= _toggleStates.Length)
                 return;
 
+            if (index == 0)
+            {
+                if (value)
+                    PerformRestart();
+
+                _toggleStates[0] = false;
+                if (_toggles[0] != null)
+                    _toggles[0].SetIsOnWithoutNotify(false);
+                return;
+            }
+
             _toggleStates[index] = value;
 
             if (index == 4 && value)
                 ApplyGodModeChips();
 
             OnOptionsChanged?.Invoke();
+        }
+
+        private void PerformRestart()
+        {
+            if (_isOpen)
+                SetVisible(false);
+
+            UIManager ui = FindObjectOfType<UIManager>();
+            GameManager gm = FindObjectOfType<GameManager>();
+            ui?.ResetToStartScreen();
+            gm?.ResetToStartScreen();
         }
 
         private static void ApplyGodModeChips()
@@ -272,9 +298,7 @@ namespace TexasHoldem
             var rt = transform as RectTransform;
             if (rt != null)
             {
-                float panelHeight = PanelPadding * 2f
-                    + OptionCount * RowHeight
-                    + (OptionCount - 1) * RowSpacing;
+                float panelHeight = ComputePanelHeight();
 
                 rt.anchorMin        = new Vector2(0.5f, 0.5f);
                 rt.anchorMax        = new Vector2(0.5f, 0.5f);
@@ -296,7 +320,7 @@ namespace TexasHoldem
             {
                 int pad = (int)PanelPadding;
                 vl.padding                = new RectOffset(pad, pad, pad, pad);
-                vl.spacing                = RowSpacing;
+                vl.spacing                = _rowSpacing;
                 vl.childAlignment         = TextAnchor.UpperLeft;
                 vl.childControlWidth      = true;
                 vl.childControlHeight     = true;

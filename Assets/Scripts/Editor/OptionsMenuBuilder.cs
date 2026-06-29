@@ -13,7 +13,7 @@ public static class OptionsMenuBuilder
 {
     private const float PanelWidth    = 248f;
     private const float RowHeight     = 20f;
-    private const float RowSpacing    = 3f;
+    private const float DefaultRowSpacing = 3f;
     private const float CheckboxSize  = 15f;
     private const float PanelPadding  = 10f;
 
@@ -22,7 +22,7 @@ public static class OptionsMenuBuilder
 
     private static readonly string[] OptionLabels =
     {
-        "Autoplay",
+        "Restart",
         "Autoplay at max speed",
         "Dealer BJ",
         "Blackjack Test",
@@ -30,10 +30,10 @@ public static class OptionsMenuBuilder
         "Double Down Test",
     };
 
-    private static float PanelHeight =>
+    private static float PanelHeight(float rowSpacing) =>
         PanelPadding * 2f
         + OptionLabels.Length * RowHeight
-        + (OptionLabels.Length - 1) * RowSpacing;
+        + (OptionLabels.Length - 1) * rowSpacing;
 
     [MenuItem("Texas Holdem/Apply Options Menu Layout")]
     [MenuItem("Tools/Texas Hold'em/Build Options Menu")]
@@ -49,6 +49,7 @@ public static class OptionsMenuBuilder
         var rootTransform = canvas.transform.Find("OptionsMenu_Panel");
         GameObject panel;
         Vector2 panelPos = Vector2.zero;
+        float rowSpacing = DefaultRowSpacing;
         if (rootTransform != null)
         {
             panel = rootTransform.gameObject;
@@ -59,6 +60,7 @@ public static class OptionsMenuBuilder
                 panelPos = new Vector2(
                     existingSo.FindProperty("_panelPosX").floatValue,
                     existingSo.FindProperty("_panelPosY").floatValue);
+                rowSpacing = existingSo.FindProperty("_rowSpacing").floatValue;
             }
             else
                 panelPos = ((RectTransform)panel.transform).anchoredPosition;
@@ -79,7 +81,7 @@ public static class OptionsMenuBuilder
         rt.anchorMax        = new Vector2(0.5f, 0.5f);
         rt.pivot            = new Vector2(0.5f, 0.5f);
         rt.anchoredPosition = panelPos;
-        rt.sizeDelta        = new Vector2(PanelWidth, PanelHeight);
+        rt.sizeDelta        = new Vector2(PanelWidth, PanelHeight(rowSpacing));
 
         var bg = GetOrAdd<Image>(panel);
         bg.color         = PanelBg;
@@ -91,7 +93,7 @@ public static class OptionsMenuBuilder
         var vl                    = GetOrAdd<VerticalLayoutGroup>(panel);
         vl.padding                = new RectOffset(
             (int)PanelPadding, (int)PanelPadding, (int)PanelPadding, (int)PanelPadding);
-        vl.spacing                = RowSpacing;
+        vl.spacing                = rowSpacing;
         vl.childAlignment         = TextAnchor.UpperLeft;
         vl.childControlWidth      = true;
         vl.childControlHeight     = true;
@@ -109,6 +111,7 @@ public static class OptionsMenuBuilder
         so.Update();
         so.FindProperty("_panelPosX").floatValue = panelPos.x;
         so.FindProperty("_panelPosY").floatValue = panelPos.y;
+        so.FindProperty("_rowSpacing").floatValue = rowSpacing;
         so.FindProperty("_canvasGroup").objectReferenceValue = canvasGroup;
         so.FindProperty("_menuToggleClip").objectReferenceValue =
             AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/Pop04.wav");
