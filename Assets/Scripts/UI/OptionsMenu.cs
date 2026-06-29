@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -65,6 +66,7 @@ namespace TexasHoldem
         private bool            _isOpen;
         private float           _timeScaleBeforePause = 1f;
         private AudioSource     _audioSource;
+        private Coroutine       _quitCoroutine;
 
         // ── Unity Callbacks ───────────────────────────────────────────────
 
@@ -118,6 +120,13 @@ namespace TexasHoldem
             if (WasToggleKeyPressed())
             {
                 SetVisible(!_isOpen);
+                return;
+            }
+
+            if (_isOpen && Input.GetKeyDown(KeyCode.Escape))
+            {
+                if (_quitCoroutine == null)
+                    _quitCoroutine = StartCoroutine(QuitAfterEscapeSound());
                 return;
             }
 
@@ -202,6 +211,30 @@ namespace TexasHoldem
                 || Input.GetKeyDown(KeyCode.F2)
                 || Input.GetKeyDown(KeyCode.F5)
                 || Input.GetKeyDown(KeyCode.O);
+        }
+
+        private IEnumerator QuitAfterEscapeSound()
+        {
+            PlayMenuToggleSound();
+
+            float delay = _menuToggleClip != null ? _menuToggleClip.length : 0f;
+            if (delay > 0f)
+                yield return new WaitForSecondsRealtime(delay);
+
+            _quitCoroutine = null;
+            QuitApplication();
+        }
+
+        private void QuitApplication()
+        {
+            if (_isOpen)
+                Time.timeScale = _timeScaleBeforePause;
+
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         private bool IsCursorNearPanel()
