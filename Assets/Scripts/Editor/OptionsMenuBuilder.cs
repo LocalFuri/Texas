@@ -48,9 +48,21 @@ public static class OptionsMenuBuilder
 
         var rootTransform = canvas.transform.Find("OptionsMenu_Panel");
         GameObject panel;
+        Vector2 panelPos = Vector2.zero;
         if (rootTransform != null)
         {
             panel = rootTransform.gameObject;
+            var existingMenu = panel.GetComponent<OptionsMenu>();
+            if (existingMenu != null)
+            {
+                var existingSo = new SerializedObject(existingMenu);
+                panelPos = new Vector2(
+                    existingSo.FindProperty("_panelPosX").floatValue,
+                    existingSo.FindProperty("_panelPosY").floatValue);
+            }
+            else
+                panelPos = ((RectTransform)panel.transform).anchoredPosition;
+
             for (int i = panel.transform.childCount - 1; i >= 0; i--)
                 Undo.DestroyObjectImmediate(panel.transform.GetChild(i).gameObject);
         }
@@ -66,7 +78,7 @@ public static class OptionsMenuBuilder
         rt.anchorMin        = new Vector2(0.5f, 0.5f);
         rt.anchorMax        = new Vector2(0.5f, 0.5f);
         rt.pivot            = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = Vector2.zero;
+        rt.anchoredPosition = panelPos;
         rt.sizeDelta        = new Vector2(PanelWidth, PanelHeight);
 
         var bg = GetOrAdd<Image>(panel);
@@ -95,6 +107,8 @@ public static class OptionsMenuBuilder
 
         var so = new SerializedObject(menuComp);
         so.Update();
+        so.FindProperty("_panelPosX").floatValue = panelPos.x;
+        so.FindProperty("_panelPosY").floatValue = panelPos.y;
         so.FindProperty("_canvasGroup").objectReferenceValue = canvasGroup;
         so.FindProperty("_menuToggleClip").objectReferenceValue =
             AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/Pop04.wav");

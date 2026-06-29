@@ -2435,7 +2435,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 45.85877}
+  m_AnchoredPosition: {x: 0, y: 70}
   m_SizeDelta: {x: 248, y: 321.7593}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &277278577
@@ -2534,6 +2534,8 @@ MonoBehaviour:
   - {fileID: 721194722}
   - {fileID: 601382055}
   - {fileID: 169520253}
+  _panelPosX: 0
+  _panelPosY: 70
   _menuToggleClip: {fileID: 8300000, guid: 58a8a640629d54e4c99a29b43455f2c2, type: 3}
   _menuToggleVolume: 0.35
 --- !u!82 &277278582

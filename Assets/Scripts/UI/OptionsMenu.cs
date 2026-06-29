@@ -43,6 +43,13 @@ namespace TexasHoldem
         [SerializeField] private CanvasGroup _canvasGroup;
         [SerializeField] private Toggle[]    _toggles = new Toggle[OptionCount];
 
+        [Header("Layout")]
+        [Tooltip("AnchoredPosition of the panel (canvas center anchor).")]
+        [SerializeField] private float _panelPosX;
+        [SerializeField] private float _panelPosY = 157f;
+
+        private Vector2 PanelAnchoredPosition => new Vector2(_panelPosX, _panelPosY);
+
         [Header("Audio")]
         [SerializeField] private AudioClip _menuToggleClip;
         [SerializeField] [Range(0f, 1f)] private float _menuToggleVolume = 0.35f;
@@ -83,6 +90,15 @@ namespace TexasHoldem
             ApplyCompactLayout();
             ApplyToggleStyles();
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            var rt = transform as RectTransform;
+            if (rt != null)
+                rt.anchoredPosition = PanelAnchoredPosition;
+        }
+#endif
 
         private void OnDestroy()
         {
@@ -263,7 +279,7 @@ namespace TexasHoldem
                 rt.anchorMin        = new Vector2(0.5f, 0.5f);
                 rt.anchorMax        = new Vector2(0.5f, 0.5f);
                 rt.pivot            = new Vector2(0.5f, 0.5f);
-                rt.anchoredPosition = Vector2.zero;
+                rt.anchoredPosition = PanelAnchoredPosition;
                 rt.sizeDelta        = new Vector2(PanelWidth, panelHeight);
             }
 
