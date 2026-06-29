@@ -620,7 +620,7 @@ namespace TexasHoldem
                     rowLe.minHeight       = OptionsMenuRowFactory.RowHeight;
 
                     if (hl != null)
-                        hl.spacing = 6f;
+                        hl.spacing = OptionsMenuSliderStyle.LabelSliderGap;
 
                     Transform icon = child.Find("Icon");
                     if (icon != null)

@@ -65,11 +65,11 @@ namespace TexasHoldem
             Stretch((RectTransform)handleLabelGo.transform);
             var handleTmp = handleLabelGo.AddComponent<TextMeshProUGUI>();
             handleTmp.text               = OptionsMenuSliderStyle.FormatHandleValue(initialValue);
-            handleTmp.color              = Color.black;
             handleTmp.raycastTarget      = false;
             handleTmp.enableWordWrapping = false;
 
-            OptionsMenuSliderStyle.ApplyMenuFont(labelTmp, handleTmp);
+            OptionsMenuSliderStyle.ApplyMenuFont(labelTmp, handleTmp, copySharedMaterial: false);
+            OptionsMenuSliderStyle.ApplyHandleLabelStyle(handleTmp);
 
             slider.fillRect     = (RectTransform)fillGo.transform;
             slider.handleRect   = (RectTransform)handleGo.transform;
@@ -92,7 +92,7 @@ namespace TexasHoldem
 
             var hl                    = row.AddComponent<HorizontalLayoutGroup>();
             hl.childAlignment         = TextAnchor.MiddleLeft;
-            hl.spacing                = 6f;
+            hl.spacing                = OptionsMenuSliderStyle.LabelSliderGap;
             hl.childControlWidth      = true;
             hl.childControlHeight     = true;
             hl.childForceExpandWidth  = false;

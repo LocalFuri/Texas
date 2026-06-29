@@ -10,13 +10,16 @@ namespace TexasHoldem
         public const string BotThinkLabelText = "Bots think";
         public const float  TrackHeight       = 14f;
         public const float  HandleWidth       = 40f;
-        public const float  HandleHeight      = 26f;
-        public const float  LabelWidth        = 78f;
+        public const float  HandleHeight      = 19f;
+        public const float  LabelWidth        = 102f;
         public const float  SliderMinWidth    = 120f;
+        public const float  LabelSliderGap    = 10f;
+        public const float  TrackLeftInset    = 2f;
 
         public static float LabelFontSize => OptionsMenu.MenuRowFontSize;
 
-        private static readonly Color FillColor = new Color(0.275f, 0.557f, 0.286f, 1f);
+        private static readonly Color FillColor      = new Color(0.275f, 0.557f, 0.286f, 1f);
+        private static readonly Color HandleLabelColor = new Color(0f, 0f, 0f, 1f);
 
         public static void Apply(Slider slider, TMP_Text handleLabel = null)
         {
@@ -39,6 +42,7 @@ namespace TexasHoldem
                 }
 
                 SetCenteredBar((RectTransform)background, TrackHeight);
+                InsetTrackLeft((RectTransform)background);
             }
 
             Transform fillArea = slider.transform.Find("Fill Area");
@@ -46,7 +50,7 @@ namespace TexasHoldem
             {
                 fillAreaRt.anchorMin = Vector2.zero;
                 fillAreaRt.anchorMax = Vector2.one;
-                fillAreaRt.offsetMin = Vector2.zero;
+                fillAreaRt.offsetMin = new Vector2(TrackLeftInset, 0f);
                 fillAreaRt.offsetMax = new Vector2(-HandleWidth * 0.5f, 0f);
             }
 
@@ -87,14 +91,8 @@ namespace TexasHoldem
 
                 if (handleLabel != null)
                 {
-                    ApplyMenuFont(rowLabel, handleLabel);
-                    handleLabel.color               = Color.black;
-                    handleLabel.fontSize            = LabelFontSize;
-                    handleLabel.fontStyle           = FontStyles.Normal;
-                    handleLabel.alignment           = TextAlignmentOptions.Center;
-                    handleLabel.enableWordWrapping  = false;
-                    handleLabel.overflowMode        = TextOverflowModes.Overflow;
-                    handleLabel.margin              = Vector4.zero;
+                    ApplyMenuFont(rowLabel, handleLabel, copySharedMaterial: false);
+                    ApplyHandleLabelStyle(handleLabel);
                 }
             }
 
@@ -115,6 +113,20 @@ namespace TexasHoldem
             slider.transition = Selectable.Transition.None;
         }
 
+        public static void ApplyHandleLabelStyle(TMP_Text handleLabel)
+        {
+            if (handleLabel == null)
+                return;
+
+            handleLabel.color              = HandleLabelColor;
+            handleLabel.fontSize           = LabelFontSize;
+            handleLabel.fontStyle          = FontStyles.Bold;
+            handleLabel.alignment          = TextAlignmentOptions.Center;
+            handleLabel.enableWordWrapping = false;
+            handleLabel.overflowMode       = TextOverflowModes.Overflow;
+            handleLabel.margin             = Vector4.zero;
+        }
+
         public static void ApplyRowLabelStyle(TMP_Text tmp, TMP_Text fontSource = null)
         {
             if (tmp == null)
@@ -130,7 +142,7 @@ namespace TexasHoldem
             ApplyMenuFont(fontSource, tmp);
         }
 
-        public static void ApplyMenuFont(TMP_Text source, TMP_Text target)
+        public static void ApplyMenuFont(TMP_Text source, TMP_Text target, bool copySharedMaterial = true)
         {
             if (target == null)
                 return;
@@ -142,9 +154,13 @@ namespace TexasHoldem
             if (from == null || from.font == null)
                 return;
 
-            target.font                  = from.font;
-            target.fontSharedMaterial    = from.fontSharedMaterial;
-            target.enableAutoSizing      = false;
+            target.font              = from.font;
+            target.enableAutoSizing  = false;
+
+            if (copySharedMaterial)
+                target.fontSharedMaterial = from.fontSharedMaterial;
+            else if (from.font.material != null)
+                target.fontSharedMaterial = from.font.material;
         }
 
         public static string FormatHandleValue(float seconds)
@@ -162,6 +178,11 @@ namespace TexasHoldem
             rt.pivot            = new Vector2(0.5f, 0.5f);
             rt.sizeDelta        = new Vector2(0f, height);
             rt.anchoredPosition = Vector2.zero;
+        }
+
+        private static void InsetTrackLeft(RectTransform rt)
+        {
+            rt.offsetMin = new Vector2(TrackLeftInset, rt.offsetMin.y);
         }
     }
 }
