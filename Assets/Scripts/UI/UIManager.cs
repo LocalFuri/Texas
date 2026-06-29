@@ -154,7 +154,10 @@ namespace TexasHoldem
         private void OnDestroy()
         {
             if (OptionsMenu.Instance != null)
+            {
                 OptionsMenu.Instance.OnOptionsChanged -= OnOptionsMenuChanged;
+                OptionsMenu.Instance.OnMenuClosed     -= OnOptionsMenuClosed;
+            }
         }
 
         private IEnumerator BindOptionsMenuWhenReady()
@@ -163,6 +166,7 @@ namespace TexasHoldem
                 yield return null;
 
             OptionsMenu.Instance.OnOptionsChanged += OnOptionsMenuChanged;
+            OptionsMenu.Instance.OnMenuClosed     += OnOptionsMenuClosed;
 
             if (OptionsMenu.Instance.AutoAdvance && !_gameStarted)
                 yield return AutoStartGameNextFrame();
@@ -172,6 +176,33 @@ namespace TexasHoldem
         {
             if (_gameManager?.Players != null)
                 OnPlayersUpdated(_gameManager.Players);
+        }
+
+        private void OnOptionsMenuClosed()
+        {
+            RefreshActiveBotTurnTimer();
+        }
+
+        /// <summary>Restarts ring/timer for the active bot seat after bot-think delay changes.</summary>
+        private void RefreshActiveBotTurnTimer()
+        {
+            if (_gameManager == null || _activeTimerView == null)
+                return;
+
+            int playerIndex = _playerViews.IndexOf(_activeTimerView);
+            if (playerIndex < 0 || playerIndex >= _gameManager.Players.Count)
+                return;
+
+            PlayerState player = _gameManager.Players[playerIndex];
+            if (player.Type != PlayerType.AI)
+                return;
+
+            float duration = _gameManager.AiActionDelay;
+            _activeTimerView.SetActiveTurn(true, duration);
+
+            StopTurnTimer();
+            _activeTimerView = _playerViews[playerIndex];
+            _timerCoroutine  = StartCoroutine(RunTurnTimer(_activeTimerView, duration, isHuman: false));
         }
 
         private IEnumerator AutoStartGameNextFrame()

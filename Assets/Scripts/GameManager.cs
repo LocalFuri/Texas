@@ -316,7 +316,7 @@ namespace TexasHoldem
 
                 if (player.Type == PlayerType.AI)
                 {
-                    yield return DelaySeconds(_aiActionDelay);
+                    yield return DelayForAiAction();
                     var (action, raise) = _aiController.DecideAction(
                         player, _boardManager.CommunityCards, _bettingManager, IsTestMode);
                     int playerBetBefore = player.CurrentBet;
@@ -443,6 +443,23 @@ namespace TexasHoldem
         private IEnumerator WaitWhileOptionsMenuOpen()
         {
             yield return new WaitUntil(() => !IsOptionsMenuOpen);
+        }
+
+        private IEnumerator DelayForAiAction()
+        {
+            float elapsed = 0f;
+            while (true)
+            {
+                float target = _aiActionDelay;
+                if (target <= 0f)
+                    yield break;
+                if (elapsed >= target)
+                    yield break;
+
+                if (!IsOptionsMenuOpen)
+                    elapsed += Time.deltaTime;
+                yield return null;
+            }
         }
 
         private IEnumerator DelaySeconds(float seconds)

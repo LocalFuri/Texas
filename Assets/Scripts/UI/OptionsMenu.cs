@@ -17,6 +17,7 @@ namespace TexasHoldem
         public const int BotThinkSliderRowIndex = 1;
         public const float BotThinkMinSeconds   = 0f;
         public const float BotThinkMaxSeconds   = 30f;
+        public const float BotThinkDefaultSeconds = 1f;
 
         /// <summary>Shared label size for all options-menu rows (Restart, toggles, bot slider).</summary>
         public const float MenuRowFontSize = 20f;
@@ -45,6 +46,14 @@ namespace TexasHoldem
         public bool IsOpen             => _isOpen;
 
         public event Action OnOptionsChanged;
+        /// <summary>Fired after the menu closes and bot-think delay is committed to gameplay.</summary>
+        public event Action OnMenuClosed;
+
+        /// <summary>Slider value clamped to the configured bot-think range.</summary>
+        public float CurrentBotThinkDelaySeconds =>
+            _botThinkSlider != null
+                ? Mathf.Clamp(_botThinkSlider.value, BotThinkMinSeconds, BotThinkMaxSeconds)
+                : BotThinkDefaultSeconds;
 
         // ── Serialized references (wired by OptionsMenuBuilder) ───────────
         [SerializeField] private CanvasGroup _canvasGroup;
@@ -110,7 +119,12 @@ namespace TexasHoldem
             ApplyCompactLayout();
             ApplyToggleStyles();
             ApplySliderStyles();
-            SyncBotThinkSliderFromGame();
+            OptionsMenuPreferences.Load(this);
+        }
+
+        private void OnApplicationQuit()
+        {
+            CommitAndSaveSettings();
         }
 
 #if UNITY_EDITOR
@@ -173,10 +187,13 @@ namespace TexasHoldem
             {
                 _timeScaleBeforePause = Time.timeScale;
                 Time.timeScale         = 0f;
+                SyncBotThinkSliderFromGame();
             }
             else
             {
                 Time.timeScale = _timeScaleBeforePause;
+                CommitAndSaveSettings();
+                OnMenuClosed?.Invoke();
             }
 
             ResolveCanvasGroup();
@@ -244,6 +261,8 @@ namespace TexasHoldem
 
         private void QuitApplication()
         {
+            CommitAndSaveSettings();
+
             if (_isOpen)
                 Time.timeScale = _timeScaleBeforePause;
 
@@ -467,15 +486,63 @@ namespace TexasHoldem
             UpdateBotThinkHandleLabel(delay);
         }
 
-        private const float BotThinkDefaultSeconds = 1f;
-
         private void OnBotThinkSliderChanged(float value)
         {
             float delay = Mathf.Clamp(value, BotThinkMinSeconds, BotThinkMaxSeconds);
             UpdateBotThinkHandleLabel(delay);
+        }
+
+        /// <summary>Commits slider value to GameManager (called when the menu closes).</summary>
+        public void ApplyBotThinkDelayToGame()
+        {
+            float delay = CurrentBotThinkDelaySeconds;
+            UpdateBotThinkHandleLabel(delay);
 
             GameManager gm = FindObjectOfType<GameManager>();
             gm?.SetAiActionDelay(delay);
+        }
+
+        private void CommitAndSaveSettings()
+        {
+            ApplyBotThinkDelayToGame();
+            OptionsMenuPreferences.Save(this);
+        }
+
+        /// <summary>Restores bot-think slider and GameManager from saved preferences.</summary>
+        public void ApplyLoadedBotThinkDelay(float delay)
+        {
+            delay = Mathf.Clamp(delay, BotThinkMinSeconds, BotThinkMaxSeconds);
+
+            if (_botThinkSlider != null)
+            {
+                _botThinkSlider.SetValueWithoutNotify(delay);
+                UpdateBotThinkHandleLabel(delay);
+            }
+
+            FindObjectOfType<GameManager>()?.SetAiActionDelay(delay);
+        }
+
+        /// <summary>Restores persistent toggle rows (indices 2–5).</summary>
+        public void ApplyLoadedToggleStates(
+            bool showBotCards, bool testMode, bool godMode, bool autoAdvance)
+        {
+            ApplyLoadedToggle(2, showBotCards);
+            ApplyLoadedToggle(3, testMode);
+            ApplyLoadedToggle(4, godMode);
+            ApplyLoadedToggle(5, autoAdvance);
+
+            if (godMode)
+                ApplyGodModeChips();
+        }
+
+        private void ApplyLoadedToggle(int index, bool value)
+        {
+            if (index < 0 || index >= _toggleStates.Length)
+                return;
+
+            _toggleStates[index] = value;
+            if (_toggles[index] != null)
+                _toggles[index].SetIsOnWithoutNotify(value);
         }
 
         private void ResolveBotThinkHandleLabel()
