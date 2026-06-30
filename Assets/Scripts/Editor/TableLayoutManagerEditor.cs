@@ -31,8 +31,8 @@ namespace TexasHoldem
 
             EditorGUILayout.HelpBox(
                 "HudPanel width/X come from Card_1. Per-seat HudGlow → Panel Right/Bottom Border Px (default 14) " +
-                "extend the dark fill past card edges. BetAnchor / DealerButtonAnchor positions " +
-                "place chip stacks and dealer token per seat — Apply Layout to refresh.",
+                "extend the dark fill past card edges. Bet chips anchor under the avatar (same offset every seat). " +
+                "DealerButtonAnchor positions the dealer token per seat — Apply Layout to refresh.",
                 MessageType.Info);
 
             EditorGUILayout.Space(4);

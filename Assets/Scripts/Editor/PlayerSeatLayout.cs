@@ -23,7 +23,7 @@ namespace TexasHoldem
         ///   ├── StatusText        — overlays ChipsText when Folded / All In / Eliminated
         ///   ├── SeatActionMenu    — tappable Check / Fold / Raise / All-In above the name (human turn)
         ///   ├── ActionBadge       — neon pill when player Checks / Folds / Raises / All-In
-        ///   └── BetAnchor         — chip stack anchor between avatar and table centre
+        ///   └── BetAnchor         — chip stack anchor under avatar (TableLayoutManager)
         ///       └── BetDisplay    — ChipStack + AmountBadge
         ///   └── DealerButtonAnchor — dealer token anchor below avatar
     ///

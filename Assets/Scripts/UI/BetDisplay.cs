@@ -9,7 +9,7 @@ namespace TexasHoldem
     /// <summary>
     /// Displays a player's current round bet as a chip stack + amount badge.
     /// Layout (managed by TableLayoutManager + PlayerSeatLayout):
-    ///   BetAnchor — under avatar (X from avatar, Y from seat config)
+    ///   BetAnchor — fixed offset below avatar centre (same every seat)
     ///   ChipStack — centred above amount badge
     ///   AmountBadge — below chip stack
     ///
