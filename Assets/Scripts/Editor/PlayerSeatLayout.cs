@@ -868,9 +868,9 @@ namespace TexasHoldem
             var betDisplayImg = betDisplayGo.GetComponent<Image>();
             if (betDisplayImg != null) DestroyObj(betDisplayImg);
             const float betDisplayW = 90f;
-            const float betDisplayH = 84f; // chip stack + gap + amount badge
+            const float betDisplayH = 90f; // chip stack + gap + amount badge
             const float chipStackCenterY = 18f;
-            const float badgeCenterY     = -27f;
+            const float badgeCenterY     = -30f;
             SetRect(betDisplayGo, 0f, 0f, betDisplayW, betDisplayH);
 
             DestroyIfExists(betDisplayGo.transform, "ChipIcon");
@@ -884,10 +884,8 @@ namespace TexasHoldem
             betShadow.effectColor    = new Color(0f, 0f, 0f, 0.65f);
             betShadow.effectDistance = new Vector2(2f, -3f);
 
-            // ── ChipStack: Chip_0 / Chip_1 / Chip_2 — fixed stack layers (layout unchanged) ─
-            const float ChipD  = 38f;
-            const float ChipDx =  6f;
-            const float ChipDy =  5f;
+            // ── ChipStack: Chip_0 / Chip_1 / Chip_2 — layout driven by ChipStackView.SetAmount ─
+            const float ChipD = ChipStackView.ChipSize;
 
             Sprite chip1Sprite  = AssetDatabase.LoadAssetAtPath<Sprite>(Chip1Path);
             Sprite chip5Sprite  = AssetDatabase.LoadAssetAtPath<Sprite>(Chip5Path);
@@ -897,7 +895,8 @@ namespace TexasHoldem
             RecordObj(chipStackGo);
             var chipStackBg = chipStackGo.GetComponent<Image>();
             if (chipStackBg != null) DestroyObj(chipStackBg);
-            SetRect(chipStackGo, 0f, chipStackCenterY, ChipD + ChipDx * 2f, ChipD + ChipDy * 2f);
+            SetRect(chipStackGo, 0f, chipStackCenterY,
+                ChipStackView.MaxLayoutWidth, ChipStackView.MaxLayoutHeight);
 
             string[] chipNames   = { "Chip_0", "Chip_1", "Chip_2" };
             Sprite[] slotSprites = { chip1Sprite, chip5Sprite, chip25Sprite };
@@ -905,10 +904,6 @@ namespace TexasHoldem
 
             for (int ci = 0; ci < chipNames.Length; ci++)
             {
-                float backness = chipNames.Length - 1 - ci;
-                float ox = ChipDx * backness - ChipDx;
-                float oy = ChipDy * backness;
-
                 GameObject chipGo  = GetOrCreate(chipStackGo.transform, chipNames[ci]);
                 var        chipImg = GetOrAdd<Image>(chipGo);
                 RecordObj(chipGo);
@@ -918,7 +913,7 @@ namespace TexasHoldem
                 chipImg.color          = Color.white;
                 chipImg.preserveAspect = true;
                 chipImg.raycastTarget  = false;
-                SetRect(chipGo, ox, oy, ChipD, ChipD);
+                SetRect(chipGo, 0f, 0f, ChipD, ChipD);
                 chipGo.transform.SetSiblingIndex(ci);
                 slotImages[ci] = chipImg;
             }

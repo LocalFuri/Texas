@@ -377,8 +377,8 @@ namespace TexasHoldem
             return anchor.position;
         }
 
-        private const float BetChipStackWidth      = 50f;
-        private const float BetChipStackHeight     = 48f;
+        private static float BetChipStackWidth      => ChipStackView.MaxLayoutWidth;
+        private static float BetChipStackHeight     => ChipStackView.MaxLayoutHeight;
         private const float BetChipBadgeGap        = 6f;
         private const float BetAmountBadgeWidth    = 90f;
         private const float BetAmountBadgeHeight   = 30f;
@@ -440,31 +440,12 @@ namespace TexasHoldem
                     0f, BetAmountBadgeCenterY, BetAmountBadgeWidth, BetAmountBadgeHeight);
             }
 
-            ApplyChipStackOffsets(chipStack);
             HideLegacyBetDisplayChildren(contentRoot);
-        }
 
-        private const float BetChipDx = 6f;
-        private const float BetChipDy = 5f;
-
-        private static void ApplyChipStackOffsets(Transform chipStack)
-        {
-            if (chipStack == null)
-                return;
-
-            int count = chipStack.childCount;
-            for (int i = 0; i < count; i++)
+            if (chipStack != null)
             {
-                if (chipStack.GetChild(i) is not RectTransform chipRt)
-                    continue;
-
-                float backness = count - 1 - i;
-                float ox = BetChipDx * backness - BetChipDx;
-                float oy = BetChipDy * backness;
-                chipRt.anchorMin        = new Vector2(0.5f, 0.5f);
-                chipRt.anchorMax        = new Vector2(0.5f, 0.5f);
-                chipRt.pivot            = new Vector2(0.5f, 0.5f);
-                chipRt.anchoredPosition = new Vector2(ox, oy);
+                var stackView = chipStack.GetComponent<ChipStackView>();
+                stackView?.RefreshLayout();
             }
         }
 
