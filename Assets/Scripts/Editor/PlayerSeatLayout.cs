@@ -868,9 +868,9 @@ namespace TexasHoldem
             var betDisplayImg = betDisplayGo.GetComponent<Image>();
             if (betDisplayImg != null) DestroyObj(betDisplayImg);
             const float betDisplayW = 90f;
-            const float betDisplayH = 90f; // chip stack + gap + amount badge
+            float betDisplayH = ChipStackView.MaxLayoutHeight + 6f + 30f;
             const float chipStackCenterY = 18f;
-            const float badgeCenterY     = -30f;
+            float badgeCenterY = -(ChipStackView.MaxLayoutHeight + 6f) * 0.5f;
             SetRect(betDisplayGo, 0f, 0f, betDisplayW, betDisplayH);
 
             DestroyIfExists(betDisplayGo.transform, "ChipIcon");

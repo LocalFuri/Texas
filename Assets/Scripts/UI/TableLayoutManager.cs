@@ -84,6 +84,12 @@ namespace TexasHoldem
         [Tooltip("Gap between avatar bottom edge and chip stack top; same for every seat.")]
         [SerializeField] private float _betGapBelowAvatar = 6f;
 
+        [Tooltip("Vertical step between identical chips (2–4 px). One slider for all seats.")]
+        [SerializeField, Range(2f, 4f)] private float _stackOverlapY = 2f;
+
+        /// <summary>Identical-chip vertical step — tuned on TableLayoutManager only.</summary>
+        public float StackOverlapY => _stackOverlapY;
+
         [SerializeField, HideInInspector] private float _cardHeight = 120f * (95f / 65f);
 
         private const float CardAspectRatio = 95f / 65f;
@@ -592,6 +598,20 @@ namespace TexasHoldem
                 _playerViews[i].ApplyHudLayout();
                 ApplyBetAnchor(_playerViews[i], cfg);
                 ApplyDealerButtonAnchor(_playerViews[i], cfg);
+            }
+
+            RefreshAllChipStackLayouts();
+        }
+
+        private void RefreshAllChipStackLayouts()
+        {
+            for (int i = 0; i < _playerViews.Length; i++)
+            {
+                if (_playerViews[i] == null)
+                    continue;
+
+                ChipStackView stack = _playerViews[i].GetComponentInChildren<ChipStackView>(true);
+                stack?.RefreshLayout();
             }
         }
 

@@ -13,15 +13,18 @@ namespace TexasHoldem
     {
         private const int MaxStackChips = 3;
 
-        public const float ChipSize       = 38f;
-        public const float ColumnGapX     = 28f;
-        public const float StackOverlapY  = 8f;
+        public const float ChipSize           = 38f;
+        public const float ColumnGapX         = 28f;
+        public const float MaxStackOverlapY   = 4f;
+        private const float DefaultStackOverlapY = 2f;
+
+        private static TableLayoutManager _cachedLayout;
 
         /// <summary>Worst-case width (three single-chip columns).</summary>
         public static float MaxLayoutWidth  => ChipSize * 3f + ColumnGapX * 2f;
 
-        /// <summary>Worst-case height (three identical chips stacked).</summary>
-        public static float MaxLayoutHeight => ChipSize + StackOverlapY * 2f;
+        /// <summary>Worst-case height (three identical chips stacked at max overlap).</summary>
+        public static float MaxLayoutHeight => ChipSize + MaxStackOverlapY * 2f;
 
         [SerializeField] private Image  _chip0;
         [SerializeField] private Image  _chip1;
@@ -138,9 +141,10 @@ namespace TexasHoldem
             }
 
             int colCount = groups.Count;
+            float overlapY     = ResolveStackOverlapY();
             float layoutWidth  = colCount * ChipSize + (colCount - 1) * ColumnGapX;
-            float layoutHeight = ChipSize + (maxStack - 1) * StackOverlapY;
-            float baseY        = -((maxStack - 1) * StackOverlapY) * 0.5f;
+            float layoutHeight = ChipSize + (maxStack - 1) * overlapY;
+            float baseY        = -((maxStack - 1) * overlapY) * 0.5f;
 
             var stackRt = StackRoot;
             stackRt.sizeDelta = new Vector2(layoutWidth, layoutHeight);
@@ -167,12 +171,29 @@ namespace TexasHoldem
                     chipRt.anchorMax        = new Vector2(0.5f, 0.5f);
                     chipRt.pivot            = new Vector2(0.5f, 0.5f);
                     chipRt.sizeDelta        = new Vector2(ChipSize, ChipSize);
-                    chipRt.anchoredPosition = new Vector2(colCenterX, baseY + j * StackOverlapY);
+                    chipRt.anchoredPosition = new Vector2(colCenterX, baseY + j * overlapY);
                     chipRt.SetSiblingIndex(slotIndex);
 
                     slotIndex++;
                 }
             }
+        }
+
+        private static float ResolveStackOverlapY()
+        {
+            if (_cachedLayout == null)
+            {
+#if UNITY_2023_1_OR_NEWER
+                _cachedLayout = Object.FindFirstObjectByType<TableLayoutManager>(
+                    FindObjectsInactive.Include);
+#else
+                _cachedLayout = Object.FindObjectOfType<TableLayoutManager>();
+#endif
+            }
+
+            return _cachedLayout != null
+                ? _cachedLayout.StackOverlapY
+                : DefaultStackOverlapY;
         }
 
         private Sprite SpriteFor(int denomination)
