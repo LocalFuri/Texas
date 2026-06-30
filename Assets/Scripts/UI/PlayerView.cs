@@ -409,8 +409,50 @@ namespace TexasHoldem
             return t * t * (3f - 2f * t);
         }
 
+        /// <summary>How many hole cards have finished the flip reveal.</summary>
+        public int RevealedHoleCount => _revealedHoleCount;
+
         /// <summary>Clears hole-card reveal tracking (call at the start of a new round).</summary>
         public void ResetHoleCardReveal() => _revealedHoleCount = 0;
+
+        /// <summary>Stops in-flight hole-card flip animations without hiding revealed cards.</summary>
+        public void CancelHoleCardFlips()
+        {
+            foreach (CardView slot in _cardSlots)
+                slot?.CancelFlip();
+        }
+
+        /// <summary>
+        /// Keeps hole cards visible between bet updates — face-up when already revealed,
+        /// face-down when the deal flip has not started yet.
+        /// </summary>
+        /// <param name="holeRevealInProgress">When true, unrevealed slots are left untouched.</param>
+        public void SyncHumanHoleCardDisplay(PlayerState player, bool holeRevealInProgress = false)
+        {
+            if (!_isHuman || player == null)
+                return;
+
+            if (player.HoleCards.Count == 0)
+            {
+                _revealedHoleCount = 0;
+                HideAllCardSlots();
+                return;
+            }
+
+            for (int i = 0; i < _cardSlots.Count; i++)
+            {
+                if (i >= player.HoleCards.Count)
+                {
+                    _cardSlots[i]?.Hide();
+                    continue;
+                }
+
+                if (i < _revealedHoleCount)
+                    _cardSlots[i].Show(player.HoleCards[i]);
+                else if (!holeRevealInProgress)
+                    _cardSlots[i].ShowFaceDown();
+            }
+        }
 
         /// <summary>Hides hole cards and clears reveal state (title screen / full reset).</summary>
         public void ClearTableCards()
@@ -544,6 +586,9 @@ namespace TexasHoldem
                     _avatarRingGold.color      = Color.white;
                 }
 
+                if (_hudGlow != null)
+                    _hudGlow.GlowIntensity = _hudGlowMinIntensity;
+
                 _ringCountdown = StartCoroutine(RunRingCountdown(countdownDuration));
             }
             else
@@ -574,9 +619,9 @@ namespace TexasHoldem
                 yield return null;
             }
 
+            _ringCountdown = null;
             ApplyGoldRingIdle();
             ApplyHudGlowIdle();
-            _ringCountdown = null;
         }
 
         /// <summary>Shows face-down hole cards for AI opponents.</summary>
@@ -697,9 +742,9 @@ namespace TexasHoldem
                 yield return null;
             }
 
+            _ringCountdown = null;
             ApplyGoldRingIdle();
             ApplyHudGlowIdle();
-            _ringCountdown = null;
         }
     }
 }

@@ -356,6 +356,9 @@ namespace TexasHoldem
 
                 NotifyPlayersUpdated();
 
+                if (player.Type == PlayerType.AI && _aiActionDelay <= 0f)
+                    yield return null;
+
                 // If someone raised, all other active players must act again.
                 if (_bettingManager.CurrentBet > betBeforeAction)
                 {

@@ -116,6 +116,12 @@ namespace TexasHoldem
 
         public void SetFlipDuration(float duration) => flipDuration = duration;
 
+        /// <summary>Stops an in-flight flip and restores scale (e.g. when UI refresh is cancelled).</summary>
+        public void CancelFlip()
+        {
+            StopFlip();
+        }
+
         private IEnumerator FlipRoutine(bool toFaceUp, Action onComplete)
         {
             var rt        = (RectTransform)transform;

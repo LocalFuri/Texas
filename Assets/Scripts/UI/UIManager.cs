@@ -82,6 +82,8 @@ namespace TexasHoldem
         private int                  _revealedCommunityCount;
         private Coroutine            _communityRevealCoroutine;
         private Coroutine            _playersRefreshCoroutine;
+        private Coroutine            _humanHoleRevealCoroutine;
+        private Coroutine            _beginTurnCoroutine;
         private Coroutine            _timerCoroutine;
         private PlayerView           _activeTimerView;
         private PlayerView           _humanSeatView;
@@ -446,8 +448,13 @@ namespace TexasHoldem
             _suppressDealerButton = true;
             _tableLayout?.HideDealerButton();
 
+            StopHumanHoleReveal();
+
             foreach (PlayerView view in ResolvePlayerViews())
+            {
                 view?.HideBetDisplay();
+                view?.ResetHoleCardReveal();
+            }
 
             _previousBets.Clear();
         }
@@ -484,6 +491,52 @@ namespace TexasHoldem
             _playersRefreshCoroutine = StartCoroutine(RefreshPlayers(players));
         }
 
+        private void StopHumanHoleReveal()
+        {
+            if (_humanHoleRevealCoroutine != null)
+            {
+                StopCoroutine(_humanHoleRevealCoroutine);
+                _humanHoleRevealCoroutine = null;
+            }
+
+            _humanSeatView?.CancelHoleCardFlips();
+        }
+
+        private void TryScheduleHumanHoleReveal(PlayerView humanView, PlayerState humanState)
+        {
+            if (humanView == null || humanState == null)
+                return;
+            if (humanState.HoleCards.Count == 0)
+                return;
+            if (humanView.RevealedHoleCount >= humanState.HoleCards.Count)
+                return;
+            if (_humanHoleRevealCoroutine != null)
+                return;
+
+            _humanHoleRevealCoroutine = StartCoroutine(HumanHoleRevealRoutine(humanView, humanState));
+        }
+
+        private IEnumerator HumanHoleRevealRoutine(PlayerView humanView, PlayerState humanState)
+        {
+            float flipDuration = _gameManager != null ? _gameManager.CommunityFlipDuration : 0.35f;
+            float flipGap      = _gameManager != null ? _gameManager.CommunityFlipGap : 0.1f;
+
+            yield return humanView.RevealHumanHoleCards(humanState, flipDuration, flipGap);
+            _humanHoleRevealCoroutine = null;
+        }
+
+        private IEnumerator WaitForTableUiIdle(bool waitForHoleReveal)
+        {
+            while (_playersRefreshCoroutine != null)
+                yield return null;
+
+            if (waitForHoleReveal)
+            {
+                while (_humanHoleRevealCoroutine != null)
+                    yield return null;
+            }
+        }
+
         private IEnumerator RefreshPlayers(List<PlayerState> players)
         {
             if (players == null)
@@ -495,11 +548,9 @@ namespace TexasHoldem
 
             _humanPlayer = players.Find(p => p.Type == PlayerType.Human);
 
-            float flipDuration = _gameManager != null ? _gameManager.CommunityFlipDuration : 0.35f;
-            float flipGap      = _gameManager != null ? _gameManager.CommunityFlipGap : 0.1f;
-
             PlayerView humanView = null;
             PlayerState humanState = null;
+            bool holeRevealRunning = _humanHoleRevealCoroutine != null;
 
             for (int i = 0; i < views.Count && i < players.Count; i++)
             {
@@ -517,6 +568,7 @@ namespace TexasHoldem
                     humanView  = view;
                     humanState = player;
                     _humanSeatView = view;
+                    view.SyncHumanHoleCardDisplay(player, holeRevealRunning);
                 }
                 else
                 {
@@ -544,8 +596,7 @@ namespace TexasHoldem
 
             ApplyPendingActionBadge();
 
-            if (humanView != null && humanState != null)
-                yield return humanView.RevealHumanHoleCards(humanState, flipDuration, flipGap);
+            TryScheduleHumanHoleReveal(humanView, humanState);
 
             UpdatePotText();
             RefreshDealerButton();
@@ -630,7 +681,20 @@ namespace TexasHoldem
 
         private void OnPlayerTurn(PlayerState player)
         {
+            if (_beginTurnCoroutine != null)
+            {
+                StopCoroutine(_beginTurnCoroutine);
+                _beginTurnCoroutine = null;
+            }
+
+            _beginTurnCoroutine = StartCoroutine(BeginPlayerTurn(player));
+        }
+
+        private IEnumerator BeginPlayerTurn(PlayerState player)
+        {
             bool isHumanTurn = player.Type == PlayerType.Human;
+            yield return WaitForTableUiIdle(isHumanTurn);
+
             if (isHumanTurn)
                 _humanPlayer = player;
 
@@ -655,6 +719,8 @@ namespace TexasHoldem
                 _activeTimerView = _playerViews[playerIndex];
                 _timerCoroutine  = StartCoroutine(RunTurnTimer(_activeTimerView, duration, isHumanTurn));
             }
+
+            _beginTurnCoroutine = null;
         }
 
         private float TurnTimerDuration(bool isHumanTurn)
