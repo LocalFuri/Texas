@@ -29,7 +29,7 @@ namespace TexasHoldem
                  "(anchor at panel centre). Y is relative to the card-area centre (+55 px).")]
         public Vector2 card1LocalPos;
 
-        [Tooltip("BetAnchor position in seat local space — chip stack is placed here (between avatar and table centre).")]
+        [Tooltip("BetAnchor Y in seat local space (X follows avatar). Chip stack sits above the amount badge.")]
         public Vector2 betLabelLocalPos;
 
         [Tooltip("AnchoredPosition of the HudPanel inside the seat root (anchor at panel center).")]
@@ -377,8 +377,13 @@ namespace TexasHoldem
         private const float BetChipBadgeGap        = 6f;
         private const float BetAmountBadgeWidth    = 90f;
         private const float BetAmountBadgeHeight   = 30f;
-        private const float BetAmountBadgeCenterX  =
-            BetChipStackWidth * 0.5f + BetChipBadgeGap + BetAmountBadgeWidth * 0.5f;
+        private static float BetDisplayWidth       => BetAmountBadgeWidth;
+        private static float BetDisplayHeight      => BetChipStackHeight + BetChipBadgeGap + BetAmountBadgeHeight;
+        private static float BetChipStackCenterY   => (BetAmountBadgeHeight + BetChipBadgeGap) * 0.5f;
+        private static float BetAmountBadgeCenterY   => -(BetChipStackHeight + BetChipBadgeGap) * 0.5f;
+
+        private static Vector2 ComputeBetAnchorPosition(SeatConfig cfg)
+            => new Vector2(PlayerHudLayout.AvatarPosX(cfg.mirrorHud), cfg.betLabelLocalPos.y);
 
         private static void SetBetDisplayChildRect(RectTransform rt, float x, float y, float w, float h)
         {
@@ -410,7 +415,7 @@ namespace TexasHoldem
             {
                 SetBetDisplayChildRect(
                     (RectTransform)chipStack,
-                    0f, 0f, BetChipStackWidth, BetChipStackHeight);
+                    0f, BetChipStackCenterY, BetChipStackWidth, BetChipStackHeight);
             }
 
             Transform amountBadge = contentRoot.Find("AmountBadge");
@@ -418,8 +423,49 @@ namespace TexasHoldem
             {
                 SetBetDisplayChildRect(
                     (RectTransform)amountBadge,
-                    BetAmountBadgeCenterX, 0f, BetAmountBadgeWidth, BetAmountBadgeHeight);
+                    0f, BetAmountBadgeCenterY, BetAmountBadgeWidth, BetAmountBadgeHeight);
             }
+
+            ApplyChipStackOffsets(chipStack);
+            HideLegacyBetDisplayChildren(contentRoot);
+        }
+
+        private const float BetChipDx = 6f;
+        private const float BetChipDy = 5f;
+
+        private static void ApplyChipStackOffsets(Transform chipStack)
+        {
+            if (chipStack == null)
+                return;
+
+            int count = chipStack.childCount;
+            for (int i = 0; i < count; i++)
+            {
+                if (chipStack.GetChild(i) is not RectTransform chipRt)
+                    continue;
+
+                float backness = count - 1 - i;
+                float ox = BetChipDx * backness - BetChipDx;
+                float oy = BetChipDy * backness;
+                chipRt.anchorMin        = new Vector2(0.5f, 0.5f);
+                chipRt.anchorMax        = new Vector2(0.5f, 0.5f);
+                chipRt.pivot            = new Vector2(0.5f, 0.5f);
+                chipRt.anchoredPosition = new Vector2(ox, oy);
+            }
+        }
+
+        private static void HideLegacyBetDisplayChildren(Transform contentRoot)
+        {
+            if (contentRoot == null)
+                return;
+
+            Transform chipIcon = contentRoot.Find("ChipIcon");
+            if (chipIcon != null)
+                chipIcon.gameObject.SetActive(false);
+
+            Transform legacyAmount = contentRoot.Find("AmountText");
+            if (legacyAmount != null && legacyAmount.parent == contentRoot)
+                legacyAmount.gameObject.SetActive(false);
         }
 
         private void ApplyBetAnchor(PlayerView view, SeatConfig cfg)
@@ -442,7 +488,7 @@ namespace TexasHoldem
             betRt.anchorMin        = new Vector2(0.5f, 0.5f);
             betRt.anchorMax        = new Vector2(0.5f, 0.5f);
             betRt.pivot            = new Vector2(0.5f, 0.5f);
-            betRt.sizeDelta        = new Vector2(146f, 52f);
+            betRt.sizeDelta        = new Vector2(BetDisplayWidth, BetDisplayHeight);
 
             RectTransform posTarget = nestedUnderAnchor ? anchor : betRt;
             if (nestedUnderAnchor)
@@ -451,7 +497,7 @@ namespace TexasHoldem
             posTarget.anchorMin        = new Vector2(0.5f, 0.5f);
             posTarget.anchorMax        = new Vector2(0.5f, 0.5f);
             posTarget.pivot            = new Vector2(0.5f, 0.5f);
-            posTarget.anchoredPosition = cfg.betLabelLocalPos;
+            posTarget.anchoredPosition = ComputeBetAnchorPosition(cfg);
         }
 
         private void ApplyDealerButtonAnchor(PlayerView view, SeatConfig cfg)
@@ -651,7 +697,7 @@ namespace TexasHoldem
                 // Bet anchor (chip stack toward pot).
                 Gizmos.color = new Color(0.9f, 0.5f, 1f, 0.75f);
                 Gizmos.DrawWireSphere(
-                    CanvasToWorld(seatRt.anchoredPosition + cfg.betLabelLocalPos), r * 0.2f);
+                    CanvasToWorld(seatRt.anchoredPosition + ComputeBetAnchorPosition(cfg)), r * 0.2f);
 
                 // Dealer button anchor.
                 Gizmos.color = new Color(1f, 0.85f, 0.1f, 0.85f);

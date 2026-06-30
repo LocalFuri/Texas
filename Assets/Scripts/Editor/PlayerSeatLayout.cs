@@ -867,7 +867,16 @@ namespace TexasHoldem
             RecordObj(betDisplayComp);
             var betDisplayImg = betDisplayGo.GetComponent<Image>();
             if (betDisplayImg != null) DestroyObj(betDisplayImg);
-            SetRect(betDisplayGo, 0f, 0f, 146f, 52f);
+            const float betDisplayW = 90f;
+            const float betDisplayH = 84f; // chip stack + gap + amount badge
+            const float chipStackCenterY = 18f;
+            const float badgeCenterY     = -27f;
+            SetRect(betDisplayGo, 0f, 0f, betDisplayW, betDisplayH);
+
+            DestroyIfExists(betDisplayGo.transform, "ChipIcon");
+            Transform legacyAmountText = betDisplayGo.transform.Find("AmountText");
+            if (legacyAmountText != null && legacyAmountText.parent == betDisplayGo.transform)
+                DestroyObj(legacyAmountText.gameObject);
 
             // Drop shadow on the root so both children inherit it visually.
             var betShadow = GetOrAdd<Shadow>(betDisplayGo);
@@ -888,7 +897,7 @@ namespace TexasHoldem
             RecordObj(chipStackGo);
             var chipStackBg = chipStackGo.GetComponent<Image>();
             if (chipStackBg != null) DestroyObj(chipStackBg);
-            SetRect(chipStackGo, 0f, 0f, ChipD + ChipDx * 2f, ChipD + ChipDy * 2f);
+            SetRect(chipStackGo, 0f, chipStackCenterY, ChipD + ChipDx * 2f, ChipD + ChipDy * 2f);
 
             string[] chipNames   = { "Chip_0", "Chip_1", "Chip_2" };
             Sprite[] slotSprites = { chip1Sprite, chip5Sprite, chip25Sprite };
@@ -897,7 +906,7 @@ namespace TexasHoldem
             for (int ci = 0; ci < chipNames.Length; ci++)
             {
                 float backness = chipNames.Length - 1 - ci;
-                float ox = ChipDx * backness;
+                float ox = ChipDx * backness - ChipDx;
                 float oy = ChipDy * backness;
 
                 GameObject chipGo  = GetOrCreate(chipStackGo.transform, chipNames[ci]);
@@ -928,7 +937,7 @@ namespace TexasHoldem
             badgeImg.type          = Image.Type.Sliced;
             badgeImg.color         = new Color(0.06f, 0.06f, 0.08f, 0.93f);
             badgeImg.raycastTarget = false;
-            SetRect(badgeGo, 76f, 0f, 90f, 30f);
+            SetRect(badgeGo, 0f, badgeCenterY, 90f, 30f);
 
             // AmountText inside the badge — bold gold euro label.
             GameObject amountGo  = GetOrCreate(badgeGo.transform, "AmountText");
