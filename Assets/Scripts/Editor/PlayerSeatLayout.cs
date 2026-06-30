@@ -56,7 +56,7 @@ namespace TexasHoldem
 
         // ── Font sizes — change here, then run Texas Holdem → Apply Text Sizes ──
         private const float NameFontSize   = 20f;
-        private const float ChipsFontSize  = 13f;
+        private const float ChipsFontSize  = PlayerHudLayout.StackAmountFontSize;
         private const float StatusFontSize = 10f;
 
         private const float ActionBadgeW     = 120f;
@@ -628,7 +628,7 @@ namespace TexasHoldem
                     RecordObj(txt);
                     txt.alignment          = PlayerHudLayout.HudPanelTextAlign;
                     txt.fontStyle          = FontStyles.Bold;
-                    if (!_useUndo) { txt.enableAutoSizing = false; txt.fontSize = 13f; }
+                    if (!_useUndo) { txt.enableAutoSizing = false; txt.fontSize = PlayerHudLayout.StackAmountFontSize; }
                     txt.color              = ChipsColor;
                     txt.overflowMode       = TextOverflowModes.Ellipsis;
                     txt.enableWordWrapping = false;
@@ -942,7 +942,7 @@ namespace TexasHoldem
             amountTMP.text               = "";
             amountTMP.alignment          = TextAlignmentOptions.Center;
             amountTMP.fontStyle          = FontStyles.Bold;
-            amountTMP.fontSize           = 14f;
+            amountTMP.fontSize           = PlayerHudLayout.StackAmountFontSize;
             amountTMP.color              = new Color(1.00f, 0.85f, 0.15f, 1f);
             amountTMP.enableWordWrapping = false;
             amountTMP.raycastTarget      = false;

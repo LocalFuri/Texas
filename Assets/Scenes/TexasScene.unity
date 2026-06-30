@@ -847,7 +847,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSize
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor.g
@@ -859,7 +859,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSizeBase
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
@@ -1693,7 +1693,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSize
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor.g
@@ -1705,7 +1705,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSizeBase
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
@@ -4846,7 +4846,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSize
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor.g
@@ -4858,7 +4858,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSizeBase
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
@@ -7468,7 +7468,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSize
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor.g
@@ -7480,7 +7480,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSizeBase
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
@@ -12218,7 +12218,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSize
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor.g
@@ -12230,7 +12230,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSizeBase
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode
@@ -13754,7 +13754,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSize
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontColor.g
@@ -13766,7 +13766,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_fontSizeBase
-      value: 20
+      value: 14
       objectReference: {fileID: 0}
     - target: {fileID: 8916208608776977219, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_overflowMode

@@ -30,6 +30,8 @@ namespace TexasHoldem
         public const float NameChipsGap = 8f; // vertical space between name and chips rows
         public const float HudTextPadPx = 12f; // inset when centering text inside HudPanel
         public const float ChipsTextH   = 26f;
+        /// <summary>HUD stack count and bet amount badge — same size.</summary>
+        public const float StackAmountFontSize = 14f;
 
         /// <summary>Name/chips block centered vertically on HudPanel center.</summary>
         public static float GetCenteredNameY(float panelCenterY)
