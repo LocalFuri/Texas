@@ -9,7 +9,7 @@ namespace TexasHoldem
     /// Inspector-configurable layout data for a single player seat on the oval table.
     /// Offset fields (card0LocalPos, card1LocalPos, dealerButtonLocalPos) are in the seat
     /// panel's local space with anchor at center. Bet chip stacks follow the avatar (see
-    /// TableLayoutManager._betOffsetFromAvatarY) — betLabelLocalPos is unused legacy data.
+    /// TableLayoutManager._betGapBelowAvatar) — betLabelLocalPos is unused legacy data.
     /// </summary>
     [Serializable]
     public struct SeatConfig
@@ -81,8 +81,8 @@ namespace TexasHoldem
         [SerializeField] private float _cardGap = 16f;
 
         [Header("Bet Display")]
-        [Tooltip("Vertical offset from avatar centre to BetAnchor; identical for every seat.")]
-        [SerializeField] private float _betOffsetFromAvatarY = -86f;
+        [Tooltip("Gap between avatar bottom edge and chip stack top; same for every seat.")]
+        [SerializeField] private float _betGapBelowAvatar = 6f;
 
         [SerializeField, HideInInspector] private float _cardHeight = 120f * (95f / 65f);
 
@@ -387,10 +387,17 @@ namespace TexasHoldem
         private static float BetChipStackCenterY   => (BetAmountBadgeHeight + BetChipBadgeGap) * 0.5f;
         private static float BetAmountBadgeCenterY   => -(BetChipStackHeight + BetChipBadgeGap) * 0.5f;
 
+        private float ComputeBetAnchorCenterY()
+        {
+            float avatarBottom = PlayerHudLayout.PillY - PlayerHudLayout.AvatarD * 0.5f;
+            float chipStackTop = avatarBottom - _betGapBelowAvatar;
+            return chipStackTop - BetChipStackCenterY - BetChipStackHeight * 0.5f;
+        }
+
         private Vector2 ComputeBetAnchorPosition(SeatConfig cfg)
             => new Vector2(
                 PlayerHudLayout.AvatarPosX(cfg.mirrorHud),
-                PlayerHudLayout.PillY + _betOffsetFromAvatarY);
+                ComputeBetAnchorCenterY());
 
         private static void SetBetDisplayChildRect(RectTransform rt, float x, float y, float w, float h)
         {
