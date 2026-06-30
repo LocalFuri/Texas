@@ -32,7 +32,8 @@ namespace TexasHoldem
             EditorGUILayout.HelpBox(
                 "HudPanel width/X come from Card_1. Per-seat HudGlow → Panel Right/Bottom Border Px (default 14) " +
                 "extend the dark fill past card edges. Bet column: avatar → chips → amount, centred on avatar X. " +
-                "Bet Gap Below Avatar tunes spacing under the portrait. DealerButtonAnchor per seat — Apply Layout to refresh.",
+                "Bet Gap Below Avatar tunes spacing under the portrait. Dealer Avatar Rim Factor places the " +
+                "dealer token on the avatar edge (away from the bet column). Apply Layout to refresh.",
                 MessageType.Info);
 
             EditorGUILayout.Space(4);

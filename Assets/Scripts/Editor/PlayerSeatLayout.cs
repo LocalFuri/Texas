@@ -25,7 +25,7 @@ namespace TexasHoldem
         ///   ├── ActionBadge       — neon pill when player Checks / Folds / Raises / All-In
         ///   └── BetAnchor         — chip stack anchor under avatar (TableLayoutManager)
         ///       └── BetDisplay    — ChipStack + AmountBadge
-        ///   └── DealerButtonAnchor — dealer token anchor below avatar
+        ///   └── DealerButtonAnchor — on avatar rim toward table centre (TableLayoutManager)
     ///
     /// Re-running is safe: existing GameObjects are reused, old ones renamed or hidden.
     ///
