@@ -78,6 +78,9 @@ namespace TexasHoldem
         [Tooltip("Pixel gap between the two hole cards.")]
         [SerializeField] private float _cardGap = 16f;
 
+        [Tooltip("Nudge both hole cards away from the table centre (same direction as the seat).")]
+        [SerializeField] private float _holeCardOutwardOffsetPx = 5f;
+
         [Header("Bet Display")]
         [Tooltip("Gap between avatar bottom edge and chip stack top; same for every seat.")]
         [SerializeField] private float _betGapBelowAvatar = 3f;
@@ -228,6 +231,19 @@ namespace TexasHoldem
             => Mathf.Max(0f, (CardSize.x - _cardWidth) * 0.5f);
 
         private Vector2 ResolveHoleCardSize() => CardSize;
+
+        private Vector2 ComputeHoleCardOutwardOffset(PlayerView view)
+        {
+            if (_holeCardOutwardOffsetPx <= 0f || view == null)
+                return Vector2.zero;
+
+            var seatRt = (RectTransform)view.transform;
+            Vector2 p  = seatRt.anchoredPosition;
+            if (p.sqrMagnitude < 1f)
+                return Vector2.down * _holeCardOutwardOffsetPx;
+
+            return p.normalized * _holeCardOutwardOffsetPx;
+        }
 
         /// <summary>
         /// Moves the dealer button to the given seat index (0-based).
@@ -662,12 +678,14 @@ namespace TexasHoldem
                 cfg.hudLocalPx.x, holeSize.x, _cardGap,
                 out float x0, out float x1);
 
+            Vector2 outward = ComputeHoleCardOutwardOffset(view);
+
             if (rt0 != null)
             {
                 rt0.anchorMin        = new Vector2(0.5f, 0.5f);
                 rt0.anchorMax        = new Vector2(0.5f, 0.5f);
                 rt0.pivot            = new Vector2(0.5f, 0.5f);
-                rt0.anchoredPosition = new Vector2(x0, cy0);
+                rt0.anchoredPosition = new Vector2(x0, cy0) + outward;
                 rt0.sizeDelta        = holeSize;
                 rt0.localScale       = Vector3.one;
             }
@@ -677,7 +695,7 @@ namespace TexasHoldem
                 rt1.anchorMin        = new Vector2(0.5f, 0.5f);
                 rt1.anchorMax        = new Vector2(0.5f, 0.5f);
                 rt1.pivot            = new Vector2(0.5f, 0.5f);
-                rt1.anchoredPosition = new Vector2(x1, cy1);
+                rt1.anchoredPosition = new Vector2(x1, cy1) + outward;
                 rt1.sizeDelta        = holeSize;
                 rt1.localScale       = Vector3.one;
             }
