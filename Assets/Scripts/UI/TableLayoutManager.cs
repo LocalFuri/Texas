@@ -105,8 +105,7 @@ namespace TexasHoldem
         [SerializeField] private RectTransform[] _communityCardSlots = new RectTransform[5];
 
         [Header("Pot Label")]
-        [Tooltip("AnchoredPosition of the pot label relative to canvas center.")]
-        [SerializeField] private Vector2 _potLabelPosition = new Vector2(0f, 70f);
+        [Tooltip("PotText RectTransform — position via Inspector or Scene move tool on PotText.")]
         [SerializeField] private RectTransform _potLabel;
 
         [Header("Dealer Button")]
@@ -209,7 +208,6 @@ namespace TexasHoldem
         {
             SyncPlayerDisplayNames();
             ApplySeats();
-            ApplyPotLabel();
             ApplyCommunityCards();
         }
 
@@ -688,16 +686,6 @@ namespace TexasHoldem
         private void ApplyBetLabel(PlayerView view, SeatConfig cfg)
             => ApplyBetAnchor(view, cfg);
 
-        private void ApplyPotLabel()
-        {
-            if (_potLabel == null) return;
-
-            _potLabel.anchorMin        = new Vector2(0.5f, 0.5f);
-            _potLabel.anchorMax        = new Vector2(0.5f, 0.5f);
-            _potLabel.pivot            = new Vector2(0.5f, 0.5f);
-            _potLabel.anchoredPosition = _potLabelPosition;
-        }
-
         // ── Gizmos ────────────────────────────────────────────────────────
 
         private void OnDrawGizmosSelected()
@@ -742,7 +730,7 @@ namespace TexasHoldem
             {
                 Gizmos.color = new Color(0.2f, 1f, 0.9f, 0.8f);
                 Gizmos.DrawWireSphere(
-                    CanvasToWorld(_potLabelPosition), 20f * scale);
+                    CanvasToWorld(_potLabel.anchoredPosition), 20f * scale);
             }
         }
 
