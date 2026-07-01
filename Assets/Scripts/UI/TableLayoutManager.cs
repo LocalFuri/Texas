@@ -82,7 +82,7 @@ namespace TexasHoldem
 
         [Header("Bet Display")]
         [Tooltip("Gap between avatar bottom edge and chip stack top; same for every seat.")]
-        [SerializeField] private float _betGapBelowAvatar = 6f;
+        [SerializeField] private float _betGapBelowAvatar = 3f;
 
         [Tooltip("Vertical step between identical chips (2–4 px). One slider for all seats.")]
         [SerializeField, Range(2f, 4f)] private float _stackOverlapY = 2f;
