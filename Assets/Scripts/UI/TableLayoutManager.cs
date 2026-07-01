@@ -49,10 +49,8 @@ namespace TexasHoldem
     /// <summary>
     /// Positions all player seats, hole-card slots, pot label, and dealer button on the
     /// table canvas. Exactly 6 seats are supported, arranged around an oval. All positions
-    /// are configurable in the Inspector. Community-card slots are static named children of
-    /// CommunityCardsContainer — their positions are set once in the Editor and never
-    /// touched at runtime.
-    /// Press the Apply Layout button in the custom editor to preview changes immediately.
+    /// are configurable in the Inspector. Community-card slots are laid out horizontally from
+    /// Community Card Gap; hole cards match their size. Press Apply Layout to preview.
     /// </summary>
     [DefaultExecutionOrder(50)]
     [ExecuteAlways]
@@ -100,8 +98,11 @@ namespace TexasHoldem
         private Vector2 CardSize => new Vector2(_cardWidth, _cardWidth * CardAspectRatio);
 
         [Header("Community Card Slots")]
+        [Tooltip("Horizontal pixel gap between community cards (Flop through River).")]
+        [SerializeField] private float _communityCardGap = 8f;
+
         [Tooltip("The five community-card RectTransforms (Flop1, Flop2, Flop3, Turn, River). " +
-                 "They receive the same size as hole cards.")]
+                 "Hole cards are sized to match these slots.")]
         [SerializeField] private RectTransform[] _communityCardSlots = new RectTransform[5];
 
         [Header("Pot Label")]
@@ -125,8 +126,8 @@ namespace TexasHoldem
         public SeatConfig GetSeatConfig(int seatIndex)
             => (uint)seatIndex < (uint)SeatCount ? _seats[seatIndex] : default;
 
-        /// <summary>Hole-card width in canvas pixels (Inspector).</summary>
-        public float HoleCardWidth => _cardWidth;
+        /// <summary>Hole-card width — matches community-card slot width.</summary>
+        public float HoleCardWidth => ResolveHoleCardSize().x;
 
         /// <summary>Gap between hole cards in canvas pixels.</summary>
         public float HoleCardGap => _cardGap;
@@ -207,8 +208,37 @@ namespace TexasHoldem
         public void ApplyLayout()
         {
             SyncPlayerDisplayNames();
-            ApplySeats();
             ApplyCommunityCards();
+            PlayerHudLayout.LayoutAvatarOutwardPx = ComputeAvatarOutwardOffset();
+            ApplySeats();
+        }
+
+        /// <summary>Hole-card size in canvas pixels — read from community slots after layout.</summary>
+        public Vector2 GetHoleCardSize() => ResolveHoleCardSize();
+
+        /// <summary>Avatar nudge away from table centre when hole cards are wider than Card Width.</summary>
+        public float GetAvatarOutwardOffset() => ComputeAvatarOutwardOffset();
+
+        private float ComputeAvatarOutwardOffset()
+            => Mathf.Max(0f, (ResolveHoleCardSize().x - _cardWidth) * 0.5f);
+
+        private Vector2 ResolveHoleCardSize()
+        {
+            if (_communityCardSlots != null)
+            {
+                foreach (RectTransform slot in _communityCardSlots)
+                {
+                    if (slot == null)
+                        continue;
+
+                    float w = slot.sizeDelta.x;
+                    float h = slot.sizeDelta.y;
+                    if (w > 0f && h > 0f)
+                        return new Vector2(w, h);
+                }
+            }
+
+            return CardSize;
         }
 
         /// <summary>
@@ -635,12 +665,13 @@ namespace TexasHoldem
         {
             RectTransform rt0 = view.GetCardRect(0);
             RectTransform rt1 = view.GetCardRect(1);
+            Vector2       holeSize = ResolveHoleCardSize();
 
             float cy0 = cfg.card0LocalPos.y + HoleCardsAreaCenterY;
             float cy1 = cfg.card1LocalPos.y + HoleCardsAreaCenterY;
 
             PlayerHudLayout.ComputeHoleCardCenterX(
-                cfg.hudLocalPx.x, CardSize.x, _cardGap,
+                cfg.hudLocalPx.x, holeSize.x, _cardGap,
                 out float x0, out float x1);
 
             if (rt0 != null)
@@ -649,7 +680,7 @@ namespace TexasHoldem
                 rt0.anchorMax        = new Vector2(0.5f, 0.5f);
                 rt0.pivot            = new Vector2(0.5f, 0.5f);
                 rt0.anchoredPosition = new Vector2(x0, cy0);
-                rt0.sizeDelta        = CardSize;
+                rt0.sizeDelta        = holeSize;
                 rt0.localScale       = Vector3.one;
             }
 
@@ -659,7 +690,7 @@ namespace TexasHoldem
                 rt1.anchorMax        = new Vector2(0.5f, 0.5f);
                 rt1.pivot            = new Vector2(0.5f, 0.5f);
                 rt1.anchoredPosition = new Vector2(x1, cy1);
-                rt1.sizeDelta        = CardSize;
+                rt1.sizeDelta        = holeSize;
                 rt1.localScale       = Vector3.one;
             }
         }
@@ -669,8 +700,8 @@ namespace TexasHoldem
             if (_communityCardSlots == null) return;
 
             int   count      = _communityCardSlots.Length;
-            float step       = _cardWidth + _cardGap;
-            float totalWidth = count * _cardWidth + (count - 1) * _cardGap;
+            float step       = _cardWidth + _communityCardGap;
+            float totalWidth = count * _cardWidth + (count - 1) * _communityCardGap;
             float startX     = -totalWidth * 0.5f + _cardWidth * 0.5f;
 
             for (int i = 0; i < count; i++)
@@ -743,9 +774,10 @@ namespace TexasHoldem
 
         private void DrawCardGizmo(Vector3 seatWorld, Vector2 localOffset, float scale)
         {
+            Vector2 holeSize  = ResolveHoleCardSize();
             Vector3 cardWorld = seatWorld + new Vector3(localOffset.x, localOffset.y, 0f) * scale;
             Gizmos.DrawWireCube(cardWorld,
-                new Vector3(CardSize.x, CardSize.y, 0f) * scale);
+                new Vector3(holeSize.x, holeSize.y, 0f) * scale);
         }
 
         private Vector3 CanvasToWorld(Vector2 canvasPos)

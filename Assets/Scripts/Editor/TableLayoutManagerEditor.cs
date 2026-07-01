@@ -33,7 +33,9 @@ namespace TexasHoldem
                 "HudPanel width/X come from Card_1. Per-seat HudGlow → Panel Right/Bottom Border Px (default 14) " +
                 "extend the dark fill past card edges. Bet column: avatar → chips → amount, centred on avatar X. " +
                 "Bet Gap Below Avatar and Stack Overlap Y (2–4 px, all seats) tune the bet column. " +
-                "Dealer Avatar Rim Factor places the token on the avatar edge. Pot label position: move PotText " +
+                "Dealer Avatar Rim Factor places the token on the avatar edge. Community Card Gap " +
+                "spaces the flop/turn/river row. Hole cards match community-card size; avatars nudge " +
+                "outward automatically when hole cards are wider than Card Width. Pot label position: move PotText " +
                 "in the Scene view or its Rect Transform. Apply Layout to refresh seats.",
                 MessageType.Info);
 

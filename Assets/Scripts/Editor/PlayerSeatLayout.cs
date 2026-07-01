@@ -424,8 +424,9 @@ namespace TexasHoldem
 #endif
             if (layout != null)
             {
-                cardW   = layout.HoleCardWidth;
-                cardH   = cardW * (95f / 65f);
+                Vector2 holeSize = layout.GetHoleCardSize();
+                cardW   = holeSize.x;
+                cardH   = holeSize.y;
                 cardGap = layout.HoleCardGap;
             }
 
@@ -441,6 +442,15 @@ namespace TexasHoldem
             bool mirrored  = ResolveHudMirrored(view);
             view.SetHudMirrored(mirrored);
 
+#if UNITY_2022_2_OR_NEWER
+            TableLayoutManager layout = Object.FindFirstObjectByType<TableLayoutManager>(
+                FindObjectsInactive.Include);
+#else
+            TableLayoutManager layout = Object.FindObjectOfType<TableLayoutManager>(true);
+#endif
+            PlayerHudLayout.LayoutAvatarOutwardPx = layout != null
+                ? layout.GetAvatarOutwardOffset()
+                : 0f;
             float avatarX = PlayerHudLayout.AvatarPosX(mirrored);
             float textX   = PlayerHudLayout.TextPosX(mirrored);
             var   textAlign = PlayerHudLayout.TextAlign(mirrored);

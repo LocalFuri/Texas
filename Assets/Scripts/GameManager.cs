@@ -26,7 +26,7 @@ namespace TexasHoldem
         [SerializeField] private float _buttonFontSize = 40f;
 
         [Header("Card Layout")]
-        [Tooltip("Pixel gap between all dealt cards (hole cards and community cards).")]
+        [Tooltip("Pixel gap between the two hole cards (synced to TableLayoutManager on validate).")]
         [SerializeField] private float _cardGap = 16f;
 
         [Header("Community Card Animation")]

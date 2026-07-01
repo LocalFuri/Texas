@@ -65,7 +65,17 @@ namespace TexasHoldem
         public const float SeatActionMenuW  = 155f;
         public const float SeatActionMenuH  = 118f;
 
-        public static float AvatarPosX(bool mirrored) => mirrored ? -AvatarX : AvatarX;
+        /// <summary>Extra avatar X away from table centre when hole cards match wider community cards.</summary>
+        public static float LayoutAvatarOutwardPx { get; set; }
+
+        public static float AvatarPosX(bool mirrored)
+            => AvatarPosX(mirrored, LayoutAvatarOutwardPx);
+
+        public static float AvatarPosX(bool mirrored, float outwardExtra)
+        {
+            float baseX = mirrored ? -AvatarX : AvatarX;
+            return baseX + (mirrored ? outwardExtra : -outwardExtra);
+        }
         public static float TextPosX(bool mirrored)
             => mirrored ? -(TextX + TextAvatarPad) : (TextX + TextAvatarPad);
 
