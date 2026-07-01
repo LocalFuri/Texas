@@ -49,8 +49,8 @@ namespace TexasHoldem
     /// <summary>
     /// Positions all player seats, hole-card slots, pot label, and dealer button on the
     /// table canvas. Exactly 6 seats are supported, arranged around an oval. All positions
-    /// are configurable in the Inspector. Community-card slots are laid out horizontally from
-    /// Community Card Gap; hole cards match their size. Press Apply Layout to preview.
+    /// Community-card slots are laid out horizontally from Community Card Gap and Community Card Scale;
+    /// hole cards use Card Width. Press Apply Layout to preview.
     /// </summary>
     [DefaultExecutionOrder(50)]
     [ExecuteAlways]
@@ -97,12 +97,17 @@ namespace TexasHoldem
 
         private Vector2 CardSize => new Vector2(_cardWidth, _cardWidth * CardAspectRatio);
 
+        private Vector2 CommunityCardSize
+            => new Vector2(_cardWidth * _communityCardScale, _cardWidth * _communityCardScale * CardAspectRatio);
+
         [Header("Community Card Slots")]
+        [Tooltip("Community card size as a fraction of hole Card Width (0.85 ≈ 15% smaller).")]
+        [SerializeField, Range(0.85f, 1f)] private float _communityCardScale = 0.875f;
+
         [Tooltip("Horizontal pixel gap between community cards (Flop through River).")]
         [SerializeField] private float _communityCardGap = 8f;
 
-        [Tooltip("The five community-card RectTransforms (Flop1, Flop2, Flop3, Turn, River). " +
-                 "Hole cards are sized to match these slots.")]
+        [Tooltip("The five community-card RectTransforms (Flop1, Flop2, Flop3, Turn, River).")]
         [SerializeField] private RectTransform[] _communityCardSlots = new RectTransform[5];
 
         [Header("Pot Label")]
@@ -126,8 +131,8 @@ namespace TexasHoldem
         public SeatConfig GetSeatConfig(int seatIndex)
             => (uint)seatIndex < (uint)SeatCount ? _seats[seatIndex] : default;
 
-        /// <summary>Hole-card width — matches community-card slot width.</summary>
-        public float HoleCardWidth => ResolveHoleCardSize().x;
+        /// <summary>Hole-card width in canvas pixels (Card Width).</summary>
+        public float HoleCardWidth => _cardWidth;
 
         /// <summary>Gap between hole cards in canvas pixels.</summary>
         public float HoleCardGap => _cardGap;
@@ -213,33 +218,16 @@ namespace TexasHoldem
             ApplySeats();
         }
 
-        /// <summary>Hole-card size in canvas pixels — read from community slots after layout.</summary>
-        public Vector2 GetHoleCardSize() => ResolveHoleCardSize();
+        /// <summary>Hole-card size in canvas pixels (Card Width × aspect).</summary>
+        public Vector2 GetHoleCardSize() => CardSize;
 
         /// <summary>Avatar nudge away from table centre when hole cards are wider than Card Width.</summary>
         public float GetAvatarOutwardOffset() => ComputeAvatarOutwardOffset();
 
         private float ComputeAvatarOutwardOffset()
-            => Mathf.Max(0f, (ResolveHoleCardSize().x - _cardWidth) * 0.5f);
+            => Mathf.Max(0f, (CardSize.x - _cardWidth) * 0.5f);
 
-        private Vector2 ResolveHoleCardSize()
-        {
-            if (_communityCardSlots != null)
-            {
-                foreach (RectTransform slot in _communityCardSlots)
-                {
-                    if (slot == null)
-                        continue;
-
-                    float w = slot.sizeDelta.x;
-                    float h = slot.sizeDelta.y;
-                    if (w > 0f && h > 0f)
-                        return new Vector2(w, h);
-                }
-            }
-
-            return CardSize;
-        }
+        private Vector2 ResolveHoleCardSize() => CardSize;
 
         /// <summary>
         /// Moves the dealer button to the given seat index (0-based).
@@ -699,17 +687,19 @@ namespace TexasHoldem
         {
             if (_communityCardSlots == null) return;
 
-            int   count      = _communityCardSlots.Length;
-            float step       = _cardWidth + _communityCardGap;
-            float totalWidth = count * _cardWidth + (count - 1) * _communityCardGap;
-            float startX     = -totalWidth * 0.5f + _cardWidth * 0.5f;
+            Vector2 communitySize = CommunityCardSize;
+            float   communityW    = communitySize.x;
+            int     count         = _communityCardSlots.Length;
+            float   step          = communityW + _communityCardGap;
+            float   totalWidth    = count * communityW + (count - 1) * _communityCardGap;
+            float   startX        = -totalWidth * 0.5f + communityW * 0.5f;
 
             for (int i = 0; i < count; i++)
             {
                 var slot = _communityCardSlots[i];
                 if (slot == null) continue;
 
-                slot.sizeDelta        = CardSize;
+                slot.sizeDelta        = communitySize;
                 slot.localScale       = Vector3.one;
                 slot.anchorMin        = new Vector2(0.5f, 0.5f);
                 slot.anchorMax        = new Vector2(0.5f, 0.5f);

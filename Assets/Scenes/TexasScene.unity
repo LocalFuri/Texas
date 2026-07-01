@@ -15279,6 +15279,7 @@ MonoBehaviour:
   _betGapBelowAvatar: 3
   _stackOverlapY: 3
   _cardHeight: 175.38461
+  _communityCardScale: 0.875
   _communityCardGap: 8
   _communityCardSlots:
   - {fileID: 1599188921}
