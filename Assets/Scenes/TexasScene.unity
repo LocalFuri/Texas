@@ -10969,7 +10969,7 @@ MonoBehaviour:
   _buttonWidth: 120
   _buttonHeight: 50
   _buttonFontSize: 24
-  _cardGap: 8
+  _cardGap: 9
   _communityFlipDuration: 0.35
   _communityFlipGap: 0.1
   _roundEndPauseSecs: 2.5
@@ -15275,7 +15275,7 @@ MonoBehaviour:
     mirrorHud: 0
     playerName: Alex Hunter
   _cardWidth: 120
-  _cardGap: 8
+  _cardGap: 9
   _betGapBelowAvatar: 3
   _stackOverlapY: 3
   _cardHeight: 175.38461
