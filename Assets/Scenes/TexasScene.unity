@@ -6098,7 +6098,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 106}
+  m_AnchoredPosition: {x: 0, y: 115}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &659163743
@@ -11629,7 +11629,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 21}
+  m_AnchoredPosition: {x: 0, y: 25}
   m_SizeDelta: {x: 570, y: 95}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1001 &1659509325
@@ -15279,7 +15279,7 @@ MonoBehaviour:
   _betGapBelowAvatar: 3
   _stackOverlapY: 3
   _cardHeight: 175.38461
-  _communityCardScale: 0.875
+  _communityCardScale: 1
   _communityCardGap: 8
   _communityCardSlots:
   - {fileID: 1599188921}
