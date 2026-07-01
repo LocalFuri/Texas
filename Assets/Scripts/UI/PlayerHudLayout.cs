@@ -30,8 +30,26 @@ namespace TexasHoldem
         public const float NameChipsGap = 8f; // vertical space between name and chips rows
         public const float HudTextPadPx = 12f; // inset when centering text inside HudPanel
         public const float ChipsTextH   = 26f;
-        /// <summary>HUD stack count and bet amount badge — same size.</summary>
+        /// <summary>Default for editor seat rebuild / Set Text Sizes menu — not applied at runtime.</summary>
         public const float StackAmountFontSize = 14f;
+
+        private static TMP_FontAsset _stackAmountFont;
+
+        /// <summary>Assigns Liberation Sans when TMP has no font — does not change font size.</summary>
+        public static void ApplyStackAmountFontIfMissing(TMP_Text text)
+        {
+            if (text == null || text.font != null)
+                return;
+
+            if (_stackAmountFont == null)
+            {
+                _stackAmountFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF")
+                    ?? Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF - Fallback");
+            }
+
+            if (_stackAmountFont != null)
+                text.font = _stackAmountFont;
+        }
 
         /// <summary>Name/chips block centered vertically on HudPanel center.</summary>
         public static float GetCenteredNameY(float panelCenterY)

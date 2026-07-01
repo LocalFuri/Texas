@@ -31,7 +31,6 @@ namespace TexasHoldem
         [Header("Font Sizes")]
         [SerializeField] private float _nameFontSize   = 20f;
         [SerializeField] private float _nameFontSizeMin = 14f;
-        [SerializeField] private float _chipsFontSize  = PlayerHudLayout.StackAmountFontSize;
         [SerializeField] private float _statusFontSize = 10f;
 
         [Header("Cards")]
@@ -137,7 +136,6 @@ namespace TexasHoldem
             EnsureDisplayNameFromLabel();
             ApplyDisplayNameToHud();
             ApplyNameFontSize();
-            ApplyFontSize(_chipsText,  _chipsFontSize);
             ApplyFontSize(_statusText, _statusFontSize);
             EnsureRingRefs();
             EnsureHudGlowRef();
@@ -163,7 +161,6 @@ namespace TexasHoldem
             EnsureDisplayNameFromLabel();
             ApplyDisplayNameToHud();
             ApplyNameFontSize();
-            ApplyFontSize(_chipsText,  _chipsFontSize);
             ApplyFontSize(_statusText, _statusFontSize);
             EnsureRingRefs();
             EnsureHudGlowRef();

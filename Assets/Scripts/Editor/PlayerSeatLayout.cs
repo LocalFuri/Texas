@@ -54,9 +54,9 @@ namespace TexasHoldem
         private const float TextX = 25f;    // centre X for name / chips (right zone of pill)
         private const float TextW = 155f;
 
-        // ── Font sizes — change here, then run Texas Holdem → Apply Text Sizes ──
+        // ── Font sizes (Name/Status only) — change here, then Texas Holdem → Apply Text Sizes ──
+        // ChipsText + bet AmountText: set font size on the prefab TMP; menus will not overwrite.
         private const float NameFontSize   = 20f;
-        private const float ChipsFontSize  = PlayerHudLayout.StackAmountFontSize;
         private const float StatusFontSize = 10f;
 
         private const float ActionBadgeW     = 120f;
@@ -101,8 +101,8 @@ namespace TexasHoldem
         // ── Menu entry ────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Removes fontSize prefab overrides from every seat's NameText, ChipsText and StatusText
-        /// so they all inherit the value set directly on the prefab.
+        /// Removes fontSize prefab overrides so seats inherit prefab values.
+        /// Includes ChipsText and bet AmountText (Inspector-tuned sizes).
         /// </summary>
         [MenuItem("Texas Holdem/Clear Text Size Overrides")]
         public static void ClearTextSizeOverrides()
@@ -122,24 +122,36 @@ namespace TexasHoldem
                     TMP_Text txt = t.GetComponent<TMP_Text>();
                     if (txt == null) continue;
 
-                    SerializedObject so = new SerializedObject(txt);
-                    foreach (string propName in propNames)
-                    {
-                        SerializedProperty sp = so.FindProperty(propName);
-                        if (sp != null && sp.prefabOverride)
-                        {
-                            PrefabUtility.RevertPropertyOverride(sp, InteractionMode.AutomatedAction);
-                            cleared++;
-                        }
-                    }
+                    cleared += ClearTextSizeOverridesOn(txt, propNames);
                 }
+
+                TMP_Text betAmount = FindBetAmountText(v.transform);
+                if (betAmount != null)
+                    cleared += ClearTextSizeOverridesOn(betAmount, propNames);
             }
 
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             Debug.Log($"[PlayerSeatLayout] Cleared {cleared} text size override(s) across {views.Length} seat(s).");
         }
 
-        /// <summary>Sets font sizes on all seats directly. Change the constants above, then run this.</summary>
+        private static int ClearTextSizeOverridesOn(TMP_Text txt, string[] propNames)
+        {
+            int cleared = 0;
+            SerializedObject so = new SerializedObject(txt);
+            foreach (string propName in propNames)
+            {
+                SerializedProperty sp = so.FindProperty(propName);
+                if (sp != null && sp.prefabOverride)
+                {
+                    PrefabUtility.RevertPropertyOverride(sp, InteractionMode.AutomatedAction);
+                    cleared++;
+                }
+            }
+
+            return cleared;
+        }
+
+        /// <summary>Sets NameText / StatusText sizes on scene seats. Does not touch ChipsText or bet AmountText.</summary>
         [MenuItem("Texas Holdem/Apply Text Sizes")]
         public static void ApplyTextSizes()
         {
@@ -147,11 +159,11 @@ namespace TexasHoldem
             foreach (PlayerView v in views)
             {
                 SetTextSize(v.transform, "NameText",   NameFontSize);
-                SetTextSize(v.transform, "ChipsText",  ChipsFontSize);
                 SetTextSize(v.transform, "StatusText", StatusFontSize);
             }
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
-            Debug.Log($"[PlayerSeatLayout] Text sizes applied to {views.Length} seat(s).");
+            Debug.Log($"[PlayerSeatLayout] Name/Status text sizes applied to {views.Length} seat(s). " +
+                      "ChipsText and bet AmountText are left unchanged — edit those on the prefab.");
         }
 
         private static void SetTextSize(Transform root, string childName, float size)
@@ -628,7 +640,7 @@ namespace TexasHoldem
                     RecordObj(txt);
                     txt.alignment          = PlayerHudLayout.HudPanelTextAlign;
                     txt.fontStyle          = FontStyles.Bold;
-                    if (!_useUndo) { txt.enableAutoSizing = false; txt.fontSize = PlayerHudLayout.StackAmountFontSize; }
+                    PlayerHudLayout.ApplyStackAmountFontIfMissing(txt);
                     txt.color              = ChipsColor;
                     txt.overflowMode       = TextOverflowModes.Ellipsis;
                     txt.enableWordWrapping = false;
@@ -942,7 +954,7 @@ namespace TexasHoldem
             amountTMP.text               = "";
             amountTMP.alignment          = TextAlignmentOptions.Center;
             amountTMP.fontStyle          = FontStyles.Bold;
-            amountTMP.fontSize           = PlayerHudLayout.StackAmountFontSize;
+            PlayerHudLayout.ApplyStackAmountFontIfMissing(amountTMP);
             amountTMP.color              = new Color(1.00f, 0.85f, 0.15f, 1f);
             amountTMP.enableWordWrapping = false;
             amountTMP.raycastTarget      = false;
@@ -1564,6 +1576,21 @@ namespace TexasHoldem
                 if (cv != null) list.Add(cv);
             }
             return list;
+        }
+
+        private static TMP_Text FindBetAmountText(Transform seatRoot)
+        {
+            if (seatRoot == null)
+                return null;
+
+            Transform t = seatRoot.Find("BetAnchor/BetDisplay/AmountBadge/AmountText");
+            if (t == null)
+            {
+                Transform betDisplay = FindDeep(seatRoot, "BetDisplay");
+                t = betDisplay != null ? betDisplay.Find("AmountBadge/AmountText") : null;
+            }
+
+            return t != null ? t.GetComponent<TMP_Text>() : null;
         }
 
         private static Transform FindDeep(Transform root, string name)

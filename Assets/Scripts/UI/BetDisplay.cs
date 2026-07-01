@@ -53,6 +53,9 @@ namespace TexasHoldem
                     ? c.transform.parent.GetComponentInParent<Canvas>()
                     : null;
             _rootCanvas = c;
+
+            if (_amountText == null)
+                _amountText = transform.Find("AmountBadge/AmountText")?.GetComponent<TMP_Text>();
         }
 
         public void ShowBet(int amount, RectTransform fromRect = null)
