@@ -42,6 +42,12 @@ namespace TexasHoldem
         [Header("HUD")]
         [SerializeField] private TMP_Text   _potText;
 
+        [Header("Copyright")]
+        [SerializeField, InspectorName("CopyrightLabel")]
+        [Tooltip("Copyright/version text. Edit Canvas → CopyrightLabel TMP directly, or set this and use context menu Apply Copyright Label To TMP.")]
+        private string _copyrightLabel = "v1.0";
+        [SerializeField] private TMP_Text _copyrightLabelText;
+
         [Header("Winner Celebration")]
         [SerializeField] private Sprite _winChipSprite;
         [SerializeField, Min(1)]  private int   _winChipCount   = 8;
@@ -1576,6 +1582,27 @@ namespace TexasHoldem
         {
             if (!Application.isPlaying)
                 ApplySceneModePreview();
+        }
+
+        [ContextMenu("Apply Copyright Label To TMP")]
+        private void EditorApplyCopyrightLabelToTmp()
+        {
+            if (Application.isPlaying)
+                return;
+
+            TMP_Text text = _copyrightLabelText;
+            if (text == null)
+            {
+                GameObject labelGo = GameObject.Find("CopyrightLabel");
+                if (labelGo != null)
+                    text = labelGo.GetComponent<TMP_Text>();
+            }
+
+            if (text == null)
+                return;
+
+            text.text = _copyrightLabel ?? string.Empty;
+            UnityEditor.EditorUtility.SetDirty(text);
         }
 
         private void ApplyActionButtonLabelsInEditor()
