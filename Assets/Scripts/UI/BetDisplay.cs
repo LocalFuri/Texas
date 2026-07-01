@@ -30,7 +30,7 @@ namespace TexasHoldem
         [SerializeField] private RectTransform    _chipStackRoot;
 
         private const float AnimDuration = 0.45f;
-        private const float ChipAnimSize = 34f;
+        private const float ChipAnimSize = 34f * 1.25f;
 
         private static readonly AnimationCurve EaseCurve =
             AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);

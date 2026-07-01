@@ -14,6 +14,8 @@ namespace TexasHoldem
         private const int MaxStackChips = 3;
 
         public const float ChipSize           = 38f;
+        /// <summary>Rendered chip diameter — layout math stays on <see cref="ChipSize"/>.</summary>
+        public const float ChipDisplaySize    = ChipSize * 1.25f;
         public const float ColumnGapX         = 28f;
         public const float MaxStackOverlapY   = 4f;
         private const float DefaultStackOverlapY = 2f;
@@ -170,7 +172,7 @@ namespace TexasHoldem
                     chipRt.anchorMin        = new Vector2(0.5f, 0.5f);
                     chipRt.anchorMax        = new Vector2(0.5f, 0.5f);
                     chipRt.pivot            = new Vector2(0.5f, 0.5f);
-                    chipRt.sizeDelta        = new Vector2(ChipSize, ChipSize);
+                    chipRt.sizeDelta        = new Vector2(ChipDisplaySize, ChipDisplaySize);
                     chipRt.anchoredPosition = new Vector2(colCenterX, baseY + j * overlapY);
                     chipRt.SetSiblingIndex(slotIndex);
 
