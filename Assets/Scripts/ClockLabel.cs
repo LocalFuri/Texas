@@ -3,7 +3,7 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 
-namespace Blackjack
+namespace TexasHoldem
 {
     /// <summary>
     /// Updates a TextMeshProUGUI label with the current local time on every minute boundary.
