@@ -388,7 +388,7 @@ namespace TexasHoldem
         private const float BetChipBadgeGap        = 6f;
         private const float BetAmountBadgeWidth    = 90f;
         private const float BetAmountBadgeHeight   = 30f;
-        private static float BetDisplayWidth       => BetAmountBadgeWidth;
+        private static float BetDisplayWidth       => Mathf.Max(BetAmountBadgeWidth, BetChipStackWidth);
         private static float BetDisplayHeight      => BetChipStackHeight + BetChipBadgeGap + BetAmountBadgeHeight;
         private static float BetChipStackCenterY   => (BetAmountBadgeHeight + BetChipBadgeGap) * 0.5f;
         private static float BetAmountBadgeCenterY   => -(BetChipStackHeight + BetChipBadgeGap) * 0.5f;
@@ -400,10 +400,14 @@ namespace TexasHoldem
             return chipStackTop - BetChipStackCenterY - BetChipStackHeight * 0.5f;
         }
 
-        private Vector2 ComputeBetAnchorPosition(SeatConfig cfg)
-            => new Vector2(
-                PlayerHudLayout.AvatarPosX(cfg.mirrorHud),
-                ComputeBetAnchorCenterY());
+        private Vector2 ComputeBetAnchorPosition(PlayerView view, SeatConfig cfg)
+        {
+            float avatarX = view != null && view.AvatarRect != null
+                ? view.AvatarRect.anchoredPosition.x
+                : PlayerHudLayout.AvatarPosX(cfg.mirrorHud);
+
+            return new Vector2(avatarX, ComputeBetAnchorCenterY());
+        }
 
         /// <summary>
         /// Avatar-rim position toward the table centre — separate from the bet column under the avatar.
@@ -513,7 +517,7 @@ namespace TexasHoldem
             posTarget.anchorMin        = new Vector2(0.5f, 0.5f);
             posTarget.anchorMax        = new Vector2(0.5f, 0.5f);
             posTarget.pivot            = new Vector2(0.5f, 0.5f);
-            posTarget.anchoredPosition = ComputeBetAnchorPosition(cfg);
+            posTarget.anchoredPosition = ComputeBetAnchorPosition(view, cfg);
         }
 
         private void ApplyDealerButtonAnchor(PlayerView view, SeatConfig cfg)
@@ -717,7 +721,7 @@ namespace TexasHoldem
                 // Bet anchor (chip stack under avatar).
                 Gizmos.color = new Color(0.9f, 0.5f, 1f, 0.75f);
                 Gizmos.DrawWireSphere(
-                    CanvasToWorld(seatRt.anchoredPosition + ComputeBetAnchorPosition(cfg)), r * 0.2f);
+                    CanvasToWorld(seatRt.anchoredPosition + ComputeBetAnchorPosition(_playerViews[i], cfg)), r * 0.2f);
 
                 // Dealer button anchor.
                 Gizmos.color = new Color(1f, 0.85f, 0.1f, 0.85f);
