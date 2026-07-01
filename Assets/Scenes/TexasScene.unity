@@ -7989,6 +7989,9 @@ MonoBehaviour:
   _checkCallLabel: {fileID: 1267330795}
   _raiseInput: {fileID: 1798747026}
   _potText: {fileID: 659163743}
+  _potChipStack: {fileID: 0}
+  _potChipSprite100: {fileID: 21300000, guid: c3480f68c5eda0742abb385722c05d3b, type: 3}
+  _potChipSprite500: {fileID: 21300000, guid: 6767bf3b7bdd5ca41ad3aee56e3c168d, type: 3}
   _copyrightLabel: CodeRed Soft \xAE 2026-06-30
   _copyrightLabelText: {fileID: 881100003}
   _winChipSprite: {fileID: 21300000, guid: 00f42296a2c9b824b9e0d93b73b24738, type: 3}
@@ -15238,8 +15241,8 @@ MonoBehaviour:
   _seats:
   - pivot: {x: 0.5, y: 1}
     size: {x: 185, y: 152}
-    card0LocalPos: {x: -35, y: -5}
-    card1LocalPos: {x: 35, y: -5}
+    card0LocalPos: {x: -35, y: -13}
+    card1LocalPos: {x: 35, y: -13}
     betLabelLocalPos: {x: 0, y: 86}
     hudLocalPx: {x: 0, y: 0}
     dealerButtonLocalPos: {x: -133, y: -113}

@@ -40,7 +40,12 @@ namespace TexasHoldem
         [SerializeField] private TMP_InputField _raiseInput;
 
         [Header("HUD")]
-        [SerializeField] private TMP_Text   _potText;
+        [SerializeField] private TMP_Text       _potText;
+        [SerializeField] private ChipStackView  _potChipStack;
+        [SerializeField] private Sprite         _potChipSprite100;
+        [SerializeField] private Sprite         _potChipSprite500;
+
+        private const float PotChipGapPx = 8f;
 
         [Header("Copyright")]
         [SerializeField, InspectorName("CopyrightLabel")]
@@ -154,6 +159,7 @@ namespace TexasHoldem
             SetStartButtonVisible(true);
             HideBettingControls();
             _rootCanvas = ResolveRootCanvas();
+            EnsurePotChipStack();
             SubscribeToGameEvents();
             StartCoroutine(BindOptionsMenuWhenReady());
             HideAllSeatMenus();
@@ -952,11 +958,110 @@ namespace TexasHoldem
             return amount;
         }
 
-        /// <summary>Refreshes the pot label to reflect the current pot amount.</summary>
+        /// <summary>Refreshes the pot label and chip stack to reflect the current pot amount.</summary>
         private void UpdatePotText()
         {
             if (_potText == null || _gameManager == null) return;
-            _potText.text = "Pot: \u20AC " + _gameManager.PotAmount.ToString("N0", GermanNFI);
+
+            int pot = _gameManager.PotAmount;
+            _potText.text = "Pot: \u20AC " + pot.ToString("N0", GermanNFI);
+
+            if (_potChipStack == null)
+                EnsurePotChipStack();
+            if (_potChipStack == null)
+                return;
+
+            if (pot <= 0)
+                _potChipStack.Clear();
+            else
+                _potChipStack.SetExactAmount(pot);
+
+            PositionPotChipStack();
+        }
+
+        private void EnsurePotChipStack()
+        {
+            if (_potChipStack != null || _potText == null)
+                return;
+
+            Transform parent = _potText.transform.parent;
+            if (parent == null)
+                return;
+
+            Transform existing = parent.Find("PotChipStack");
+            GameObject stackGo;
+            if (existing != null)
+            {
+                stackGo = existing.gameObject;
+            }
+            else
+            {
+                stackGo = new GameObject("PotChipStack", typeof(RectTransform), typeof(ChipStackView));
+                var stackRt = (RectTransform)stackGo.transform;
+                stackRt.SetParent(parent, false);
+                stackRt.anchorMin        = new Vector2(0.5f, 0.5f);
+                stackRt.anchorMax        = new Vector2(0.5f, 0.5f);
+                stackRt.pivot            = new Vector2(0.5f, 0.5f);
+                stackRt.anchoredPosition = ((RectTransform)_potText.transform).anchoredPosition;
+                stackRt.sizeDelta        = new Vector2(ChipStackView.MaxLayoutWidth, ChipStackView.MaxLayoutHeight);
+
+                for (int i = 0; i < 3; i++)
+                {
+                    var chipGo = new GameObject(
+                        $"Chip_{i}",
+                        typeof(RectTransform),
+                        typeof(CanvasRenderer),
+                        typeof(Image));
+                    chipGo.transform.SetParent(stackGo.transform, false);
+                    var img = chipGo.GetComponent<Image>();
+                    img.raycastTarget  = false;
+                    img.preserveAspect = true;
+                }
+            }
+
+            _potChipStack = stackGo.GetComponent<ChipStackView>();
+            if (_potChipStack == null)
+                return;
+
+            ChipStackView sample = FindSampleBetChipStack();
+            if (sample != null)
+                _potChipStack.CopySpritesFrom(sample);
+
+            _potChipStack.AssignHighDenominations(_potChipSprite100, _potChipSprite500);
+        }
+
+        private ChipStackView FindSampleBetChipStack()
+        {
+            foreach (PlayerView view in ResolvePlayerViews())
+            {
+                if (view == null) continue;
+                ChipStackView stack = view.GetComponentInChildren<ChipStackView>(true);
+                if (stack != null)
+                    return stack;
+            }
+
+            return null;
+        }
+
+        private void PositionPotChipStack()
+        {
+            if (_potChipStack == null || _potText == null)
+                return;
+
+            var potRt   = (RectTransform)_potText.transform;
+            var stackRt = _potChipStack.StackRoot;
+            bool show   = _gameManager != null && _gameManager.PotAmount > 0;
+
+            stackRt.gameObject.SetActive(show);
+            if (!show)
+                return;
+
+            _potText.ForceMeshUpdate();
+            float textHalf  = _potText.preferredWidth * 0.5f;
+            float stackHalf = stackRt.sizeDelta.x * 0.5f;
+
+            stackRt.anchoredPosition = potRt.anchoredPosition + new Vector2(
+                textHalf + PotChipGapPx + stackHalf, 0f);
         }
 
         private void SubmitAction(BettingAction action, int raiseAmount = 0)

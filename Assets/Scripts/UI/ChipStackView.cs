@@ -5,13 +5,13 @@ using UnityEngine.UI;
 namespace TexasHoldem
 {
     /// <summary>
-    /// Bet chip graphics — up to three chips from the breakdown.
-    /// Identical denominations stack vertically with slight overlap;
+    /// Chip graphics — identical denominations stack vertically with slight overlap;
     /// different denominations sit in horizontal columns.
+    /// Bet stacks use up to three chips ({25,5,1}); pot stacks use the full breakdown.
     /// </summary>
     public class ChipStackView : MonoBehaviour
     {
-        private const int MaxStackChips = 3;
+        private const int MaxBetStackChips = 3;
 
         public const float ChipSize           = 38f;
         /// <summary>Rendered chip diameter — layout math stays on <see cref="ChipSize"/>.</summary>
@@ -34,52 +34,48 @@ namespace TexasHoldem
         [SerializeField] private Sprite _sprite1;
         [SerializeField] private Sprite _sprite5;
         [SerializeField] private Sprite _sprite25;
+        [SerializeField] private Sprite _sprite100;
+        [SerializeField] private Sprite _sprite500;
 
-        private int _lastAmount;
+        private readonly List<Image> _slots = new List<Image>();
+        private int    _lastAmount;
+        private bool   _lastExactMode;
 
         public RectTransform StackRoot => (RectTransform)transform;
 
         private void Awake() => EnsureRefs();
 
+        /// <summary>Approximate bet stack (max three chips, {25,5,1}).</summary>
         public void SetAmount(int amount)
         {
             EnsureRefs();
-            _lastAmount = amount;
+            _lastAmount    = amount;
+            _lastExactMode = false;
 
             List<int> denoms = ChipBreakdown.BreakDown(
-                amount, MaxStackChips, ChipBreakdown.StackDenominations);
+                amount, MaxBetStackChips, ChipBreakdown.StackDenominations);
 
-            Image[] slots = { _chip0, _chip1, _chip2 };
-            int slotIndex = 0;
+            ApplyBreakdown(denoms);
+        }
 
-            foreach (DenomGroup group in GroupByDenomination(denoms))
-            {
-                for (int i = 0; i < group.Count && slotIndex < slots.Length; i++)
-                {
-                    Image img = slots[slotIndex++];
-                    if (img == null) continue;
+        /// <summary>Exact minimum chip count for the amount using all denominations.</summary>
+        public void SetExactAmount(int amount)
+        {
+            EnsureRefs();
+            _lastAmount    = amount;
+            _lastExactMode = true;
 
-                    img.sprite         = SpriteFor(group.Denomination);
-                    img.color          = Color.white;
-                    img.preserveAspect = true;
-                    img.gameObject.SetActive(true);
-                }
-            }
+            List<int> denoms = ChipBreakdown.BreakDown(
+                amount, int.MaxValue, ChipBreakdown.Denominations);
 
-            for (; slotIndex < slots.Length; slotIndex++)
-            {
-                if (slots[slotIndex] != null)
-                    slots[slotIndex].gameObject.SetActive(false);
-            }
-
-            LayoutChips(denoms);
+            ApplyBreakdown(denoms);
         }
 
         public void Clear()
         {
             EnsureRefs();
             _lastAmount = 0;
-            foreach (Image img in new[] { _chip0, _chip1, _chip2 })
+            foreach (Image img in _slots)
             {
                 if (img != null)
                     img.gameObject.SetActive(false);
@@ -89,7 +85,12 @@ namespace TexasHoldem
         /// <summary>Re-applies layout after container resize (e.g. Apply Layout in editor).</summary>
         public void RefreshLayout()
         {
-            if (_lastAmount > 0)
+            if (_lastAmount <= 0)
+                return;
+
+            if (_lastExactMode)
+                SetExactAmount(_lastAmount);
+            else
                 SetAmount(_lastAmount);
         }
 
@@ -97,6 +98,63 @@ namespace TexasHoldem
 
         public Sprite SpriteForAmount(int amount)
             => SpriteFor(ChipBreakdown.LargestDenomination(amount, ChipBreakdown.StackDenominations));
+
+        private void ApplyBreakdown(List<int> denoms)
+        {
+            EnsureSlotCount(denoms.Count);
+
+            int slotIndex = 0;
+            foreach (DenomGroup group in GroupByDenomination(denoms))
+            {
+                for (int i = 0; i < group.Count && slotIndex < _slots.Count; i++)
+                {
+                    Image img = _slots[slotIndex++];
+                    if (img == null) continue;
+
+                    img.sprite         = SpriteFor(group.Denomination);
+                    img.color          = Color.white;
+                    img.preserveAspect = true;
+                    img.raycastTarget  = false;
+                    img.gameObject.SetActive(true);
+                }
+            }
+
+            for (; slotIndex < _slots.Count; slotIndex++)
+            {
+                if (_slots[slotIndex] != null)
+                    _slots[slotIndex].gameObject.SetActive(false);
+            }
+
+            LayoutChips(denoms);
+        }
+
+        private void EnsureSlotCount(int required)
+        {
+            EnsureRefs();
+            while (_slots.Count < required)
+            {
+                int index = _slots.Count;
+                string name = $"Chip_{index}";
+
+                Transform existing = transform.Find(name);
+                Image img;
+                if (existing != null)
+                {
+                    img = existing.GetComponent<Image>();
+                }
+                else
+                {
+                    var chipGo = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                    chipGo.transform.SetParent(transform, false);
+                    img = chipGo.GetComponent<Image>();
+                    img.type           = Image.Type.Simple;
+                    img.preserveAspect = true;
+                    img.raycastTarget  = false;
+                }
+
+                _slots.Add(img);
+            }
+        }
 
         private readonly struct DenomGroup
         {
@@ -142,7 +200,7 @@ namespace TexasHoldem
                     maxStack = g.Count;
             }
 
-            int colCount = groups.Count;
+            int   colCount     = groups.Count;
             float overlapY     = ResolveStackOverlapY();
             float layoutWidth  = colCount * ChipSize + (colCount - 1) * ColumnGapX;
             float layoutHeight = ChipSize + (maxStack - 1) * overlapY;
@@ -151,17 +209,15 @@ namespace TexasHoldem
             var stackRt = StackRoot;
             stackRt.sizeDelta = new Vector2(layoutWidth, layoutHeight);
 
-            Image[] slots = { _chip0, _chip1, _chip2 };
             int slotIndex = 0;
-
             for (int col = 0; col < groups.Count; col++)
             {
                 DenomGroup group = groups[col];
                 float colCenterX = -layoutWidth * 0.5f + ChipSize * 0.5f + col * (ChipSize + ColumnGapX);
 
-                for (int j = 0; j < group.Count && slotIndex < slots.Length; j++)
+                for (int j = 0; j < group.Count && slotIndex < _slots.Count; j++)
                 {
-                    Image img = slots[slotIndex];
+                    Image img = _slots[slotIndex];
                     if (img == null || !img.gameObject.activeSelf)
                     {
                         slotIndex++;
@@ -202,10 +258,12 @@ namespace TexasHoldem
         {
             return denomination switch
             {
-                25 => _sprite25,
-                5  => _sprite5,
-                1  => _sprite1,
-                _  => _sprite1
+                500 => _sprite500 != null ? _sprite500 : _sprite1,
+                100 => _sprite100 != null ? _sprite100 : _sprite1,
+                25  => _sprite25,
+                5   => _sprite5,
+                1   => _sprite1,
+                _   => _sprite1
             };
         }
 
@@ -214,6 +272,30 @@ namespace TexasHoldem
             if (_chip0 == null) _chip0 = transform.Find("Chip_0")?.GetComponent<Image>();
             if (_chip1 == null) _chip1 = transform.Find("Chip_1")?.GetComponent<Image>();
             if (_chip2 == null) _chip2 = transform.Find("Chip_2")?.GetComponent<Image>();
+
+            if (_slots.Count == 0)
+            {
+                if (_chip0 != null) _slots.Add(_chip0);
+                if (_chip1 != null) _slots.Add(_chip1);
+                if (_chip2 != null) _slots.Add(_chip2);
+            }
+        }
+
+        /// <summary>Copies chip sprites from another stack (e.g. when bootstrapping the pot stack).</summary>
+        public void CopySpritesFrom(ChipStackView source)
+        {
+            if (source == null) return;
+            _sprite1   = source._sprite1;
+            _sprite5   = source._sprite5;
+            _sprite25  = source._sprite25;
+            _sprite100 = source._sprite100;
+            _sprite500 = source._sprite500;
+        }
+
+        public void AssignHighDenominations(Sprite sprite100, Sprite sprite500)
+        {
+            if (sprite100 != null) _sprite100 = sprite100;
+            if (sprite500 != null) _sprite500 = sprite500;
         }
     }
 }
