@@ -46,7 +46,6 @@ namespace TexasHoldem
         private const float CardsAreaW = 124f;
         private const float CardsAreaH =  82f;
 
-        private const float AvatarD           = 162f;  // ring container outer diameter — matches AvatarRingChrome (crome_trans.png)
         private const float AvatarRingStrokePx =  6f;  // shared chrome + gold ring thickness
         private const float AvatarImgD = 122f;  // avatar mask diameter — fills the chrome ring inner transparent hole
         private const float AvatarX    = -133f; // ~25 % horizontal overlap with pill left edge
@@ -451,6 +450,10 @@ namespace TexasHoldem
             PlayerHudLayout.LayoutAvatarOutwardPx = layout != null
                 ? layout.GetAvatarOutwardOffset()
                 : 0f;
+            PlayerHudLayout.AvatarD = layout != null
+                ? layout.AvatarDiameter
+                : PlayerHudLayout.DefaultAvatarD;
+            float avatarD = PlayerHudLayout.AvatarD;
             float avatarX = PlayerHudLayout.AvatarPosX(mirrored);
             float textX   = PlayerHudLayout.TextPosX(mirrored);
             var   textAlign = PlayerHudLayout.TextAlign(mirrored);
@@ -540,7 +543,7 @@ namespace TexasHoldem
             var staleFrameMask = avatarFrameGo.GetComponent<Mask>();
             if (staleFrameMask != null) DestroyObj(staleFrameMask);
             avatarFrameGo.SetActive(true);
-            SetRect(avatarFrameGo, avatarX, PillY, AvatarD, AvatarD);
+            SetRect(avatarFrameGo, avatarX, PillY, avatarD, avatarD);
 
             // Migrate: old layout placed Avatar as a direct child of AvatarFrame.
             // Remove stale containers from old layout (Mask-based approach).
@@ -589,7 +592,7 @@ namespace TexasHoldem
             chromeRingGfx.color         = Color.white;
             chromeRingGfx.raycastTarget = false;
             chromeRingGo.SetActive(true);
-            SetRect(chromeRingGo, 0f, 0f, AvatarD, AvatarD);
+            SetRect(chromeRingGo, 0f, 0f, avatarD, avatarD);
 
             //    AvatarRingGold — gold countdown overlay; hidden until SetActiveTurn().
             GameObject    goldRingGo  = GetOrCreate(avatarFrameGo.transform, "AvatarRingGold");
@@ -601,7 +604,7 @@ namespace TexasHoldem
             goldRingGfx.color         = Color.clear;
             goldRingGfx.raycastTarget = false;
             goldRingGo.SetActive(true);
-            SetRect(goldRingGo, 0f, 0f, AvatarD, AvatarD);
+            SetRect(goldRingGo, 0f, 0f, avatarD, avatarD);
 
             // Internal sibling order: Avatar (photo) → Chrome → Gold (top).
             avatarImgGo.transform.SetSiblingIndex(0);

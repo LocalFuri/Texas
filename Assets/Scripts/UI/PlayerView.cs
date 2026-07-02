@@ -128,6 +128,7 @@ namespace TexasHoldem
             EnsureHudGlowRef();
             ApplyHudGlowSettings();
             PlayerHudLayout.Apply(transform, _hudMirrored);
+            SyncRingGeometry();
         }
 
         private void Awake()

@@ -81,6 +81,10 @@ namespace TexasHoldem
         [Tooltip("Nudge both hole cards away from the table centre (same direction as the seat).")]
         [SerializeField] private float _holeCardOutwardOffsetPx = 5f;
 
+        [Header("Avatar")]
+        [Tooltip("Outer diameter of the avatar frame and rings, in canvas pixels.")]
+        [SerializeField, Range(80f, 220f)] private float _avatarDiameter = 162f;
+
         [Header("Bet Display")]
         [Tooltip("Gap between avatar bottom edge and chip stack top; same for every seat.")]
         [SerializeField] private float _betGapBelowAvatar = 3f;
@@ -133,6 +137,9 @@ namespace TexasHoldem
         /// <summary>Seat layout entry for the given index.</summary>
         public SeatConfig GetSeatConfig(int seatIndex)
             => (uint)seatIndex < (uint)SeatCount ? _seats[seatIndex] : default;
+
+        /// <summary>Avatar frame outer diameter in canvas pixels.</summary>
+        public float AvatarDiameter => _avatarDiameter;
 
         /// <summary>Hole-card width in canvas pixels (Card Width).</summary>
         public float HoleCardWidth => _cardWidth;
@@ -217,6 +224,7 @@ namespace TexasHoldem
         {
             SyncPlayerDisplayNames();
             ApplyCommunityCards();
+            PlayerHudLayout.AvatarD = _avatarDiameter;
             PlayerHudLayout.LayoutAvatarOutwardPx = ComputeAvatarOutwardOffset();
             ApplySeats();
         }

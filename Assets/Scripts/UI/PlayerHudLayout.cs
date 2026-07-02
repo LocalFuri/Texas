@@ -19,7 +19,9 @@ namespace TexasHoldem
         public const float HudGlowSpreadPx = 14f;
         public const float HudGlowPeakIntensity = 1.1f;
         public const float HudGlowFalloff = 1.1f;
-        public const float AvatarD   = 162f;
+        public const float DefaultAvatarD = 162f;
+        /// <summary>Avatar frame outer diameter — set from TableLayoutManager before Apply.</summary>
+        public static float AvatarD { get; set; } = DefaultAvatarD;
         public const float AvatarX   = -133f;
         public const float TextX     = 25f;
         public const float TextW     = 155f;
@@ -330,11 +332,14 @@ namespace TexasHoldem
         {
             if (root == null) return;
 
+            ResolveLayoutGlobalsFromManager();
+
             float avatarX   = AvatarPosX(mirrored);
             float textX     = TextPosX(mirrored);
             Vector2 hudLocalPx = ResolveHudLocalPx(root);
 
             SetRect(FindChild(root, "AvatarFrame"), avatarX, PillY, AvatarD, AvatarD);
+            ApplyAvatarRings(root, AvatarD);
 
             var pv = root.GetComponent<PlayerView>();
             RectTransform card1 = pv != null ? pv.GetCardRect(1) : null;
@@ -410,6 +415,27 @@ namespace TexasHoldem
             var txt = t.GetComponent<TMP_Text>();
             if (txt != null)
                 txt.alignment = align;
+        }
+
+        private static void ResolveLayoutGlobalsFromManager()
+        {
+#if UNITY_EDITOR
+            TableLayoutManager layout = Object.FindFirstObjectByType<TableLayoutManager>(
+                FindObjectsInactive.Include);
+#else
+            TableLayoutManager layout = Object.FindFirstObjectByType<TableLayoutManager>();
+#endif
+            if (layout == null) return;
+            AvatarD                 = layout.AvatarDiameter;
+            LayoutAvatarOutwardPx   = layout.GetAvatarOutwardOffset();
+        }
+
+        private static void ApplyAvatarRings(Transform root, float diameter)
+        {
+            Transform frame = FindChild(root, "AvatarFrame");
+            if (frame == null) return;
+            SetRect(frame.Find("AvatarRingChrome"), 0f, 0f, diameter, diameter);
+            SetRect(frame.Find("AvatarRingGold"), 0f, 0f, diameter, diameter);
         }
 
         private static void SetRect(Transform t, float x, float y, float w, float h)
