@@ -46,8 +46,8 @@ namespace TexasHoldem
         [SerializeField] private Sprite         _potChipSprite500;
         [Tooltip("Vertical offset for the pot chip stack relative to PotText anchoredPosition.y (tune in Play mode).")]
         [SerializeField] private float          _potChipYOffset;
-
-        private const float PotChipGapPx = 8f;
+        [Tooltip("Horizontal gap between PotText and the pot chip stack.")]
+        [SerializeField] private float          _potChipPadding = 8f;
 
         [Header("Copyright")]
         [SerializeField, InspectorName("CopyrightLabel")]
@@ -1070,7 +1070,7 @@ namespace TexasHoldem
                 ? stackRt.rect.width * 0.5f
                 : stackRt.sizeDelta.x * 0.5f;
 
-            float stackX = potRt.anchoredPosition.x + textHalf + PotChipGapPx + stackHalfW;
+            float stackX = potRt.anchoredPosition.x + textHalf + _potChipPadding + stackHalfW;
 
             stackRt.anchoredPosition = new Vector2(
                 stackX,
