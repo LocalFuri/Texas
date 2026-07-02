@@ -48,6 +48,8 @@ namespace TexasHoldem
         [SerializeField] private float          _potChipYOffset;
         [Tooltip("Horizontal gap between PotText and the pot chip stack.")]
         [SerializeField] private float          _potChipPadding = 8f;
+        [Tooltip("Vertical step between identical chips in the pot stack only (bet stacks use TableLayoutManager).")]
+        [SerializeField, Range(1f, 12f)] private float _potStackOverlapY = 2f;
 
         [Header("Copyright")]
         [SerializeField, InspectorName("CopyrightLabel")]
@@ -974,12 +976,22 @@ namespace TexasHoldem
             if (_potChipStack == null)
                 return;
 
+            ApplyPotChipStackSettings();
+
             if (pot <= 0)
                 _potChipStack.Clear();
             else
                 _potChipStack.SetExactAmount(pot);
 
             PositionPotChipStack();
+        }
+
+        private void ApplyPotChipStackSettings()
+        {
+            if (_potChipStack == null)
+                return;
+
+            _potChipStack.SetStackOverlapY(_potStackOverlapY);
         }
 
         private void EnsurePotChipStack()
@@ -1034,6 +1046,7 @@ namespace TexasHoldem
                 _potChipStack.CopySpritesFrom(sample);
 
             _potChipStack.AssignHighDenominations(_potChipSprite100, _potChipSprite500);
+            ApplyPotChipStackSettings();
             _potChipStack.Clear();
             stackGo.SetActive(false);
         }
@@ -1698,8 +1711,16 @@ namespace TexasHoldem
 
         private void OnValidate()
         {
-            if (!Application.isPlaying)
-                ApplySceneModePreview();
+            if (Application.isPlaying)
+            {
+                if (_potChipStack == null && _potText != null)
+                    EnsurePotChipStack();
+                ApplyPotChipStackSettings();
+                UpdatePotText();
+                return;
+            }
+
+            ApplySceneModePreview();
         }
 
         [ContextMenu("Apply Copyright Label To TMP")]

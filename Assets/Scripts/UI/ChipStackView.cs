@@ -37,6 +37,10 @@ namespace TexasHoldem
         [SerializeField] private Sprite _sprite100;
         [SerializeField] private Sprite _sprite500;
 
+        [Tooltip("When set, uses Custom Stack Overlap Y instead of TableLayoutManager Stack Overlap Y.")]
+        [SerializeField] private bool  _useCustomStackOverlap;
+        [SerializeField, Range(1f, 12f)] private float _customStackOverlapY = DefaultStackOverlapY;
+
         private readonly List<Image> _slots = new List<Image>();
         private int    _lastAmount;
         private bool   _lastExactMode;
@@ -97,6 +101,14 @@ namespace TexasHoldem
                 SetExactAmount(_lastAmount);
             else
                 SetAmount(_lastAmount);
+        }
+
+        /// <summary>Overrides vertical chip step for this stack (e.g. pot stack from UIManager).</summary>
+        public void SetStackOverlapY(float overlapY)
+        {
+            _useCustomStackOverlap = true;
+            _customStackOverlapY   = Mathf.Clamp(overlapY, 1f, 12f);
+            RefreshLayout();
         }
 
         public Sprite SpriteForDenomination(int denomination) => SpriteFor(denomination);
@@ -296,8 +308,11 @@ namespace TexasHoldem
             return renderedH * 0.5f;
         }
 
-        private static float ResolveStackOverlapY()
+        private float ResolveStackOverlapY()
         {
+            if (_useCustomStackOverlap)
+                return _customStackOverlapY;
+
             if (_cachedLayout == null)
             {
 #if UNITY_2023_1_OR_NEWER
