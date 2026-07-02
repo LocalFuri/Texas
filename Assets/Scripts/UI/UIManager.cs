@@ -44,6 +44,8 @@ namespace TexasHoldem
         [SerializeField] private ChipStackView  _potChipStack;
         [SerializeField] private Sprite         _potChipSprite100;
         [SerializeField] private Sprite         _potChipSprite500;
+        [Tooltip("Vertical offset for the pot chip stack relative to PotText anchoredPosition.y (tune in Play mode).")]
+        [SerializeField] private float          _potChipYOffset;
 
         private const float PotChipGapPx = 8f;
 
@@ -1063,24 +1065,16 @@ namespace TexasHoldem
                 return;
 
             _potText.ForceMeshUpdate();
-            float textHalf  = _potText.preferredWidth * 0.5f;
-            float stackHalf = stackRt.sizeDelta.x * 0.5f;
+            float textHalf   = _potText.preferredWidth * 0.5f;
+            float stackHalfW = stackRt.rect.width > 0f
+                ? stackRt.rect.width * 0.5f
+                : stackRt.sizeDelta.x * 0.5f;
 
-            Transform parent = potRt.parent;
-            float textBottomY = parent != null
-                ? parent.InverseTransformPoint(potRt.TransformPoint(_potText.textBounds.min)).y
-                : potRt.anchoredPosition.y + _potText.textBounds.min.y;
-            float chipBottomLocal = _potChipStack.GetBottomLocalY();
+            float stackX = potRt.anchoredPosition.x + textHalf + PotChipGapPx + stackHalfW;
 
             stackRt.anchoredPosition = new Vector2(
-                potRt.anchoredPosition.x + textHalf + PotChipGapPx + stackHalf,
-                textBottomY - chipBottomLocal);
-
-            if (parent != null)
-            {
-                float chipBottomY = stackRt.anchoredPosition.y + chipBottomLocal;
-                stackRt.anchoredPosition += new Vector2(0f, textBottomY - chipBottomY);
-            }
+                stackX,
+                potRt.anchoredPosition.y + _potChipYOffset);
         }
 
         private void SubmitAction(BettingAction action, int raiseAmount = 0)

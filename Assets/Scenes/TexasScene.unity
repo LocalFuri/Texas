@@ -7992,6 +7992,7 @@ MonoBehaviour:
   _potChipStack: {fileID: 0}
   _potChipSprite100: {fileID: 21300000, guid: c3480f68c5eda0742abb385722c05d3b, type: 3}
   _potChipSprite500: {fileID: 21300000, guid: 6767bf3b7bdd5ca41ad3aee56e3c168d, type: 3}
+  _potChipYOffset: 20
   _copyrightLabel: CodeRed Soft \xAE 2026-06-30
   _copyrightLabelText: {fileID: 881100003}
   _winChipSprite: {fileID: 21300000, guid: 00f42296a2c9b824b9e0d93b73b24738, type: 3}

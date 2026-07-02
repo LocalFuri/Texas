@@ -256,12 +256,23 @@ namespace TexasHoldem
 
                 any = true;
                 var chipRt = (RectTransform)img.transform;
-                float bottom = chipRt.anchoredPosition.y - GetRenderedHalfHeight(img);
+                float bottom = GetChipVisualBottomLocalY(chipRt, img);
                 if (bottom < minBottom)
                     minBottom = bottom;
             }
 
             _bottomLocalY = any ? minBottom : 0f;
+        }
+
+        private static float GetChipVisualBottomLocalY(RectTransform chipRt, Image img)
+        {
+            float renderedH = GetRenderedHalfHeight(img) * 2f;
+            Sprite sprite     = img.sprite;
+            if (sprite == null || sprite.bounds.size.y <= 0f)
+                return chipRt.anchoredPosition.y - renderedH * 0.5f;
+
+            float scale  = renderedH / sprite.bounds.size.y;
+            return chipRt.anchoredPosition.y + sprite.bounds.min.y * scale;
         }
 
         private static float GetRenderedHalfHeight(Image img)
