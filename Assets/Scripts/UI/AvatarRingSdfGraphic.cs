@@ -37,8 +37,8 @@ namespace TexasHoldem
         [SerializeField] private Color _chromeColorTop = new Color(0.95f, 0.95f, 1.00f, 1f);
         [SerializeField] private Color _chromeColorBot = new Color(0.25f, 0.25f, 0.30f, 1f);
         [FormerlySerializedAs("_goldColor")]
-        [SerializeField] private Color _goldColorTop = new Color(1.00f, 0.88f, 0.35f, 1f);
-        [SerializeField] private Color _goldColorBot = new Color(0.45f, 0.28f, 0.05f, 1f);
+        [SerializeField] private Color _goldColorTop = new Color(1f, 0.85f, 0.2f, 1f);
+        [SerializeField] private Color _goldColorBot = new Color(0.65f, 0.55f, 0.13f, 1f);
         /// <summary>Outer radius in pixels. Set to -1 to derive automatically from the RectTransform size.</summary>
         [SerializeField] private float _outerRadiusPx = -1f;
 

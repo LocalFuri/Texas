@@ -10,8 +10,8 @@ Shader "UI/AvatarRingSDF"
         _RingLook ("Ring Look (0=Chrome, 1=Gold)", Float) = 0
         _ChromeColorTop ("Chrome Bright", Color) = (0.95, 0.95, 1.00, 1)
         _ChromeColorBot ("Chrome Dark",   Color) = (0.25, 0.25, 0.30, 1)
-        _GoldColorTop ("Gold Bright", Color) = (1.00, 0.88, 0.35, 1)
-        _GoldColorBot ("Gold Dark",   Color) = (0.45, 0.28, 0.05, 1)
+        _GoldColorTop ("Gold Bright", Color) = (1.00, 0.85, 0.20, 1)
+        _GoldColorBot ("Gold Dark",   Color) = (0.65, 0.55, 0.13, 1)
         _StencilComp ("Stencil Comparison", Float) = 8
         _Stencil ("Stencil ID", Float) = 0
         _StencilOp ("Stencil Operation", Float) = 0

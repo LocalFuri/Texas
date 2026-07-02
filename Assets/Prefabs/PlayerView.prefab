@@ -75,7 +75,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 0, a: 1}
+  m_fontColor: {r: 1, g: 0.85, b: 0.2, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -215,8 +215,8 @@ MonoBehaviour:
   _fillAmount: 1
   _chromeColorTop: {r: 0.95, g: 0.95, b: 1, a: 1}
   _chromeColorBot: {r: 0.25, g: 0.25, b: 0.3, a: 1}
-  _goldColorTop: {r: 1, g: 0.88, b: 0.35, a: 1}
-  _goldColorBot: {r: 0.45, g: 0.28, b: 0.05, a: 1}
+  _goldColorTop: {r: 1, g: 0.85, b: 0.2, a: 1}
+  _goldColorBot: {r: 0.65, g: 0.55, b: 0.13, a: 1}
   _outerRadiusPx: -1
 --- !u!1 &1046843117435776984
 GameObject:
@@ -789,7 +789,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 0.85, b: 0.15, a: 1}
+  m_fontColor: {r: 1, g: 0.85, b: 0.2, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -2909,8 +2909,8 @@ MonoBehaviour:
   _fillAmount: 1
   _chromeColorTop: {r: 0.95, g: 0.95, b: 1, a: 1}
   _chromeColorBot: {r: 0.25, g: 0.25, b: 0.3, a: 1}
-  _goldColorTop: {r: 1, g: 0.88, b: 0.35, a: 1}
-  _goldColorBot: {r: 0.45, g: 0.28, b: 0.05, a: 1}
+  _goldColorTop: {r: 1, g: 0.85, b: 0.2, a: 1}
+  _goldColorBot: {r: 0.65, g: 0.55, b: 0.13, a: 1}
   _outerRadiusPx: -1
 --- !u!1 &8444944344171936713
 GameObject:
@@ -3558,8 +3558,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4281577694
-  m_fontColor: {r: 0.87, g: 0.69, b: 0.2, a: 1}
+    rgba: 4281588223
+  m_fontColor: {r: 1, g: 0.85, b: 0.2, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -3785,7 +3785,7 @@ PrefabInstance:
       objectReference: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
     - target: {fileID: 78525316531670831, guid: 5d87c93d13e72ce429ea3415731abc91, type: 3}
       propertyPath: m_fontColor32.rgba
-      value: 4279900698
+      value: 4281588223
       objectReference: {fileID: 0}
     - target: {fileID: 78525316531670831, guid: 5d87c93d13e72ce429ea3415731abc91, type: 3}
       propertyPath: m_TextStyleHashCode
@@ -3901,7 +3901,7 @@ PrefabInstance:
       objectReference: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
     - target: {fileID: 6433143707639805873, guid: 5d87c93d13e72ce429ea3415731abc91, type: 3}
       propertyPath: m_fontColor32.rgba
-      value: 4279900698
+      value: 4281588223
       objectReference: {fileID: 0}
     - target: {fileID: 6433143707639805873, guid: 5d87c93d13e72ce429ea3415731abc91, type: 3}
       propertyPath: m_TextStyleHashCode
@@ -3962,7 +3962,7 @@ PrefabInstance:
       objectReference: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
     - target: {fileID: 78525316531670831, guid: 5d87c93d13e72ce429ea3415731abc91, type: 3}
       propertyPath: m_fontColor32.rgba
-      value: 4279900698
+      value: 4281588223
       objectReference: {fileID: 0}
     - target: {fileID: 78525316531670831, guid: 5d87c93d13e72ce429ea3415731abc91, type: 3}
       propertyPath: m_TextStyleHashCode
@@ -4078,7 +4078,7 @@ PrefabInstance:
       objectReference: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
     - target: {fileID: 6433143707639805873, guid: 5d87c93d13e72ce429ea3415731abc91, type: 3}
       propertyPath: m_fontColor32.rgba
-      value: 4279900698
+      value: 4281588223
       objectReference: {fileID: 0}
     - target: {fileID: 6433143707639805873, guid: 5d87c93d13e72ce429ea3415731abc91, type: 3}
       propertyPath: m_TextStyleHashCode

@@ -24,7 +24,7 @@ public static class OptionsMenuBuilder
     private const float SliderHandleSize  = 16f;
 
     private static readonly Color PanelBg     = new Color(0.020f, 0.173f, 0.020f, 1f);
-    private static readonly Color LabelColor  = new Color(0.902f, 0.839f, 0.306f, 1f);
+    private static readonly Color LabelColor  = UiColors.PotGold;
 
     private static readonly string[] OptionLabels =
     {

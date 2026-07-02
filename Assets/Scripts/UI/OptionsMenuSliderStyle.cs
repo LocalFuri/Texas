@@ -135,7 +135,7 @@ namespace TexasHoldem
             tmp.text               = BotThinkLabelText;
             tmp.fontSize           = LabelFontSize;
             tmp.fontStyle          = FontStyles.Normal;
-            tmp.color              = new Color(0.902f, 0.839f, 0.306f, 1f);
+            tmp.color              = UiColors.PotGold;
             tmp.alignment          = TextAlignmentOptions.MidlineLeft;
             tmp.enableWordWrapping = false;
             tmp.overflowMode       = TextOverflowModes.Overflow;

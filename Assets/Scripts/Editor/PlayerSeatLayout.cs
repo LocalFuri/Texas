@@ -78,8 +78,8 @@ namespace TexasHoldem
         private static readonly Color PillColor      = new Color(0.1235f, 0.1235f, 0.152f, 0.95f);
         private static readonly Color BadgeBgColor   = new Color(0.08f, 0.08f, 0.10f, 0.94f);
         private static readonly Color NameColor      = Color.white;
-        private static readonly Color ChipsColor     = new Color(0.87f, 0.69f, 0.20f, 1f);
-        private static readonly Color BadgeTextColor = new Color(1.00f, 0.85f, 0.15f, 1f);
+        private static readonly Color ChipsColor     = UiColors.PotGold;
+        private static readonly Color BadgeTextColor = UiColors.PotGold;
         private static readonly Color StatusColor    = new Color(1.00f, 0.35f, 0.35f, 1f);
 
         // ── Asset paths ───────────────────────────────────────────────────────
@@ -965,7 +965,7 @@ namespace TexasHoldem
             amountTMP.alignment          = TextAlignmentOptions.Center;
             amountTMP.fontStyle          = FontStyles.Bold;
             PlayerHudLayout.ApplyStackAmountFontIfMissing(amountTMP);
-            amountTMP.color              = new Color(1.00f, 0.85f, 0.15f, 1f);
+            amountTMP.color              = UiColors.PotGold;
             amountTMP.enableWordWrapping = false;
             amountTMP.raycastTarget      = false;
             amountTMP.overflowMode       = TextOverflowModes.Ellipsis;

@@ -9,8 +9,8 @@ Shader "UI/DealerButtonSDF"
         _RimWidthPx ("Outer Rim Width (px)", Float) = 2.5
         _InnerRingWidthPx ("Inner Ring Width (px)", Float) = 1.5
         _InnerRingRadiusFrac ("Inner Ring Radius", Range(0.5, 0.95)) = 0.78
-        _GoldColorTop ("Gold Bright", Color) = (1.00, 0.88, 0.35, 1)
-        _GoldColorBot ("Gold Dark", Color) = (0.72, 0.52, 0.08, 1)
+        _GoldColorTop ("Gold Bright", Color) = (1.00, 0.85, 0.20, 1)
+        _GoldColorBot ("Gold Dark", Color) = (0.65, 0.55, 0.13, 1)
         _RimColor ("Rim / Inner Ring", Color) = (0.12, 0.08, 0.02, 1)
         _HighlightStrength ("Highlight Strength", Range(0, 1)) = 0.35
         _StencilComp ("Stencil Comparison", Float) = 8

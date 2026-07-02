@@ -763,7 +763,7 @@ namespace TexasHoldem
                     CanvasToWorld(seatRt.anchoredPosition + ComputeBetAnchorPosition(_playerViews[i], cfg)), r * 0.2f);
 
                 // Dealer button anchor.
-                Gizmos.color = new Color(1f, 0.85f, 0.1f, 0.85f);
+                Gizmos.color = new Color(UiColors.PotGold.r, UiColors.PotGold.g, UiColors.PotGold.b, 0.85f);
                 Gizmos.DrawWireSphere(
                     CanvasToWorld(seatRt.anchoredPosition + ComputeDealerButtonPosition(cfg)), r * 0.22f);
             }

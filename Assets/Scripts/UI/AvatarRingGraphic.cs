@@ -152,8 +152,8 @@ namespace TexasHoldem
         private static Color SampleGoldRgb(float clockwiseDeg, float radialT)
         {
             float light = Mathf.Clamp01(0.52f + 0.48f * Mathf.Cos((clockwiseDeg - 50f) * Mathf.Deg2Rad));
-            Color dark   = new Color(0.62f, 0.44f, 0.06f, 1f);
-            Color bright = new Color(1.00f, 0.86f, 0.22f, 1f);
+            Color dark   = UiColors.PotGoldDark;
+            Color bright = UiColors.PotGold;
             float rim    = radialT > 0.82f ? 1.1f : 1f;
             return Color.Lerp(dark, bright, light * rim);
         }

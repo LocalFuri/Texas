@@ -26,8 +26,8 @@ namespace TexasHoldem
         [SerializeField, Range(1f, 6f)] private float _rimWidthPx = 2.5f;
         [SerializeField, Range(0.5f, 4f)] private float _innerRingWidthPx = 1.5f;
         [SerializeField, Range(0.5f, 0.95f)] private float _innerRingRadiusFrac = 0.78f;
-        [SerializeField] private Color _goldColorTop = new Color(1.00f, 0.88f, 0.35f, 1f);
-        [SerializeField] private Color _goldColorBot = new Color(0.72f, 0.52f, 0.08f, 1f);
+        [SerializeField] private Color _goldColorTop = new Color(1f, 0.85f, 0.2f, 1f);
+        [SerializeField] private Color _goldColorBot = new Color(0.65f, 0.55f, 0.13f, 1f);
         [SerializeField] private Color _rimColor = new Color(0.12f, 0.08f, 0.02f, 1f);
         [SerializeField, Range(0f, 1f)] private float _highlightStrength = 0.35f;
 

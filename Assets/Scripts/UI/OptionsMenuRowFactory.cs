@@ -9,7 +9,7 @@ namespace TexasHoldem
     {
         public const float RowHeight    = 24f;
         private const float CheckboxSize = 15f;
-        private static readonly Color LabelColor = new Color(0.902f, 0.839f, 0.306f, 1f);
+        private static readonly Color LabelColor = UiColors.PotGold;
 
         public static Slider CreateBotThinkSliderRow(Transform panel, float initialValue)
         {

@@ -706,9 +706,7 @@ namespace TexasHoldem
             if (_avatarRingGold != null)
             {
                 // Bright, fully-saturated gold for the win moment.
-                _avatarRingGold.SetGoldColors(
-                    new Color(1.00f, 0.95f, 0.20f, 1f),
-                    new Color(0.85f, 0.50f, 0.00f, 1f));
+                _avatarRingGold.SetGoldColors(UiColors.PotGold, UiColors.PotGoldDark);
                 _avatarRingGold.Look       = AvatarRingSdfGraphic.RingLook.Gold;
                 _avatarRingGold.FillAmount = 1f;
                 _avatarRingGold.color      = Color.white;

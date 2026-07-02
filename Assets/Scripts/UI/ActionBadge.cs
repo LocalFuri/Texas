@@ -12,7 +12,7 @@ namespace TexasHoldem
 
         private const string BadgeFontResourcesPath = "Fonts & Materials/LiberationSans SDF";
         private const float  LabelFontSize                  = 21f;
-        private static readonly Color WinColor = new Color(1f, 0.88f, 0.15f, 1f);
+        private static readonly Color WinColor = UiColors.PotGold;
 
         private static readonly NumberFormatInfo GermanNFI = new NumberFormatInfo
         {

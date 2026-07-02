@@ -67,7 +67,7 @@ namespace TexasHoldem
         private const string Casino3DSdfResourcesPath   = "Fonts/Casino3D SDF";
 
         // Vertex colors copied from BlackJack (HIT/STAND/DOUBLE) + yellow for START/raise amount.
-        private static readonly Color TextStart = new Color(1f, 1f, 0f, 1f);
+        private static readonly Color TextStart = UiColors.PotGold;
         private static readonly Color TextFold  = new Color(1f, 0f, 0f, 1f);
         private static readonly Color TextCheck = new Color(0f, 1f, 0f, 1f);
         private static readonly Color TextRaise = ButtonLabelStyle.RaiseText;
@@ -1798,7 +1798,7 @@ namespace TexasHoldem
             var chipGo  = new GameObject("_WinChip", typeof(RectTransform), typeof(Image));
             var chipImg = chipGo.GetComponent<Image>();
             chipImg.sprite         = _winChipSprite;
-            chipImg.color          = _winChipSprite != null ? Color.white : new Color(1f, 0.85f, 0.1f, 1f);
+            chipImg.color          = _winChipSprite != null ? Color.white : UiColors.PotGold;
             chipImg.raycastTarget  = false;
             chipImg.preserveAspect = true;
 

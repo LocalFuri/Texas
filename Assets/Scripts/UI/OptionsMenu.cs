@@ -32,7 +32,7 @@ namespace TexasHoldem
         // Reference panel ~#052c05
         private static readonly Color PanelBg    = new Color(0.020f, 0.173f, 0.020f, 1f);
         // Reference label ~#e6d64e
-        private static readonly Color LabelColor = new Color(0.902f, 0.839f, 0.306f, 1f);
+        private static readonly Color LabelColor = UiColors.PotGold;
 
         // ── Singleton ─────────────────────────────────────────────────────
         public static OptionsMenu Instance { get; private set; }
