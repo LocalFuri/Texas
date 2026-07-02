@@ -847,7 +847,7 @@ namespace TexasHoldem
 
             int callAmount = _gameManager.CurrentBet - _humanPlayer.CurrentBet;
             string label = callAmount <= 0 ? "Check"
-                : "Call \u20AC " + FormatEuroAmount(callAmount);
+                : "Call " + FormatEuroAmount(callAmount);
 
             if (_checkCallLabel != null)
             {
@@ -863,7 +863,7 @@ namespace TexasHoldem
             TMP_Text label = _allInButton.GetComponentInChildren<TMP_Text>();
             if (label == null) return;
 
-            label.text = "All In \u20AC " + FormatEuroAmount(_humanPlayer.Chips);
+            label.text = "All In " + FormatEuroAmount(_humanPlayer.Chips);
             StylePanelLabel(label, TextAllIn);
         }
 
@@ -967,7 +967,7 @@ namespace TexasHoldem
             if (_potText == null || _gameManager == null) return;
 
             int pot = _gameManager.PotAmount;
-            _potText.text = "Pot: \u20AC " + pot.ToString("N0", GermanNFI);
+            _potText.text = "Pot: " + pot.ToString("N0", GermanNFI);
 
             if (_potChipStack == null)
                 EnsurePotChipStack();

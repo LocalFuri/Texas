@@ -203,7 +203,7 @@ namespace TexasHoldem
                 NumberDecimalDigits    = 0,
                 NumberGroupSizes       = new[] { 3 }
             };
-            string formatted = chips.ToString("N0", nfi) + " \u20AC";
+            string formatted = chips.ToString("N0", nfi);
 
             int count = 0;
             foreach (PlayerView v in Object.FindObjectsOfType<PlayerView>(true))

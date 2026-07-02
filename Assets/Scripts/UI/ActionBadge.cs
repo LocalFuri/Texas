@@ -72,7 +72,7 @@ namespace TexasHoldem
         public void ShowWin(int potAmount, float duration)
         {
             string text = potAmount > 0
-                ? "WIN \u20AC " + potAmount.ToString("N0", GermanNFI)
+                ? "WIN " + potAmount.ToString("N0", GermanNFI)
                 : "WIN!";
             PresentBadge(WinColor, text, duration);
         }

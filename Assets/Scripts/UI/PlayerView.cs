@@ -466,7 +466,7 @@ namespace TexasHoldem
         public void RefreshHud(PlayerState player)
         {
             if (_nameText  != null) _nameText.text  = player.Name;
-            if (_chipsText != null) _chipsText.text = player.Chips.ToString("N0", GermanNFI) + " \u20AC";
+            if (_chipsText != null) _chipsText.text = player.Chips.ToString("N0", GermanNFI);
 
             string status = player.Chips == 0 ? "Eliminated"
                                 : player.HasFolded  ? "Folded"

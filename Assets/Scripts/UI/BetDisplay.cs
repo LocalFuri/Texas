@@ -61,7 +61,7 @@ namespace TexasHoldem
         public void ShowBet(int amount, RectTransform fromRect = null)
         {
             if (_amountText != null)
-                _amountText.text = amount.ToString("N0", GermanNFI) + " \u20AC";
+                _amountText.text = amount.ToString("N0", GermanNFI);
 
             _chipStackView?.SetAmount(amount);
             gameObject.SetActive(true);

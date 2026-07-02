@@ -23,7 +23,7 @@ namespace TexasHoldem
             ApplyWithDimensions(gm.ButtonWidth, gm.ButtonHeight, gm.ButtonFontSize);
         }
 
-        /// <summary>Widens visible betting buttons so amount labels (e.g. Call € 1.000) fit at full font size.</summary>
+        /// <summary>Widens visible betting buttons so amount labels (e.g. Call 1.000) fit at full font size.</summary>
         public void FitActiveButtons(float baseWidth, float buttonHeight, float fontSize, IReadOnlyList<Button> buttons)
         {
             if (buttons == null || buttons.Count == 0)
