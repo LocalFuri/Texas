@@ -40,8 +40,12 @@ namespace TexasHoldem
         private readonly List<Image> _slots = new List<Image>();
         private int    _lastAmount;
         private bool   _lastExactMode;
+        private float  _bottomLocalY;
 
         public RectTransform StackRoot => (RectTransform)transform;
+
+        /// <summary>Bottom edge Y in stack-local space (centre-anchored root).</summary>
+        public float GetBottomLocalY() => _bottomLocalY;
 
         private void Awake() => EnsureRefs();
 
@@ -74,7 +78,8 @@ namespace TexasHoldem
         public void Clear()
         {
             EnsureRefs();
-            _lastAmount = 0;
+            _lastAmount     = 0;
+            _bottomLocalY   = 0f;
             foreach (Image img in _slots)
             {
                 if (img != null)
@@ -235,6 +240,49 @@ namespace TexasHoldem
                     slotIndex++;
                 }
             }
+
+            UpdateBottomLocalY();
+        }
+
+        private void UpdateBottomLocalY()
+        {
+            float minBottom = float.MaxValue;
+            bool  any       = false;
+
+            foreach (Image img in _slots)
+            {
+                if (img == null || !img.gameObject.activeSelf)
+                    continue;
+
+                any = true;
+                var chipRt = (RectTransform)img.transform;
+                float bottom = chipRt.anchoredPosition.y - GetRenderedHalfHeight(img);
+                if (bottom < minBottom)
+                    minBottom = bottom;
+            }
+
+            _bottomLocalY = any ? minBottom : 0f;
+        }
+
+        private static float GetRenderedHalfHeight(Image img)
+        {
+            var rt = (RectTransform)img.transform;
+            float rectW = rt.rect.width;
+            float rectH = rt.rect.height;
+            if (rectW <= 0f) rectW = rt.sizeDelta.x;
+            if (rectH <= 0f) rectH = rt.sizeDelta.y;
+
+            Sprite sprite = img.sprite;
+            if (sprite == null)
+                return rectH * 0.5f;
+
+            float spriteAspect = sprite.rect.width / sprite.rect.height;
+            float rectAspect   = rectW / rectH;
+            float renderedH    = spriteAspect >= rectAspect
+                ? rectH
+                : rectW / spriteAspect;
+
+            return renderedH * 0.5f;
         }
 
         private static float ResolveStackOverlapY()

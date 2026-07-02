@@ -1066,8 +1066,21 @@ namespace TexasHoldem
             float textHalf  = _potText.preferredWidth * 0.5f;
             float stackHalf = stackRt.sizeDelta.x * 0.5f;
 
-            stackRt.anchoredPosition = potRt.anchoredPosition + new Vector2(
-                textHalf + PotChipGapPx + stackHalf, 0f);
+            Transform parent = potRt.parent;
+            float textBottomY = parent != null
+                ? parent.InverseTransformPoint(potRt.TransformPoint(_potText.textBounds.min)).y
+                : potRt.anchoredPosition.y + _potText.textBounds.min.y;
+            float chipBottomLocal = _potChipStack.GetBottomLocalY();
+
+            stackRt.anchoredPosition = new Vector2(
+                potRt.anchoredPosition.x + textHalf + PotChipGapPx + stackHalf,
+                textBottomY - chipBottomLocal);
+
+            if (parent != null)
+            {
+                float chipBottomY = stackRt.anchoredPosition.y + chipBottomLocal;
+                stackRt.anchoredPosition += new Vector2(0f, textBottomY - chipBottomY);
+            }
         }
 
         private void SubmitAction(BettingAction action, int raiseAmount = 0)
