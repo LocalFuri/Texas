@@ -160,6 +160,7 @@ namespace TexasHoldem
             HideBettingControls();
             _rootCanvas = ResolveRootCanvas();
             EnsurePotChipStack();
+            UpdatePotText();
             SubscribeToGameEvents();
             StartCoroutine(BindOptionsMenuWhenReady());
             HideAllSeatMenus();
@@ -1013,9 +1014,12 @@ namespace TexasHoldem
                         typeof(CanvasRenderer),
                         typeof(Image));
                     chipGo.transform.SetParent(stackGo.transform, false);
+                    var chipRt = (RectTransform)chipGo.transform;
+                    chipRt.sizeDelta = new Vector2(ChipStackView.ChipDisplaySize, ChipStackView.ChipDisplaySize);
                     var img = chipGo.GetComponent<Image>();
                     img.raycastTarget  = false;
                     img.preserveAspect = true;
+                    chipGo.SetActive(false);
                 }
             }
 
@@ -1028,6 +1032,8 @@ namespace TexasHoldem
                 _potChipStack.CopySpritesFrom(sample);
 
             _potChipStack.AssignHighDenominations(_potChipSprite100, _potChipSprite500);
+            _potChipStack.Clear();
+            stackGo.SetActive(false);
         }
 
         private ChipStackView FindSampleBetChipStack()
