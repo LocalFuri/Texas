@@ -175,7 +175,8 @@ namespace TexasHoldem
             HideBettingControls();
             _rootCanvas = ResolveRootCanvas();
             EnsurePotChipStack();
-            UpdatePotText();
+            UpdatePotLabel();
+            HidePotChipStack();
             SubscribeToGameEvents();
             StartCoroutine(BindOptionsMenuWhenReady());
             HideAllSeatMenus();
@@ -628,7 +629,8 @@ namespace TexasHoldem
 
             TryScheduleHumanHoleReveal(humanView, humanState);
 
-            UpdatePotText();
+            UpdatePotLabel();
+            HidePotChipStack();
             RefreshDealerButton();
             _playersRefreshCoroutine = null;
         }
@@ -801,7 +803,8 @@ namespace TexasHoldem
                     slot?.Hide();
             }
 
-            UpdatePotText();
+            UpdatePotLabel();
+            HidePotChipStack();
         }
 
         private void OnRoundEnded()
@@ -976,13 +979,40 @@ namespace TexasHoldem
             return amount;
         }
 
-        /// <summary>Refreshes the pot label and chip stack to reflect the current pot amount.</summary>
-        private void UpdatePotText()
+        /// <summary>Updates the pot number only — used while a betting street is in progress.</summary>
+        private void UpdatePotLabel()
         {
-            if (_potText == null || _gameManager == null) return;
+            if (_potText == null || _gameManager == null)
+                return;
 
             int pot = _gameManager.PotAmount;
             _potText.text = "Pot: " + pot.ToString("N0", GermanNFI);
+        }
+
+        /// <summary>Hides the central pot chip stack (label unchanged).</summary>
+        private void HidePotChipStack()
+        {
+            if (_potChipStack == null)
+                EnsurePotChipStack();
+            if (_potChipStack == null)
+                return;
+
+            _potChipStack.Clear();
+            _potChipStack.StackRoot.gameObject.SetActive(false);
+        }
+
+        /// <summary>Shows the pot chip breakdown — after street bets are collected into the pot.</summary>
+        private void ShowPotChipStack()
+        {
+            if (_potText == null || _gameManager == null)
+                return;
+
+            int pot = _gameManager.PotAmount;
+            if (pot <= 0)
+            {
+                HidePotChipStack();
+                return;
+            }
 
             if (_potChipStack == null)
                 EnsurePotChipStack();
@@ -990,13 +1020,8 @@ namespace TexasHoldem
                 return;
 
             ApplyPotChipStackSettings();
-
-            if (pot <= 0)
-                _potChipStack.Clear();
-            else
-                _potChipStack.SetExactAmount(pot);
-
-            PositionPotChipStack();
+            _potChipStack.SetExactAmount(pot);
+            PositionPotChipStack(showStack: true);
         }
 
         private void ApplyPotChipStackSettings()
@@ -1077,14 +1102,16 @@ namespace TexasHoldem
             return null;
         }
 
-        private void PositionPotChipStack()
+        private void PositionPotChipStack(bool showStack)
         {
             if (_potChipStack == null || _potText == null)
                 return;
 
             var potRt   = (RectTransform)_potText.transform;
             var stackRt = _potChipStack.StackRoot;
-            bool show   = _gameManager != null && _gameManager.PotAmount > 0;
+            bool show   = showStack
+                          && _gameManager != null
+                          && _gameManager.PotAmount > 0;
 
             stackRt.gameObject.SetActive(show);
             if (!show)
@@ -1158,7 +1185,8 @@ namespace TexasHoldem
                     view?.HideBetDisplay();
 
                 _previousBets.Clear();
-                UpdatePotText();
+                UpdatePotLabel();
+                ShowPotChipStack();
                 yield break;
             }
 
@@ -1173,7 +1201,8 @@ namespace TexasHoldem
                 view?.HideBetDisplay();
 
             _previousBets.Clear();
-            UpdatePotText();
+            UpdatePotLabel();
+            ShowPotChipStack();
         }
 
         private RectTransform ResolvePotCollectTarget()
@@ -1828,7 +1857,8 @@ namespace TexasHoldem
                 if (_potChipStack == null && _potText != null)
                     EnsurePotChipStack();
                 ApplyPotChipStackSettings();
-                UpdatePotText();
+                UpdatePotLabel();
+                HidePotChipStack();
                 return;
             }
 
