@@ -59,6 +59,17 @@ namespace TexasHoldem
                 _amountText = transform.Find("AmountBadge/AmountText")?.GetComponent<TMP_Text>();
         }
 
+        public const float ChipFlyDuration = AnimDuration;
+
+        public bool HasVisibleBet => gameObject.activeSelf;
+
+        public RectTransform ChipStackOrigin =>
+            _chipStackRoot != null
+                ? _chipStackRoot
+                : _chipStackView != null
+                    ? _chipStackView.StackRoot
+                    : (RectTransform)transform;
+
         public void ShowBet(int amount, RectTransform fromRect = null)
         {
             if (_amountText != null)
@@ -83,6 +94,63 @@ namespace TexasHoldem
             }
             _chipStackView?.Clear();
             gameObject.SetActive(false);
+        }
+
+        /// <summary>Flies a chip from the bet stack toward the pot at end of a betting street.</summary>
+        public IEnumerator PlayCollectToPot(
+            RectTransform potTarget, int amount, float flyDuration, float delay = 0f, bool useArc = true)
+        {
+            if (delay > 0f)
+                yield return new WaitForSeconds(delay);
+
+            if (_rootCanvas == null || potTarget == null)
+                yield break;
+
+            RectTransform origin = ChipStackOrigin;
+            Sprite chipSprite = _chipStackView != null
+                ? _chipStackView.SpriteForAmount(amount)
+                : null;
+
+            var chipGo  = new GameObject("_ChipCollect", typeof(RectTransform), typeof(Image));
+            var chipImg = chipGo.GetComponent<Image>();
+            chipImg.sprite         = chipSprite;
+            chipImg.color          = chipSprite != null ? Color.white : ChipAnimFallbackColor;
+            chipImg.raycastTarget  = false;
+            chipImg.preserveAspect = true;
+
+            var chipRt = (RectTransform)chipGo.transform;
+            chipRt.SetParent((RectTransform)_rootCanvas.transform, false);
+            chipRt.sizeDelta = new Vector2(ChipAnimSize, ChipAnimSize);
+            chipRt.anchorMin = new Vector2(0.5f, 0.5f);
+            chipRt.anchorMax = new Vector2(0.5f, 0.5f);
+            chipRt.pivot     = new Vector2(0.5f, 0.5f);
+
+            Vector2 startPos = ToCanvasLocal(origin);
+            Vector2 endPos   = ToCanvasLocal(potTarget);
+            startPos += new Vector2(Random.Range(-8f, 8f), Random.Range(-4f, 4f));
+            chipRt.anchoredPosition = startPos;
+
+            float duration = Mathf.Max(0.05f, flyDuration);
+            float elapsed  = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = EaseCurve.Evaluate(Mathf.Clamp01(elapsed / duration));
+
+                Vector2 pos = Vector2.Lerp(startPos, endPos, t);
+                if (useArc)
+                    pos.y += Mathf.Sin(t * Mathf.PI) * 40f;
+
+                chipRt.anchoredPosition = pos;
+                chipRt.localScale       = Vector3.Lerp(Vector3.one * 1.1f, Vector3.one * 0.75f, t);
+
+                float alpha = t > 0.75f ? Mathf.Lerp(1f, 0f, (t - 0.75f) / 0.25f) : 1f;
+                chipImg.color = new Color(chipImg.color.r, chipImg.color.g, chipImg.color.b, alpha);
+                yield return null;
+            }
+
+            if (chipGo != null)
+                Destroy(chipGo);
         }
 
         private IEnumerator AnimateChip(RectTransform origin, int amount)

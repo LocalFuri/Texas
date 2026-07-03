@@ -19,6 +19,7 @@ namespace TexasHoldem
 
         [Header("Table")]
         [SerializeField] private TableLayoutManager _tableLayout;
+        [SerializeField] private UIManager          _uiManager;
 
         [Header("Button Row")]
         [SerializeField] private float _buttonWidth    = 120f;
@@ -242,7 +243,7 @@ namespace TexasHoldem
             int boardCount = 0;
 
             // ── Flop ──────────────────────────────────────────────────────
-            ResetBetsForNewPhase(active);
+            yield return CollectStreetBetsBeforeNextStreet(active);
             _boardManager.DealFlop();
             var flop = _boardManager.CommunityCards;
             SetPhase(GamePhase.Flop);
@@ -254,7 +255,7 @@ namespace TexasHoldem
             if (GetNonFolded(active).Count <= 1) { yield return StartCoroutine(EndRound(active)); yield break; }
 
             // ── Turn ──────────────────────────────────────────────────────
-            ResetBetsForNewPhase(active);
+            yield return CollectStreetBetsBeforeNextStreet(active);
             _boardManager.DealTurn();
             var board4 = _boardManager.CommunityCards;
             SetPhase(GamePhase.Turn);
@@ -266,7 +267,7 @@ namespace TexasHoldem
             if (GetNonFolded(active).Count <= 1) { yield return StartCoroutine(EndRound(active)); yield break; }
 
             // ── River ─────────────────────────────────────────────────────
-            ResetBetsForNewPhase(active);
+            yield return CollectStreetBetsBeforeNextStreet(active);
             _boardManager.DealRiver();
             var board5 = _boardManager.CommunityCards;
             SetPhase(GamePhase.River);
@@ -417,6 +418,23 @@ namespace TexasHoldem
         {
             _bettingManager.ResetPhase();
             foreach (var p in players) p.CurrentBet = 0;
+        }
+
+        private IEnumerator CollectStreetBetsBeforeNextStreet(List<PlayerState> active)
+        {
+            UIManager ui = ResolveUiManager();
+            if (ui != null)
+                yield return ui.CollectStreetBetsToPot();
+
+            ResetBetsForNewPhase(active);
+        }
+
+        private UIManager ResolveUiManager()
+        {
+            if (_uiManager == null)
+                _uiManager = FindFirstObjectByType<UIManager>();
+
+            return _uiManager;
         }
 
         private static int GetActionDisplayAmount(

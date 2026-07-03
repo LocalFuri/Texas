@@ -57,6 +57,16 @@ namespace TexasHoldem
         private string _copyrightLabel = "v1.0";
         [SerializeField] private TMP_Text _copyrightLabelText;
 
+        [Header("Street Bet Collect")]
+        [Tooltip("Duration of each chip flying from a seat bet stack to the pot.")]
+        [SerializeField, Min(0.05f)] private float _collectFlyDuration = 0.5f;
+        [Tooltip("Delay between seats when collecting bets into the pot.")]
+        [SerializeField, Min(0f)] private float _collectSeatStagger = 0.08f;
+        [Tooltip("Flying chips spawned per seat with a visible bet.")]
+        [SerializeField, Range(1, 4)] private int _collectChipsPerSeat = 2;
+        [Tooltip("Pause after collect animation before updating the pot display.")]
+        [SerializeField, Min(0f)] private float _collectPotUpdateDelay = 0.1f;
+
         [Header("Winner Celebration")]
         [SerializeField] private Sprite _winChipSprite;
         [SerializeField, Min(1)]  private int   _winChipCount   = 8;
@@ -104,6 +114,7 @@ namespace TexasHoldem
         private PlayerView           _humanSeatView;
         private readonly Dictionary<int, int> _previousBets = new Dictionary<int, int>();
         private bool                          _suppressDealerButton;
+        private bool                          _collectInProgress;
         private Canvas               _rootCanvas;
 
         private bool          _hasPendingActionBadge;
@@ -604,7 +615,9 @@ namespace TexasHoldem
                 _previousBets[i]  = player.CurrentBet;
 
                 if (player.CurrentBet > 0)
-                    view.ShowBetDisplay(player.CurrentBet, betIncreased ? view.AvatarRect : null);
+                    view.ShowBetDisplay(
+                        player.CurrentBet,
+                        betIncreased && !_collectInProgress ? view.AvatarRect : null);
                 else
                     view.HideBetDisplay();
 
@@ -1088,6 +1101,105 @@ namespace TexasHoldem
             stackRt.anchoredPosition = new Vector2(
                 stackX,
                 potRt.anchoredPosition.y + _potChipYOffset);
+        }
+
+        /// <summary>
+        /// Animates visible seat bet stacks into the pot, then hides bets and refreshes the pot HUD.
+        /// Called between betting streets (preflop→flop, flop→turn, turn→river).
+        /// </summary>
+        public IEnumerator CollectStreetBetsToPot()
+        {
+            if (!Application.isPlaying || _gameManager == null)
+                yield break;
+
+            _rootCanvas ??= ResolveRootCanvas();
+            RectTransform potTarget = ResolvePotCollectTarget();
+            if (potTarget == null)
+                yield break;
+
+            EnsurePotChipStack();
+
+            List<PlayerState>         players = _gameManager.Players;
+            IReadOnlyList<PlayerView> views   = ResolvePlayerViews();
+            if (players == null || views == null)
+                yield break;
+
+            var routines = new List<IEnumerator>();
+            int seatOrder = 0;
+
+            for (int i = 0; i < players.Count && i < views.Count; i++)
+            {
+                PlayerState player = players[i];
+                if (player.CurrentBet <= 0)
+                    continue;
+
+                PlayerView view = views[i];
+                if (view == null)
+                    continue;
+
+                BetDisplay bet = view.GetComponentInChildren<BetDisplay>(true);
+                if (bet == null || !bet.HasVisibleBet)
+                    continue;
+
+                float seatDelay = seatOrder * _collectSeatStagger;
+                for (int c = 0; c < _collectChipsPerSeat; c++)
+                {
+                    float chipDelay = seatDelay + c * (_collectSeatStagger * 0.35f);
+                    routines.Add(bet.PlayCollectToPot(
+                        potTarget, player.CurrentBet, _collectFlyDuration, chipDelay));
+                }
+
+                seatOrder++;
+            }
+
+            if (routines.Count == 0)
+            {
+                foreach (PlayerView view in views)
+                    view?.HideBetDisplay();
+
+                _previousBets.Clear();
+                UpdatePotText();
+                yield break;
+            }
+
+            _collectInProgress = true;
+            yield return RunParallel(routines);
+            _collectInProgress = false;
+
+            if (_collectPotUpdateDelay > 0f)
+                yield return new WaitForSeconds(_collectPotUpdateDelay);
+
+            foreach (PlayerView view in views)
+                view?.HideBetDisplay();
+
+            _previousBets.Clear();
+            UpdatePotText();
+        }
+
+        private RectTransform ResolvePotCollectTarget()
+        {
+            if (_potChipStack != null)
+                return _potChipStack.StackRoot;
+
+            return _potText != null ? (RectTransform)_potText.transform : null;
+        }
+
+        private IEnumerator RunParallel(List<IEnumerator> routines)
+        {
+            int remaining = routines.Count;
+            foreach (IEnumerator routine in routines)
+                StartCoroutine(RunParallelRoutine(routine, () => remaining--));
+
+            while (remaining > 0)
+                yield return null;
+        }
+
+        private static IEnumerator RunParallelRoutine(IEnumerator routine, System.Action onComplete)
+        {
+            if (routine != null)
+                yield return routine;
+
+            onComplete?.Invoke();
         }
 
         private void SubmitAction(BettingAction action, int raiseAmount = 0)

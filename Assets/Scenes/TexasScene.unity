@@ -8141,6 +8141,10 @@ MonoBehaviour:
   _potStackOverlapY: 6
   _copyrightLabel: CodeRed Soft \xAE 2026-07-02
   _copyrightLabelText: {fileID: 881100003}
+  _collectFlyDuration: 0.5
+  _collectSeatStagger: 0.08
+  _collectChipsPerSeat: 2
+  _collectPotUpdateDelay: 0.1
   _winChipSprite: {fileID: 21300000, guid: 00f42296a2c9b824b9e0d93b73b24738, type: 3}
   _winChipCount: 8
   _winChipStagger: 0.08
@@ -11124,6 +11128,7 @@ MonoBehaviour:
   _humanThinkTime: 20
   _dealDelay: 0.4
   _tableLayout: {fileID: 2125510646}
+  _uiManager: {fileID: 0}
   _buttonWidth: 120
   _buttonHeight: 50
   _buttonFontSize: 24
