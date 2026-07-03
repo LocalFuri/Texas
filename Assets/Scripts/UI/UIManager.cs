@@ -1029,7 +1029,7 @@ namespace TexasHoldem
                         typeof(Image));
                     chipGo.transform.SetParent(stackGo.transform, false);
                     var chipRt = (RectTransform)chipGo.transform;
-                    chipRt.sizeDelta = new Vector2(ChipStackView.ChipDisplaySize, ChipStackView.ChipDisplaySize);
+                    chipRt.sizeDelta = new Vector2(ChipStackView.ResolveChipDisplaySize(), ChipStackView.ResolveChipDisplaySize());
                     var img = chipGo.GetComponent<Image>();
                     img.raycastTarget  = false;
                     img.preserveAspect = true;

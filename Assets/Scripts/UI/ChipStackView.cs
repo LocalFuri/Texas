@@ -13,9 +13,10 @@ namespace TexasHoldem
     {
         private const int MaxBetStackChips = 3;
 
-        public const float ChipSize           = 38f;
-        /// <summary>Rendered chip diameter — layout math stays on <see cref="ChipSize"/>.</summary>
-        public const float ChipDisplaySize    = ChipSize * 1.25f;
+        public const float DefaultChipSize      = 38f;
+        private const float ChipDisplayScale    = 1.25f;
+        /// <summary>Rendered chip diameter — layout math uses <see cref="ResolveChipSize"/>.</summary>
+        public static float ResolveChipDisplaySize() => ResolveChipSize() * ChipDisplayScale;
         public const float ColumnGapX         = 28f;
         public const float MaxStackOverlapY   = 4f;
         private const float DefaultStackOverlapY = 2f;
@@ -23,10 +24,28 @@ namespace TexasHoldem
         private static TableLayoutManager _cachedLayout;
 
         /// <summary>Worst-case width (three single-chip columns).</summary>
-        public static float MaxLayoutWidth  => ChipSize * 3f + ColumnGapX * 2f;
+        public static float MaxLayoutWidth  => ResolveChipSize() * 3f + ColumnGapX * 2f;
 
         /// <summary>Worst-case height (three identical chips stacked at max overlap).</summary>
-        public static float MaxLayoutHeight => ChipSize + MaxStackOverlapY * 2f;
+        public static float MaxLayoutHeight => ResolveChipSize() + MaxStackOverlapY * 2f;
+
+        /// <summary>Layout chip diameter — from TableLayoutManager Chip Size, else default.</summary>
+        public static float ResolveChipSize()
+        {
+            if (_cachedLayout == null)
+            {
+#if UNITY_2023_1_OR_NEWER
+                _cachedLayout = Object.FindFirstObjectByType<TableLayoutManager>(
+                    FindObjectsInactive.Include);
+#else
+                _cachedLayout = Object.FindObjectOfType<TableLayoutManager>();
+#endif
+            }
+
+            return _cachedLayout != null
+                ? _cachedLayout.ChipSize
+                : DefaultChipSize;
+        }
 
         [SerializeField] private Image  _chip0;
         [SerializeField] private Image  _chip1;
@@ -209,7 +228,7 @@ namespace TexasHoldem
             if (denoms.Count == 0)
                 return;
 
-            List<DenomGroup> groups  = GroupByDenomination(denoms);
+            List<DenomGroup> groups   = GroupByDenomination(denoms);
             int              maxStack = 1;
             foreach (DenomGroup g in groups)
             {
@@ -217,20 +236,23 @@ namespace TexasHoldem
                     maxStack = g.Count;
             }
 
-            int   colCount     = groups.Count;
-            float overlapY     = ResolveStackOverlapY();
-            float layoutWidth  = colCount * ChipSize + (colCount - 1) * ColumnGapX;
-            float layoutHeight = ChipSize + (maxStack - 1) * overlapY;
-            float baseY        = -((maxStack - 1) * overlapY) * 0.5f;
+            int   colCount    = groups.Count;
+            float chipSize    = ResolveChipSize();
+            float overlapY    = ResolveStackOverlapY();
+            float layoutWidth = colCount * chipSize + (colCount - 1) * ColumnGapX;
+            float displaySize = ResolveChipDisplaySize();
 
             var stackRt = StackRoot;
-            stackRt.sizeDelta = new Vector2(layoutWidth, layoutHeight);
+            stackRt.sizeDelta = new Vector2(layoutWidth, chipSize + (maxStack - 1) * overlapY);
 
+            const float baselineY = 0f;
             int slotIndex = 0;
+
             for (int col = 0; col < groups.Count; col++)
             {
-                DenomGroup group = groups[col];
-                float colCenterX = -layoutWidth * 0.5f + ChipSize * 0.5f + col * (ChipSize + ColumnGapX);
+                DenomGroup group     = groups[col];
+                float      colCenterX = -layoutWidth * 0.5f + chipSize * 0.5f + col * (chipSize + ColumnGapX);
+                float      colCenterY = baselineY;
 
                 for (int j = 0; j < group.Count && slotIndex < _slots.Count; j++)
                 {
@@ -242,18 +264,62 @@ namespace TexasHoldem
                     }
 
                     var chipRt = (RectTransform)img.transform;
-                    chipRt.anchorMin        = new Vector2(0.5f, 0.5f);
-                    chipRt.anchorMax        = new Vector2(0.5f, 0.5f);
-                    chipRt.pivot            = new Vector2(0.5f, 0.5f);
-                    chipRt.sizeDelta        = new Vector2(ChipDisplaySize, ChipDisplaySize);
-                    chipRt.anchoredPosition = new Vector2(colCenterX, baseY + j * overlapY);
+                    chipRt.anchorMin = new Vector2(0.5f, 0.5f);
+                    chipRt.anchorMax = new Vector2(0.5f, 0.5f);
+                    chipRt.pivot     = new Vector2(0.5f, 0.5f);
+                    chipRt.sizeDelta = new Vector2(displaySize, displaySize);
+
+                    if (j == 0)
+                        colCenterY = SolveCenterYForVisualBottom(chipRt, img, colCenterX, baselineY);
+                    else
+                        colCenterY += overlapY;
+
+                    chipRt.anchoredPosition = new Vector2(colCenterX, colCenterY);
                     chipRt.SetSiblingIndex(slotIndex);
 
                     slotIndex++;
                 }
             }
 
+            float minBottom = float.MaxValue;
+            float maxTop    = float.MinValue;
+            foreach (Image img in _slots)
+            {
+                if (img == null || !img.gameObject.activeSelf)
+                    continue;
+
+                var chipRt = (RectTransform)img.transform;
+                minBottom = Mathf.Min(minBottom, GetChipVisualBottomLocalY(chipRt, img));
+                maxTop    = Mathf.Max(maxTop, GetChipVisualTopLocalY(chipRt, img));
+            }
+
+            if (minBottom <= maxTop)
+            {
+                float contentCenterY = (minBottom + maxTop) * 0.5f;
+                float layoutHeight   = maxTop - minBottom;
+
+                stackRt.sizeDelta = new Vector2(layoutWidth, layoutHeight);
+
+                foreach (Image img in _slots)
+                {
+                    if (img == null || !img.gameObject.activeSelf)
+                        continue;
+
+                    var chipRt = (RectTransform)img.transform;
+                    chipRt.anchoredPosition -= new Vector2(0f, contentCenterY);
+                }
+            }
+
             UpdateBottomLocalY();
+        }
+
+        /// <summary>Center Y so the sprite's painted bottom sits on <paramref name="targetBottomY"/>.</summary>
+        private static float SolveCenterYForVisualBottom(
+            RectTransform chipRt, Image img, float centerX, float targetBottomY)
+        {
+            chipRt.anchoredPosition = new Vector2(centerX, 0f);
+            float bottom = GetChipVisualBottomLocalY(chipRt, img);
+            return chipRt.anchoredPosition.y + (targetBottomY - bottom);
         }
 
         private void UpdateBottomLocalY()
@@ -274,6 +340,17 @@ namespace TexasHoldem
             }
 
             _bottomLocalY = any ? minBottom : 0f;
+        }
+
+        private static float GetChipVisualTopLocalY(RectTransform chipRt, Image img)
+        {
+            float renderedH = GetRenderedHalfHeight(img) * 2f;
+            Sprite sprite   = img.sprite;
+            if (sprite == null || sprite.bounds.size.y <= 0f)
+                return chipRt.anchoredPosition.y + renderedH * 0.5f;
+
+            float scale = renderedH / sprite.bounds.size.y;
+            return chipRt.anchoredPosition.y + sprite.bounds.max.y * scale;
         }
 
         private static float GetChipVisualBottomLocalY(RectTransform chipRt, Image img)

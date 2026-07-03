@@ -910,7 +910,7 @@ namespace TexasHoldem
             betShadow.effectDistance = new Vector2(2f, -3f);
 
             // ── ChipStack: Chip_0 / Chip_1 / Chip_2 — layout driven by ChipStackView.SetAmount ─
-            const float ChipD = ChipStackView.ChipSize;
+            float chipD = ChipStackView.ResolveChipSize();
 
             Sprite chip1Sprite  = AssetDatabase.LoadAssetAtPath<Sprite>(Chip1Path);
             Sprite chip5Sprite  = AssetDatabase.LoadAssetAtPath<Sprite>(Chip5Path);
@@ -938,7 +938,7 @@ namespace TexasHoldem
                 chipImg.color          = Color.white;
                 chipImg.preserveAspect = true;
                 chipImg.raycastTarget  = false;
-                SetRect(chipGo, 0f, 0f, ChipD, ChipD);
+                SetRect(chipGo, 0f, 0f, chipD, chipD);
                 chipGo.transform.SetSiblingIndex(ci);
                 slotImages[ci] = chipImg;
             }

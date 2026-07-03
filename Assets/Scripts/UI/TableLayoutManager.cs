@@ -92,8 +92,14 @@ namespace TexasHoldem
         [Tooltip("Vertical step between identical chips (2–4 px). One slider for all seats.")]
         [SerializeField, Range(2f, 4f)] private float _stackOverlapY = 2f;
 
+        [Tooltip("Chip layout diameter in canvas pixels (bet stacks and pot stack).")]
+        [SerializeField, Range(24f, 56f)] private float _chipSize = ChipStackView.DefaultChipSize;
+
         /// <summary>Identical-chip vertical step — tuned on TableLayoutManager only.</summary>
         public float StackOverlapY => _stackOverlapY;
+
+        /// <summary>Chip layout diameter — tuned on TableLayoutManager only.</summary>
+        public float ChipSize => _chipSize;
 
         [SerializeField, HideInInspector] private float _cardHeight = 120f * (95f / 65f);
 
@@ -113,6 +119,9 @@ namespace TexasHoldem
 
         [Tooltip("Horizontal pixel gap between community cards (Flop through River).")]
         [SerializeField] private float _communityCardGap = 8f;
+
+        [Tooltip("Vertical position of the community-card row (parent of Flop1–River slots).")]
+        [SerializeField] private float _communityCardY = 18f;
 
         [Tooltip("The five community-card RectTransforms (Flop1, Flop2, Flop3, Turn, River).")]
         [SerializeField] private RectTransform[] _communityCardSlots = new RectTransform[5];
@@ -649,6 +658,14 @@ namespace TexasHoldem
 
         private void RefreshAllChipStackLayouts()
         {
+            if (_canvasRect != null)
+            {
+                ChipStackView[] stacks = _canvasRect.GetComponentsInChildren<ChipStackView>(true);
+                foreach (ChipStackView stack in stacks)
+                    stack?.RefreshLayout();
+                return;
+            }
+
             for (int i = 0; i < _playerViews.Length; i++)
             {
                 if (_playerViews[i] == null)
@@ -720,6 +737,12 @@ namespace TexasHoldem
             float   totalWidth    = count * communityW + (count - 1) * _communityCardGap;
             float   startX        = -totalWidth * 0.5f + communityW * 0.5f;
 
+            RectTransform rowRoot = ResolveCommunityCardsRoot();
+            if (rowRoot != null)
+            {
+                rowRoot.anchoredPosition = new Vector2(rowRoot.anchoredPosition.x, _communityCardY);
+            }
+
             for (int i = 0; i < count; i++)
             {
                 var slot = _communityCardSlots[i];
@@ -730,8 +753,24 @@ namespace TexasHoldem
                 slot.anchorMin        = new Vector2(0.5f, 0.5f);
                 slot.anchorMax        = new Vector2(0.5f, 0.5f);
                 slot.pivot            = new Vector2(0.5f, 0.5f);
-                slot.anchoredPosition = new Vector2(startX + i * step, slot.anchoredPosition.y);
+                slot.anchoredPosition = new Vector2(startX + i * step, 0f);
             }
+        }
+
+        private RectTransform ResolveCommunityCardsRoot()
+        {
+            if (_communityCardSlots == null || _communityCardSlots.Length == 0)
+                return null;
+
+            for (int i = 0; i < _communityCardSlots.Length; i++)
+            {
+                if (_communityCardSlots[i] == null)
+                    continue;
+
+                return _communityCardSlots[i].parent as RectTransform;
+            }
+
+            return null;
         }
 
         private void ApplyBetLabel(PlayerView view, SeatConfig cfg)
