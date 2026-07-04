@@ -567,7 +567,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 120
+      value: 103.22581
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -1356,7 +1356,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 120
+      value: 103.22581
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -4621,7 +4621,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 120
+      value: 103.22581
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -7058,7 +7058,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 120
+      value: 103.22581
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -8193,7 +8193,8 @@ MonoBehaviour:
   _potChipSprite100: {fileID: 21300000, guid: c3480f68c5eda0742abb385722c05d3b, type: 3}
   _potChipSprite500: {fileID: 21300000, guid: 6767bf3b7bdd5ca41ad3aee56e3c168d, type: 3}
   _potChipYOffset: 20
-  _potChipPadding: 20
+  _potChipPadding: 12
+  _potChipColumnGapX: 0
   _potStackOverlapY: 6
   _copyrightLabel: CodeRed Soft \xAE 2026-07-02
   _copyrightLabelText: {fileID: 881100003}
@@ -11921,7 +11922,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 120
+      value: 103.22581
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -13304,7 +13305,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 120
+      value: 103.22581
       objectReference: {fileID: 0}
     - target: {fileID: 1239603004355019424, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -15612,6 +15613,7 @@ MonoBehaviour:
   _betGapBelowAvatar: 3
   _stackOverlapY: 3
   _chipSize: 38
+  _chipColumnGapX: 28
   _cardHeight: 175.38461
   _communityCardScale: 1
   _communityCardGap: 8

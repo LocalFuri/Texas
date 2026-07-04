@@ -46,8 +46,10 @@ namespace TexasHoldem
         [SerializeField] private Sprite         _potChipSprite500;
         [Tooltip("Vertical offset for the pot chip stack relative to PotText anchoredPosition.y (tune in Play mode).")]
         [SerializeField] private float          _potChipYOffset;
-        [Tooltip("Horizontal gap between PotText and the pot chip stack.")]
-        [SerializeField] private float          _potChipPadding = 8f;
+        [Tooltip("Horizontal gap between PotText right edge and the first pot chip column.")]
+        [SerializeField, Min(0f)] private float _potChipPadding = 12f;
+        [Tooltip("Horizontal gap between chip denominations in the pot stack (25 | 5 | 1). 0 = use TableLayoutManager Chip Column Gap X.")]
+        [SerializeField, Range(0f, 48f)] private float _potChipColumnGapX;
         [Tooltip("Vertical step between identical chips in the pot stack only (bet stacks use TableLayoutManager).")]
         [SerializeField, Range(1f, 12f)] private float _potStackOverlapY = 2f;
 
@@ -993,6 +995,9 @@ namespace TexasHoldem
 
             int pot = _gameManager.PotAmount;
             _potText.text = "Pot: " + pot.ToString("N0", GermanNFI);
+
+            if (_potChipStack != null && _potChipStack.StackRoot.gameObject.activeSelf)
+                PositionPotChipStack(showStack: true);
         }
 
         /// <summary>Hides the central pot chip stack (label unchanged).</summary>
@@ -1036,6 +1041,11 @@ namespace TexasHoldem
                 return;
 
             _potChipStack.SetStackOverlapY(_potStackOverlapY);
+
+            if (_potChipColumnGapX > 0f)
+                _potChipStack.SetColumnGapX(_potChipColumnGapX);
+            else
+                _potChipStack.ClearColumnGapOverride();
         }
 
         private void EnsurePotChipStack()

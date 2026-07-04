@@ -14,17 +14,17 @@ namespace TexasHoldem
         private const int MaxBetStackChips = 3;
 
         public const float DefaultChipSize      = 38f;
+        public const float DefaultColumnGapX    = 28f;
         private const float ChipDisplayScale    = 1.25f;
         /// <summary>Rendered chip diameter — layout math uses <see cref="ResolveChipSize"/>.</summary>
         public static float ResolveChipDisplaySize() => ResolveChipSize() * ChipDisplayScale;
-        public const float ColumnGapX         = 28f;
         public const float MaxStackOverlapY   = 4f;
         private const float DefaultStackOverlapY = 2f;
 
         private static TableLayoutManager _cachedLayout;
 
         /// <summary>Worst-case width (three single-chip columns).</summary>
-        public static float MaxLayoutWidth  => ResolveChipSize() * 3f + ColumnGapX * 2f;
+        public static float MaxLayoutWidth  => ResolveChipSize() * 3f + ResolveColumnGapX() * 2f;
 
         /// <summary>Worst-case height (three identical chips stacked at max overlap).</summary>
         public static float MaxLayoutHeight => ResolveChipSize() + MaxStackOverlapY * 2f;
@@ -59,6 +59,10 @@ namespace TexasHoldem
         [Tooltip("When set, uses Custom Stack Overlap Y instead of TableLayoutManager Stack Overlap Y.")]
         [SerializeField] private bool  _useCustomStackOverlap;
         [SerializeField, Range(1f, 12f)] private float _customStackOverlapY = DefaultStackOverlapY;
+
+        [Tooltip("When set, uses Custom Column Gap X instead of TableLayoutManager Chip Column Gap X.")]
+        [SerializeField] private bool _useCustomColumnGap;
+        [SerializeField, Range(0f, 48f)] private float _customColumnGapX = DefaultColumnGapX;
 
         private readonly List<Image> _slots = new List<Image>();
         private int    _lastAmount;
@@ -127,6 +131,24 @@ namespace TexasHoldem
         {
             _useCustomStackOverlap = true;
             _customStackOverlapY   = Mathf.Clamp(overlapY, 1f, 12f);
+            RefreshLayout();
+        }
+
+        /// <summary>Overrides horizontal gap between denomination columns for this stack only.</summary>
+        public void SetColumnGapX(float gapX)
+        {
+            _useCustomColumnGap = true;
+            _customColumnGapX   = Mathf.Clamp(gapX, 0f, 48f);
+            RefreshLayout();
+        }
+
+        /// <summary>Uses TableLayoutManager Chip Column Gap X again (e.g. pot stack default).</summary>
+        public void ClearColumnGapOverride()
+        {
+            if (!_useCustomColumnGap)
+                return;
+
+            _useCustomColumnGap = false;
             RefreshLayout();
         }
 
@@ -239,7 +261,8 @@ namespace TexasHoldem
             int   colCount    = groups.Count;
             float chipSize    = ResolveChipSize();
             float overlapY    = ResolveStackOverlapY();
-            float layoutWidth = colCount * chipSize + (colCount - 1) * ColumnGapX;
+            float columnGapX  = ResolveColumnGapXForStack();
+            float layoutWidth = colCount * chipSize + (colCount - 1) * columnGapX;
             float displaySize = ResolveChipDisplaySize();
 
             var stackRt = StackRoot;
@@ -251,7 +274,7 @@ namespace TexasHoldem
             for (int col = 0; col < groups.Count; col++)
             {
                 DenomGroup group     = groups[col];
-                float      colCenterX = -layoutWidth * 0.5f + chipSize * 0.5f + col * (chipSize + ColumnGapX);
+                float      colCenterX = -layoutWidth * 0.5f + chipSize * 0.5f + col * (chipSize + columnGapX);
                 float      colCenterY = baselineY;
 
                 for (int j = 0; j < group.Count && slotIndex < _slots.Count; j++)
@@ -403,6 +426,26 @@ namespace TexasHoldem
             return _cachedLayout != null
                 ? _cachedLayout.StackOverlapY
                 : DefaultStackOverlapY;
+        }
+
+        private float ResolveColumnGapXForStack()
+        {
+            if (_useCustomColumnGap)
+                return _customColumnGapX;
+
+            return ResolveColumnGapX();
+        }
+
+        /// <summary>Horizontal gap between denomination columns — from TableLayoutManager unless overridden per stack.</summary>
+        public static float ResolveColumnGapX()
+        {
+#if UNITY_2023_1_OR_NEWER
+            TableLayoutManager layout = Object.FindFirstObjectByType<TableLayoutManager>(
+                FindObjectsInactive.Include);
+#else
+            TableLayoutManager layout = Object.FindObjectOfType<TableLayoutManager>();
+#endif
+            return layout != null ? layout.ChipColumnGapX : DefaultColumnGapX;
         }
 
         private Sprite SpriteFor(int denomination)

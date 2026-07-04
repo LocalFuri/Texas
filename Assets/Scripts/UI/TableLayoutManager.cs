@@ -95,11 +95,17 @@ namespace TexasHoldem
         [Tooltip("Chip layout diameter in canvas pixels (bet stacks and pot stack).")]
         [SerializeField, Range(24f, 56f)] private float _chipSize = ChipStackView.DefaultChipSize;
 
+        [Tooltip("Horizontal gap between different chip denominations in a stack (canvas px).")]
+        [SerializeField, Range(0f, 48f)] private float _chipColumnGapX = ChipStackView.DefaultColumnGapX;
+
         /// <summary>Identical-chip vertical step — tuned on TableLayoutManager only.</summary>
         public float StackOverlapY => _stackOverlapY;
 
         /// <summary>Chip layout diameter — tuned on TableLayoutManager only.</summary>
         public float ChipSize => _chipSize;
+
+        /// <summary>Horizontal gap between denomination columns in bet and pot chip stacks.</summary>
+        public float ChipColumnGapX => _chipColumnGapX;
 
         [SerializeField, HideInInspector] private float _cardHeight = 120f * (95f / 65f);
 
