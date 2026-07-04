@@ -391,7 +391,12 @@ namespace TexasHoldem
             Transform actionBadge = FindChild(root, "ActionBadge");
             var badgeComp = actionBadge != null ? actionBadge.GetComponent<ActionBadge>() : null;
             if (badgeComp == null || !badgeComp.UsesCustomLayout)
-                SetRect(actionBadge, ResolveActionBadgeX(root), ResolveActionBadgeY(root), ActionBadgeGlowW, ActionBadgeGlowH);
+            {
+                ActionBadgeSprites.EnsureLoaded();
+                Sprite sample = ActionBadgeSprites.For(BettingAction.Check) ?? ActionBadgeSprites.Winner;
+                Vector2 badgeSize = ActionBadgeSprites.SizeForSprite(sample);
+                SetRect(actionBadge, ResolveActionBadgeX(root), ResolveActionBadgeY(root), badgeSize.x, badgeSize.y);
+            }
 
             SetRect(FindChild(root, "SeatActionMenu"), textX, SeatActionMenuY, SeatActionMenuW, SeatActionMenuH);
 

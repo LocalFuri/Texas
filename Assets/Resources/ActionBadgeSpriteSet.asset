@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b2e8f4a91c3d4e5f8a7b6c5d4e3f2a1b, type: 3}
   m_Name: ActionBadgeSpriteSet
   m_EditorClassIdentifier: Assembly-CSharp::TexasHoldem.ActionBadgeSpriteSet
+  BadgeHeight: 40
   Check: {fileID: -9154252510694863343, guid: 5ae73034f12b2ba42aa3e3a35f2b0728, type: 3}
   Fold: {fileID: 7478782603234531461, guid: f49020e183c2f8649bb6643af34e0b78, type: 3}
   Raise: {fileID: -7639870733272903178, guid: a5c7e75f7b148e147b8b64f7da922a52, type: 3}

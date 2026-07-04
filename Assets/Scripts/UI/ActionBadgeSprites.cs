@@ -21,6 +21,17 @@ namespace TexasHoldem
         private static Sprite _raise;
         private static Sprite _allIn;
         private static Sprite _winner;
+        private static float   _badgeHeight = DefaultBadgeHeight;
+
+        /// <summary>Global badge height from Resources/ActionBadgeSpriteSet (all seats, auto layout).</summary>
+        public static float BadgeHeight
+        {
+            get
+            {
+                EnsureLoaded();
+                return _badgeHeight;
+            }
+        }
 
         public static bool IsLoaded =>
             _check != null && _fold != null && _raise != null && _allIn != null && _winner != null;
@@ -50,6 +61,8 @@ namespace TexasHoldem
 
         public static void EnsureLoaded()
         {
+            RefreshBadgeHeight();
+
             if (IsLoaded)
                 return;
 
@@ -75,8 +88,23 @@ namespace TexasHoldem
                 Debug.LogWarning("[ActionBadgeSprites] Check/Call badge sprite missing — run Texas Holdem → Create Action Badge Sprite Set.");
         }
 
-        public static Vector2 SizeForSprite(Sprite sprite, float height = DefaultBadgeHeight)
+        private static void RefreshBadgeHeight()
         {
+            ActionBadgeSpriteSet set = Resources.Load<ActionBadgeSpriteSet>(ResourcesLoadName);
+#if UNITY_EDITOR
+            if (set == null)
+                set = UnityEditor.AssetDatabase.LoadAssetAtPath<ActionBadgeSpriteSet>(ResourcesAssetPath);
+#endif
+            if (set != null && set.BadgeHeight > 0f)
+                _badgeHeight = set.BadgeHeight;
+            else
+                _badgeHeight = DefaultBadgeHeight;
+        }
+
+        public static Vector2 SizeForSprite(Sprite sprite, float heightOverride = 0f)
+        {
+            float height = heightOverride > 0f ? heightOverride : BadgeHeight;
+
             if (sprite == null || sprite.rect.height <= 0f)
                 return new Vector2(120f, height);
 
@@ -104,11 +132,14 @@ namespace TexasHoldem
             set.Raise  = LoadEditorSprite(RaisePath);
             set.AllIn  = LoadEditorSprite(AllInPath);
             set.Winner = LoadEditorSprite(WinnerPath);
+            if (set.BadgeHeight <= 0f)
+                set.BadgeHeight = DefaultBadgeHeight;
 
             UnityEditor.EditorUtility.SetDirty(set);
             UnityEditor.AssetDatabase.SaveAssets();
 
             _check = _fold = _raise = _allIn = _winner = null;
+            _badgeHeight = DefaultBadgeHeight;
             EnsureLoaded();
 
             return set;

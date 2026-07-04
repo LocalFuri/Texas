@@ -6,6 +6,10 @@ namespace TexasHoldem
     [CreateAssetMenu(fileName = "ActionBadgeSpriteSet", menuName = "Texas Holdem/Action Badge Sprite Set")]
     public class ActionBadgeSpriteSet : ScriptableObject
     {
+        [Tooltip("Badge height in canvas pixels for all seats (auto layout). Width follows sprite aspect ratio.")]
+        [Min(8f)]
+        public float BadgeHeight = 40f;
+
         public Sprite Check;
         public Sprite Fold;
         public Sprite Raise;
