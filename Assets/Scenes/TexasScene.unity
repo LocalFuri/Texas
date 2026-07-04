@@ -11136,7 +11136,7 @@ MonoBehaviour:
   _communityFlipDuration: 0.35
   _communityFlipGap: 0.1
   _roundEndPauseSecs: 2.5
-  _dealerButtonDelay: 0.4
+  _dealerButtonDelay: 0
   _blindPostDelay: 0.5
   OnPhaseChanged:
     m_PersistentCalls:
