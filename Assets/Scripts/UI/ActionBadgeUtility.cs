@@ -3,64 +3,65 @@ using UnityEngine.UI;
 
 namespace TexasHoldem
 {
-    /// <summary>Shared repair + layout for seat action confirmation pills.</summary>
+    /// <summary>Shared repair + layout for seat action badge PNGs.</summary>
     public static class ActionBadgeUtility
     {
-        public const float GlowRectWidth  = 100f;
-        public const float GlowRectHeight = 52f;
-        public const float LayoutX        = 25f;
-        public const float LayoutY        = 32f;
-
-        /// <summary>Neon capsule layout — pill body plus halo outset baked into the badge rect.</summary>
-        public const float NeonGlowOutset    = 10f;
-        public const float NeonPillHeight    = 32f;
-        public const float NeonPillPadH      = 28f;
-        public const float NeonMinPillWidth  = 68f;
-        public static float NeonBadgeHeight => NeonPillHeight + NeonGlowOutset * 2f;
+        public const float LayoutX = 25f;
+        public const float LayoutY = 32f;
 
         public static void Repair(GameObject actionBadgeGo, ActionBadge badge)
         {
             if (actionBadgeGo == null)
                 return;
 
+            MigrateFromSdfGraphic(actionBadgeGo);
             CleanupDuplicateComponents(actionBadgeGo);
+
+            Image img = actionBadgeGo.GetComponent<Image>();
+            if (img == null)
+                img = actionBadgeGo.AddComponent<Image>();
+
+            img.type           = Image.Type.Simple;
+            img.preserveAspect = true;
+            img.raycastTarget  = false;
+            img.maskable       = true;
+
+            Transform label = actionBadgeGo.transform.Find("Label");
+            if (label != null)
+                label.gameObject.SetActive(false);
+
             ApplyLayoutRect(actionBadgeGo.transform as RectTransform);
 
-            ActionBadgeSdfGraphic pill = actionBadgeGo.GetComponent<ActionBadgeSdfGraphic>();
-            if (pill != null)
-            {
-                pill.maskable = false;
-                pill.raycastTarget = false;
-            }
-
-            if (badge != null && pill != null)
-            {
 #if UNITY_EDITOR
-                if (!Application.isPlaying)
-                {
-                    var so = new UnityEditor.SerializedObject(badge);
-                    so.Update();
-                    so.FindProperty("_pillGraphic").objectReferenceValue = pill;
-                    Transform labelT = actionBadgeGo.transform.Find("Label");
-                    if (labelT != null)
-                        so.FindProperty("_label").objectReferenceValue = labelT.GetComponent<TMPro.TMP_Text>();
-                    so.ApplyModifiedPropertiesWithoutUndo();
-                }
-#endif
+            if (!Application.isPlaying && badge != null)
+            {
+                var so = new UnityEditor.SerializedObject(badge);
+                so.Update();
+                so.FindProperty("_badgeImage").objectReferenceValue = img;
+                so.ApplyModifiedPropertiesWithoutUndo();
             }
+#endif
 
-            pill?.ForceRefresh();
+            if (badge != null)
+                badge.WireBadgeImage(img);
+        }
+
+        private static void MigrateFromSdfGraphic(GameObject actionBadgeGo)
+        {
+            ActionBadgeSdfGraphic sdf = actionBadgeGo.GetComponent<ActionBadgeSdfGraphic>();
+            if (sdf != null)
+                DestroyGraphicImmediately(sdf);
         }
 
         public static void CleanupDuplicateComponents(GameObject actionBadgeGo)
         {
             ActionBadgeSdfGraphic[] graphics = actionBadgeGo.GetComponents<ActionBadgeSdfGraphic>();
-            if (graphics.Length > 1)
-            {
-                ActionBadgeSdfGraphic keep = graphics[0];
-                for (int i = 1; i < graphics.Length; i++)
-                    DestroyComponent(graphics[i]);
-            }
+            for (int i = 0; i < graphics.Length; i++)
+                DestroyGraphicImmediately(graphics[i]);
+
+            Image[] images = actionBadgeGo.GetComponents<Image>();
+            for (int i = 1; i < images.Length; i++)
+                DestroyComponent(images[i]);
 
             CanvasRenderer[] renderers = actionBadgeGo.GetComponents<CanvasRenderer>();
             for (int i = 1; i < renderers.Length; i++)
@@ -76,7 +77,11 @@ namespace TexasHoldem
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = new Vector2(LayoutX, LayoutY);
-            rt.sizeDelta        = new Vector2(GlowRectWidth, GlowRectHeight);
+
+            ActionBadgeSprites.EnsureLoaded();
+            Sprite sample = ActionBadgeSprites.For(BettingAction.Check)
+                         ?? ActionBadgeSprites.Winner;
+            rt.sizeDelta = ActionBadgeSprites.SizeForSprite(sample);
         }
 
         /// <summary>

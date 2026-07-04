@@ -2403,8 +2403,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1239603004355019424}
   - component: {fileID: 1988776655443322110}
-  - component: {fileID: 1988776655443322111}
   - component: {fileID: 2334450699315908377}
+  - component: {fileID: 200544374837423}
   m_Layer: 0
   m_Name: ActionBadge
   m_TagString: Untagged
@@ -2440,7 +2440,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6071606660249410038}
   m_CullTransparentMesh: 0
---- !u!114 &1988776655443322111
+--- !u!114 &2334450699315908377
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6071606660249410038}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6541a246436e1e14eb3468dd4877eb29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _pillGraphic: {fileID: 200544374837423}
+  _label: {fileID: 8367213485691203735}
+--- !u!114 &200544374837423
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -2451,12 +2465,12 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b8e4d2f3a5c6478192b3d4e5f6a70819, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::TexasHoldem.ActionBadgeSdfGraphic
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 0
+  m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -2480,20 +2494,6 @@ MonoBehaviour:
   _fillColorBot: {r: 0, g: 0, b: 0, a: 1}
   _highlightColor: {r: 0.92, g: 0.94, b: 1, a: 1}
   _highlightStrength: 0
---- !u!114 &2334450699315908377
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6071606660249410038}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6541a246436e1e14eb3468dd4877eb29, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _pillGraphic: {fileID: 1988776655443322111}
-  _label: {fileID: 8367213485691203735}
 --- !u!1 &6654086246972218361
 GameObject:
   m_ObjectHideFlags: 0

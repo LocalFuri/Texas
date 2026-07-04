@@ -22,7 +22,7 @@ namespace TexasHoldem
     ///   ├── ChipsText
         ///   ├── StatusText        — overlays ChipsText when Folded / All In / Eliminated
         ///   ├── SeatActionMenu    — tappable Check / Fold / Raise / All-In above the name (human turn)
-        ///   ├── ActionBadge       — neon pill when player Checks / Folds / Raises / All-In
+        ///   ├── ActionBadge       — PNG badge when player Checks / Folds / Raises / All-In
         ///   └── BetAnchor         — chip stack anchor under avatar (TableLayoutManager)
         ///       └── BetDisplay    — ChipStack + AmountBadge
         ///   └── DealerButtonAnchor — on avatar rim toward table centre (TableLayoutManager)
@@ -60,8 +60,8 @@ namespace TexasHoldem
 
         private const float ActionBadgeW     = 120f;
         private const float ActionBadgeH     =  40f;
-        private const float ActionBadgeGlowW = 100f;
-        private const float ActionBadgeGlowH =  52f;
+        private const float ActionBadgeGlowW = 120f;
+        private const float ActionBadgeGlowH =  40f;
         private const float ActionBadgeX     =  TextX; // centred on name/chips band
         private const float ActionBadgeY     =  32f;   // above NameText, overlapping lower card edge (reference)
 
@@ -232,6 +232,13 @@ namespace TexasHoldem
 
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             Debug.Log($"[PlayerSeatLayout] Repaired {badges.Length} ActionBadge(s) in the active scene.");
+        }
+
+        [MenuItem("Texas Holdem/Create Action Badge Sprite Set")]
+        public static void CreateActionBadgeSpriteSetMenu()
+        {
+            ActionBadgeSprites.LoadOrCreateResourcesAsset();
+            Debug.Log("[PlayerSeatLayout] ActionBadgeSpriteSet saved to Assets/Resources/ActionBadgeSpriteSet.asset");
         }
 
         [MenuItem("Texas Holdem/Apply Player Seat Layout")]
@@ -683,65 +690,42 @@ namespace TexasHoldem
                 }
             }
 
-            // 9b. ActionBadge — SDF cyan pill above the name row after a player acts.
+            // 9b. ActionBadge — PNG badge above the name row after a player acts.
             GameObject actionBadgeGo  = GetOrCreate(root, "ActionBadge");
             var        actionBadgeComp = GetOrAdd<ActionBadge>(actionBadgeGo);
             RecordObj(actionBadgeGo);
             RecordObj(actionBadgeComp);
-            var actionBadgeRootImg = actionBadgeGo.GetComponent<Image>();
-            if (actionBadgeRootImg != null) DestroyObj(actionBadgeRootImg);
             DestroyIfExists(actionBadgeGo.transform, "GlowBorder");
             DestroyIfExists(actionBadgeGo.transform, "Background");
             CleanupActionBadgeComponents(actionBadgeGo);
-            ActionBadgeUtility.Repair(actionBadgeGo, actionBadgeComp);
-            SetRect(actionBadgeGo, textX, PlayerHudLayout.ActionBadgeY, ActionBadgeGlowW, ActionBadgeGlowH);
 
-            var pillGfx = GetOrAdd<ActionBadgeSdfGraphic>(actionBadgeGo);
-            RecordObj(pillGfx);
-            pillGfx.raycastTarget = false;
-            pillGfx.color         = Color.white;
-            Shader badgeShader = AssetDatabase.LoadAssetAtPath<Shader>(
-                "Assets/Shaders/UI/ActionBadgeSDF.shader");
-            var pillGfxSo = new SerializedObject(pillGfx);
-            pillGfxSo.Update();
-            if (badgeShader != null)
-                pillGfxSo.FindProperty("_shader").objectReferenceValue = badgeShader;
-            pillGfxSo.FindProperty("_pillWidthPx").floatValue    = ActionBadgeW;
-            pillGfxSo.FindProperty("_pillHeightPx").floatValue   = ActionBadgeH;
-            pillGfxSo.FindProperty("_cornerRadiusPx").floatValue   = 20f;
-            pillGfxSo.FindProperty("_borderWidthPx").floatValue    = 2f;
-            pillGfxSo.FindProperty("_glowSpreadPx").floatValue     = 8f;
-            pillGfxSo.FindProperty("_glowStrength").floatValue     = 1.0f;
-            pillGfxSo.FindProperty("_glowFalloff").floatValue      = 1.15f;
-            pillGfxSo.FindProperty("_highlightStrength").floatValue = 0f;
-            pillGfxSo.FindProperty("_fillColorTop").colorValue   = Color.black;
-            pillGfxSo.FindProperty("_fillColorBot").colorValue   = Color.black;
-            pillGfxSo.FindProperty("_borderColor").colorValue    = ButtonLabelStyle.RaiseText;
-            pillGfxSo.ApplyModifiedProperties();
+            ActionBadgeSdfGraphic legacySdf = actionBadgeGo.GetComponent<ActionBadgeSdfGraphic>();
+            if (legacySdf != null)
+                DestroyObj(legacySdf);
+
+            var badgeImg = GetOrAdd<Image>(actionBadgeGo);
+            RecordObj(badgeImg);
+            badgeImg.type           = Image.Type.Simple;
+            badgeImg.preserveAspect = true;
+            badgeImg.raycastTarget  = false;
+            badgeImg.color          = Color.white;
+
+            ActionBadgeSprites.EnsureLoaded();
+            Sprite defaultBadge = ActionBadgeSprites.For(BettingAction.Check);
+            if (defaultBadge != null)
+                badgeImg.sprite = defaultBadge;
+
+            ActionBadgeUtility.Repair(actionBadgeGo, actionBadgeComp);
+            SetRect(actionBadgeGo, textX, PlayerHudLayout.ActionBadgeY,
+                ActionBadgeSprites.SizeForSprite(defaultBadge).x,
+                ActionBadgeSprites.SizeForSprite(defaultBadge).y);
 
             GameObject actionLabelGo = GetOrCreate(actionBadgeGo.transform, "Label");
-            var        actionLabel   = GetOrAdd<TextMeshProUGUI>(actionLabelGo);
-            RecordObj(actionLabelGo);
-            RecordObj(actionLabel);
-            Stretch(actionLabelGo);
-            actionLabel.alignment          = TextAlignmentOptions.Center;
-            actionLabel.fontStyle          = FontStyles.Bold;
-            actionLabel.fontSize           = 21f;
-            actionLabel.color              = ButtonLabelStyle.RaiseText;
-            actionLabel.overflowMode       = TextOverflowModes.Overflow;
-            actionLabel.enableWordWrapping = false;
-            actionLabel.raycastTarget      = false;
-            TMP_FontAsset badgeFont = LoadBadgeLabelFont();
-            if (badgeFont != null)
-            {
-                actionLabel.font               = badgeFont;
-                actionLabel.fontSharedMaterial = badgeFont.material;
-            }
+            actionLabelGo.SetActive(false);
 
             var badgeSo = new SerializedObject(actionBadgeComp);
             badgeSo.Update();
-            SetRef(badgeSo, "_pillGraphic", pillGfx);
-            SetRef(badgeSo, "_label",       actionLabel);
+            SetRef(badgeSo, "_badgeImage", badgeImg);
             badgeSo.ApplyModifiedProperties();
 
             actionBadgeGo.SetActive(false);
@@ -954,14 +938,14 @@ namespace TexasHoldem
             chipStackView.Clear();
 
             // ── AmountBadge: dark rounded pill with the euro amount ───────────────
-            GameObject badgeGo  = GetOrCreate(betDisplayGo.transform, "AmountBadge");
-            var        badgeImg = GetOrAdd<Image>(badgeGo);
+            GameObject badgeGo       = GetOrCreate(betDisplayGo.transform, "AmountBadge");
+            var        amountBadgeImg = GetOrAdd<Image>(badgeGo);
             RecordObj(badgeGo);
-            RecordObj(badgeImg);
-            badgeImg.sprite        = roundedRect;
-            badgeImg.type          = Image.Type.Sliced;
-            badgeImg.color         = new Color(0.06f, 0.06f, 0.08f, 0.93f);
-            badgeImg.raycastTarget = false;
+            RecordObj(amountBadgeImg);
+            amountBadgeImg.sprite        = roundedRect;
+            amountBadgeImg.type          = Image.Type.Sliced;
+            amountBadgeImg.color         = new Color(0.06f, 0.06f, 0.08f, 0.93f);
+            amountBadgeImg.raycastTarget = false;
             SetRect(badgeGo, 0f, badgeCenterY, 90f, 30f);
 
             // AmountText inside the badge — bold gold euro label.

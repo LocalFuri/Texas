@@ -505,6 +505,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1328807725}
     m_Modifications:
+    - target: {fileID: 200544374837423, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: m_Maskable
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 150827578572364261, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_Color.a
       value: 1
@@ -1278,6 +1282,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1328807725}
     m_Modifications:
+    - target: {fileID: 200544374837423, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: m_Maskable
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 150827578572364261, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_Color.a
       value: 1
@@ -4531,6 +4539,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1328807725}
     m_Modifications:
+    - target: {fileID: 200544374837423, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: m_Maskable
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 150827578572364261, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_Color.a
       value: 1
@@ -6952,6 +6964,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1328807725}
     m_Modifications:
+    - target: {fileID: 200544374837423, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: m_Maskable
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 150827578572364261, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_Color.a
       value: 1
@@ -11803,6 +11819,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1328807725}
     m_Modifications:
+    - target: {fileID: 200544374837423, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: m_Maskable
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 150827578572364261, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_Color.a
       value: 1
@@ -13170,6 +13190,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1328807725}
     m_Modifications:
+    - target: {fileID: 200544374837423, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
+      propertyPath: m_Maskable
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 150827578572364261, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_Color.a
       value: 1

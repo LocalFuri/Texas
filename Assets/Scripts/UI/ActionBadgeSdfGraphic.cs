@@ -89,9 +89,11 @@ namespace TexasHoldem
         /// <summary>Neon stadium capsule: hot tube core, dual halo, pure black fill.</summary>
         public void ApplyNeonCapsulePreset(Color accent, float rectWidthPx, float rectHeightPx)
         {
-            float outset = ActionBadgeUtility.NeonGlowOutset;
-            _pillHeightPx      = Mathf.Max(rectHeightPx - outset * 2f, ActionBadgeUtility.NeonPillHeight);
-            _pillWidthPx       = Mathf.Max(rectWidthPx  - outset * 2f, ActionBadgeUtility.NeonMinPillWidth);
+            const float glowOutset = 10f;
+            const float pillHeight = 32f;
+            const float minPillW   = 68f;
+            _pillHeightPx      = Mathf.Max(rectHeightPx - glowOutset * 2f, pillHeight);
+            _pillWidthPx       = Mathf.Max(rectWidthPx  - glowOutset * 2f, minPillW);
             _cornerRadiusPx    = _pillHeightPx * 0.5f;
             _borderWidthPx     = 3f;
             _glowSpreadPx      = 24f;

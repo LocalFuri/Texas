@@ -147,6 +147,7 @@ namespace TexasHoldem
                 _playerViews = new List<PlayerView>(_tableLayout.GetPlayerViews());
 
             RepairAllActionBadges();
+            ActionBadgeSprites.EnsureLoaded();
             ApplyPlayerAvatars();
 
             _communityCardSlots = new[] { _flop1, _flop2, _flop3, _turnCard, _riverCard };
