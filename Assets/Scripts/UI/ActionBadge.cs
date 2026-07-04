@@ -12,9 +12,9 @@ namespace TexasHoldem
 
         private void Awake()
         {
+            ActionBadgeSprites.EnsureLoaded();
             ActionBadgeUtility.Repair(gameObject, this);
             ResolveReferences();
-            Hide();
         }
 
         private void ResolveReferences()
@@ -51,15 +51,15 @@ namespace TexasHoldem
                 return;
             }
 
-            if (!gameObject.activeSelf)
-                gameObject.SetActive(true);
-
             enabled = true;
             ActionBadgeUtility.Repair(gameObject, this);
             ResolveReferences();
 
             if (_badgeImage == null)
+            {
+                Debug.LogWarning("[ActionBadge] Badge Image missing after repair — run Texas Holdem → Repair Action Badges In Scene.", this);
                 return;
+            }
 
             _badgeImage.sprite         = sprite;
             _badgeImage.color          = Color.white;
@@ -69,6 +69,10 @@ namespace TexasHoldem
             HideLabelChild();
             FitToSprite(sprite);
             BringToFrontOfSeat();
+
+            // Activate after setup — prefab starts inactive; never call Hide() from Awake (that races first Show).
+            if (!gameObject.activeSelf)
+                gameObject.SetActive(true);
 
             CancelInvoke(nameof(Hide));
             Invoke(nameof(Hide), duration);

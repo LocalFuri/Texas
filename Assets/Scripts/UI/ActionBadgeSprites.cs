@@ -11,16 +11,19 @@ namespace TexasHoldem
         public const string AllInPath  = "Assets/Graphic/Badges/All-in_image_trans.png";
         public const string WinnerPath = "Assets/Graphic/Badges/Winner_image_trans.png";
 
-        public const string ResourcesAssetPath = "ActionBadgeSpriteSet";
+        public const string ResourcesAssetPath = "Assets/Resources/ActionBadgeSpriteSet.asset";
+        public const string ResourcesLoadName  = "ActionBadgeSpriteSet";
 
         public const float DefaultBadgeHeight = 40f;
 
-        private static ActionBadgeSpriteSet _set;
         private static Sprite _check;
         private static Sprite _fold;
         private static Sprite _raise;
         private static Sprite _allIn;
         private static Sprite _winner;
+
+        public static bool IsLoaded =>
+            _check != null && _fold != null && _raise != null && _allIn != null && _winner != null;
 
         public static Sprite For(BettingAction action)
         {
@@ -47,26 +50,29 @@ namespace TexasHoldem
 
         public static void EnsureLoaded()
         {
-            if (_check != null)
+            if (IsLoaded)
                 return;
 
-            _set = Resources.Load<ActionBadgeSpriteSet>(ResourcesAssetPath);
-            if (_set != null)
+            ActionBadgeSpriteSet set = Resources.Load<ActionBadgeSpriteSet>(ResourcesLoadName);
+            if (set != null)
             {
-                _check  = _set.Check;
-                _fold   = _set.Fold;
-                _raise  = _set.Raise;
-                _allIn  = _set.AllIn;
-                _winner = _set.Winner;
+                _check  ??= set.Check;
+                _fold   ??= set.Fold;
+                _raise  ??= set.Raise;
+                _allIn  ??= set.AllIn;
+                _winner ??= set.Winner;
             }
 
 #if UNITY_EDITOR
-            if (_check == null)  _check  = LoadEditorSprite(CheckPath);
-            if (_fold == null)   _fold   = LoadEditorSprite(FoldPath);
-            if (_raise == null)  _raise  = LoadEditorSprite(RaisePath);
-            if (_allIn == null)  _allIn  = LoadEditorSprite(AllInPath);
-            if (_winner == null) _winner = LoadEditorSprite(WinnerPath);
+            _check  ??= LoadEditorSprite(CheckPath);
+            _fold   ??= LoadEditorSprite(FoldPath);
+            _raise  ??= LoadEditorSprite(RaisePath);
+            _allIn  ??= LoadEditorSprite(AllInPath);
+            _winner ??= LoadEditorSprite(WinnerPath);
 #endif
+
+            if (_check == null)
+                Debug.LogWarning("[ActionBadgeSprites] Check/Call badge sprite missing — run Texas Holdem → Create Action Badge Sprite Set.");
         }
 
         public static Vector2 SizeForSprite(Sprite sprite, float height = DefaultBadgeHeight)
@@ -81,29 +87,48 @@ namespace TexasHoldem
 #if UNITY_EDITOR
         public static ActionBadgeSpriteSet LoadOrCreateResourcesAsset()
         {
-            ActionBadgeSpriteSet existing =
-                UnityEditor.AssetDatabase.LoadAssetAtPath<ActionBadgeSpriteSet>(
-                    "Assets/Resources/ActionBadgeSpriteSet.asset");
-            if (existing != null)
-                return existing;
+            ActionBadgeSpriteSet set =
+                UnityEditor.AssetDatabase.LoadAssetAtPath<ActionBadgeSpriteSet>(ResourcesAssetPath);
 
-            if (!UnityEditor.AssetDatabase.IsValidFolder("Assets/Resources"))
-                UnityEditor.AssetDatabase.CreateFolder("Assets", "Resources");
+            if (set == null)
+            {
+                if (!UnityEditor.AssetDatabase.IsValidFolder("Assets/Resources"))
+                    UnityEditor.AssetDatabase.CreateFolder("Assets", "Resources");
 
-            var set = ScriptableObject.CreateInstance<ActionBadgeSpriteSet>();
+                set = ScriptableObject.CreateInstance<ActionBadgeSpriteSet>();
+                UnityEditor.AssetDatabase.CreateAsset(set, ResourcesAssetPath);
+            }
+
             set.Check  = LoadEditorSprite(CheckPath);
             set.Fold   = LoadEditorSprite(FoldPath);
             set.Raise  = LoadEditorSprite(RaisePath);
             set.AllIn  = LoadEditorSprite(AllInPath);
             set.Winner = LoadEditorSprite(WinnerPath);
 
-            UnityEditor.AssetDatabase.CreateAsset(set, "Assets/Resources/ActionBadgeSpriteSet.asset");
+            UnityEditor.EditorUtility.SetDirty(set);
             UnityEditor.AssetDatabase.SaveAssets();
+
+            _check = _fold = _raise = _allIn = _winner = null;
+            EnsureLoaded();
+
             return set;
         }
 
-        private static Sprite LoadEditorSprite(string assetPath) =>
-            UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+        private static Sprite LoadEditorSprite(string assetPath)
+        {
+            Sprite direct = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            if (direct != null)
+                return direct;
+
+            Object[] assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(assetPath);
+            for (int i = 0; i < assets.Length; i++)
+            {
+                if (assets[i] is Sprite sprite)
+                    return sprite;
+            }
+
+            return null;
+        }
 #endif
     }
 }

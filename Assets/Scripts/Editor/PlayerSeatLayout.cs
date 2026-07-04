@@ -226,6 +226,8 @@ namespace TexasHoldem
         [MenuItem("Texas Holdem/Repair Action Badges In Scene")]
         public static void RepairActionBadgesInScene()
         {
+            ActionBadgeSprites.LoadOrCreateResourcesAsset();
+
             ActionBadge[] badges = Object.FindObjectsOfType<ActionBadge>(true);
             foreach (ActionBadge badge in badges)
                 ActionBadgeUtility.Repair(badge.gameObject, badge);

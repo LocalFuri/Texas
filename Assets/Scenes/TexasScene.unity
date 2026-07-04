@@ -1127,7 +1127,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _panelWidthPx
-      value: 248.5
+      value: 253.15141
       objectReference: {fileID: 0}
     - target: {fileID: 8844238614978648822, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -1932,7 +1932,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _panelWidthPx
-      value: 248.5
+      value: 253.49472
       objectReference: {fileID: 0}
     - target: {fileID: 8844238614978648822, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -5225,7 +5225,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _panelWidthPx
-      value: 248.5
+      value: 249.50827
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _panelHeightPx
@@ -7610,7 +7610,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _panelWidthPx
-      value: 248.5
+      value: 253.12619
       objectReference: {fileID: 0}
     - target: {fileID: 8844238614978648822, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -12437,7 +12437,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _panelWidthPx
-      value: 248.5
+      value: 248.88916
       objectReference: {fileID: 0}
     - target: {fileID: 8844238614978648822, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -13812,7 +13812,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8800011000222333447, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: _panelWidthPx
-      value: 248.5
+      value: 253.49426
       objectReference: {fileID: 0}
     - target: {fileID: 8844238614978648822, guid: 3b7ebb31ff7870b4b985f3ef0482b837, type: 3}
       propertyPath: m_AnchoredPosition.x

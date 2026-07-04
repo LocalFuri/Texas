@@ -16,6 +16,7 @@ namespace TexasHoldem
 
             MigrateFromSdfGraphic(actionBadgeGo);
             CleanupDuplicateComponents(actionBadgeGo);
+            RemoveNonImageGraphics(actionBadgeGo);
 
             Image img = actionBadgeGo.GetComponent<Image>();
             if (img == null)
@@ -48,9 +49,21 @@ namespace TexasHoldem
 
         private static void MigrateFromSdfGraphic(GameObject actionBadgeGo)
         {
-            ActionBadgeSdfGraphic sdf = actionBadgeGo.GetComponent<ActionBadgeSdfGraphic>();
-            if (sdf != null)
-                DestroyGraphicImmediately(sdf);
+            ActionBadgeSdfGraphic[] sdfs = actionBadgeGo.GetComponents<ActionBadgeSdfGraphic>();
+            for (int i = 0; i < sdfs.Length; i++)
+                DestroyGraphicImmediately(sdfs[i]);
+        }
+
+        private static void RemoveNonImageGraphics(GameObject actionBadgeGo)
+        {
+            Graphic[] graphics = actionBadgeGo.GetComponents<Graphic>();
+            for (int i = 0; i < graphics.Length; i++)
+            {
+                if (graphics[i] is Image)
+                    continue;
+
+                DestroyGraphicImmediately(graphics[i]);
+            }
         }
 
         public static void CleanupDuplicateComponents(GameObject actionBadgeGo)
