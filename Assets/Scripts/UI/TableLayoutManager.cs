@@ -133,8 +133,6 @@ namespace TexasHoldem
         [Header("Dealer Button")]
         [Tooltip("Gap between the avatar outer edge and the dealer token (canvas px).")]
         [SerializeField, Min(0f)] private float _dealerOutsideGap = 4f;
-        [Tooltip("Non-mirror seats only: vertical drop below avatar centre, as a fraction of avatar radius.")]
-        [SerializeField, Range(0f, 0.85f)] private float _dealerAvatarRimFactor = 0.35f;
         [SerializeField] private RectTransform _dealerButton;
         [SerializeField, Tooltip("Legacy sprite — SDF disc is used at runtime; kept for reference only.")]
         private Sprite        _dealerButtonSprite;
@@ -463,7 +461,7 @@ namespace TexasHoldem
         }
 
         /// <summary>
-        /// Dealer token just outside the avatar — mirrored seats (Bot 1/2): right edge, vertically centred.
+        /// Dealer token just outside the avatar — mirrorHud seats: right edge; others: left edge; Y centred.
         /// </summary>
         private Vector2 ComputeDealerButtonPosition(SeatConfig cfg)
         {
@@ -471,12 +469,9 @@ namespace TexasHoldem
             float avatarY = PlayerHudLayout.PillY;
             float avatarR = PlayerHudLayout.AvatarD * 0.5f;
             float outward = avatarR + _dealerButtonSize * 0.5f + _dealerOutsideGap;
-            float x       = avatarX + outward;
+            float x       = cfg.mirrorHud ? avatarX + outward : avatarX - outward;
 
-            if (cfg.mirrorHud)
-                return new Vector2(x, avatarY);
-
-            return new Vector2(x, avatarY - avatarR * _dealerAvatarRimFactor);
+            return new Vector2(x, avatarY);
         }
 
         private static void SetBetDisplayChildRect(RectTransform rt, float x, float y, float w, float h)
