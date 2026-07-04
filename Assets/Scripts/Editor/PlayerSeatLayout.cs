@@ -715,9 +715,12 @@ namespace TexasHoldem
                 badgeImg.sprite = defaultBadge;
 
             ActionBadgeUtility.Repair(actionBadgeGo, actionBadgeComp);
-            SetRect(actionBadgeGo, textX, PlayerHudLayout.ResolveActionBadgeY(root),
-                ActionBadgeSprites.SizeForSprite(defaultBadge).x,
-                ActionBadgeSprites.SizeForSprite(defaultBadge).y);
+            if (!actionBadgeComp.UsesCustomLayout)
+            {
+                SetRect(actionBadgeGo, PlayerHudLayout.ResolveActionBadgeX(root), PlayerHudLayout.ResolveActionBadgeY(root),
+                    ActionBadgeSprites.SizeForSprite(defaultBadge).x,
+                    ActionBadgeSprites.SizeForSprite(defaultBadge).y);
+            }
 
             GameObject actionLabelGo = GetOrCreate(actionBadgeGo.transform, "Label");
             actionLabelGo.SetActive(false);

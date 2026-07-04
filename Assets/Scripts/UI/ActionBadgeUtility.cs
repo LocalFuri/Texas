@@ -6,8 +6,6 @@ namespace TexasHoldem
     /// <summary>Shared repair + layout for seat action badge PNGs.</summary>
     public static class ActionBadgeUtility
     {
-        public const float LayoutX = PlayerHudLayout.TextX;
-
         public static void Repair(GameObject actionBadgeGo, ActionBadge badge)
         {
             if (actionBadgeGo == null)
@@ -30,7 +28,11 @@ namespace TexasHoldem
             if (label != null)
                 label.gameObject.SetActive(false);
 
-            ApplyLayoutRect(actionBadgeGo.transform as RectTransform);
+            if (badge != null && badge.UsesCustomLayout)
+                badge.ApplyCustomLayout(actionBadgeGo.transform as RectTransform,
+                    ActionBadgeSprites.For(BettingAction.Check) ?? ActionBadgeSprites.Winner);
+            else
+                ApplyAutoLayoutRect(actionBadgeGo.transform as RectTransform);
 
 #if UNITY_EDITOR
             if (!Application.isPlaying && badge != null)
@@ -80,7 +82,7 @@ namespace TexasHoldem
                 DestroyComponent(renderers[i]);
         }
 
-        public static void ApplyLayoutRect(RectTransform rt)
+        public static void ApplyAutoLayoutRect(RectTransform rt, Sprite sprite = null)
         {
             if (rt == null)
                 return;
@@ -88,13 +90,17 @@ namespace TexasHoldem
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(LayoutX, PlayerHudLayout.ResolveActionBadgeY(rt.parent));
+            rt.anchoredPosition = new Vector2(
+                PlayerHudLayout.ResolveActionBadgeX(rt.parent),
+                PlayerHudLayout.ResolveActionBadgeY(rt.parent));
 
             ActionBadgeSprites.EnsureLoaded();
-            Sprite sample = ActionBadgeSprites.For(BettingAction.Check)
-                         ?? ActionBadgeSprites.Winner;
-            rt.sizeDelta = ActionBadgeSprites.SizeForSprite(sample);
+            sprite ??= ActionBadgeSprites.For(BettingAction.Check) ?? ActionBadgeSprites.Winner;
+            rt.sizeDelta = ActionBadgeSprites.SizeForSprite(sprite);
         }
+
+        /// <summary>Legacy name — applies automatic card-centre layout.</summary>
+        public static void ApplyLayoutRect(RectTransform rt) => ApplyAutoLayoutRect(rt);
 
         /// <summary>
         /// Seat <see cref="ActionBadge"/> pills only — removes mistaken SDF graphics from sprite buttons.

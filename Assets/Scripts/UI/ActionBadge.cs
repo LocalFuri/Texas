@@ -10,6 +10,27 @@ namespace TexasHoldem
 
         [SerializeField] private Image _badgeImage;
 
+        [Header("Layout (optional)")]
+        [Tooltip("When enabled, uses Custom Position and Custom Height instead of auto card-centre layout.")]
+        [SerializeField] private bool _useCustomLayout;
+        [SerializeField] private Vector2 _customAnchoredPosition = new Vector2(0f, 55f);
+        [Tooltip("Badge height in pixels; width follows sprite aspect ratio.")]
+        [SerializeField] private float _customHeight = ActionBadgeSprites.DefaultBadgeHeight;
+
+        public bool UsesCustomLayout => _useCustomLayout;
+
+        internal void ApplyCustomLayout(RectTransform rt, Sprite sprite)
+        {
+            if (rt == null)
+                return;
+
+            rt.anchorMin        = new Vector2(0.5f, 0.5f);
+            rt.anchorMax        = new Vector2(0.5f, 0.5f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = _customAnchoredPosition;
+            rt.sizeDelta        = ActionBadgeSprites.SizeForSprite(sprite, _customHeight);
+        }
+
         private void Awake()
         {
             ActionBadgeSprites.EnsureLoaded();
@@ -67,7 +88,7 @@ namespace TexasHoldem
             _badgeImage.enabled        = true;
 
             HideLabelChild();
-            FitToSprite(sprite);
+            ApplyLayout(sprite);
             BringToFrontOfSeat();
 
             // Activate after setup — prefab starts inactive; never call Hide() from Awake (that races first Show).
@@ -78,13 +99,16 @@ namespace TexasHoldem
             Invoke(nameof(Hide), duration);
         }
 
-        private void FitToSprite(Sprite sprite)
+        private void ApplyLayout(Sprite sprite)
         {
             RectTransform rt = transform as RectTransform;
             if (rt == null)
                 return;
 
-            rt.sizeDelta = ActionBadgeSprites.SizeForSprite(sprite);
+            if (_useCustomLayout)
+                ApplyCustomLayout(rt, sprite);
+            else
+                ActionBadgeUtility.ApplyAutoLayoutRect(rt, sprite);
         }
 
         private void HideLabelChild()

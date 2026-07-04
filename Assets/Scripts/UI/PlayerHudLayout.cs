@@ -85,6 +85,28 @@ namespace TexasHoldem
             return card != null ? card.anchoredPosition.y : ActionBadgeY;
         }
 
+        /// <summary>X centre between hole-card backs (falls back to text band).</summary>
+        public static float ResolveActionBadgeX(Transform seatRoot)
+        {
+            if (seatRoot == null)
+                return TextX;
+
+            var pv = seatRoot.GetComponent<PlayerView>();
+            if (pv == null)
+                return TextX;
+
+            RectTransform c0 = pv.GetCardRect(0);
+            RectTransform c1 = pv.GetCardRect(1);
+            if (c0 != null && c1 != null)
+                return (c0.anchoredPosition.x + c1.anchoredPosition.x) * 0.5f;
+            if (c0 != null)
+                return c0.anchoredPosition.x;
+            if (c1 != null)
+                return c1.anchoredPosition.x;
+
+            return TextX;
+        }
+
         /// <summary>Extra avatar X away from table centre when hole cards match wider community cards.</summary>
         public static float LayoutAvatarOutwardPx { get; set; }
 
@@ -366,7 +388,11 @@ namespace TexasHoldem
             GetHudPanelLayout(root, out float panelCenterX, out float panelCenterY, out float panelWidth);
             ApplyHudPanelTextBlock(root, panelCenterX, panelCenterY, panelWidth);
 
-            SetRect(FindChild(root, "ActionBadge"),    textX, ResolveActionBadgeY(root), ActionBadgeGlowW, ActionBadgeGlowH);
+            Transform actionBadge = FindChild(root, "ActionBadge");
+            var badgeComp = actionBadge != null ? actionBadge.GetComponent<ActionBadge>() : null;
+            if (badgeComp == null || !badgeComp.UsesCustomLayout)
+                SetRect(actionBadge, ResolveActionBadgeX(root), ResolveActionBadgeY(root), ActionBadgeGlowW, ActionBadgeGlowH);
+
             SetRect(FindChild(root, "SeatActionMenu"), textX, SeatActionMenuY, SeatActionMenuW, SeatActionMenuH);
 
             ApplyHudDrawOrder(root, pv);
