@@ -61,13 +61,19 @@ namespace TexasHoldem
         [SerializeField] private Slider      _botThinkSlider;
 
         [Header("Layout")]
-        [Tooltip("AnchoredPosition of the panel (canvas center anchor).")]
+        [Tooltip("AnchoredPosition of the panel (canvas center anchor). Synced with Rect Transform in edit mode.")]
         [SerializeField] private float _panelPosX;
         [SerializeField] private float _panelPosY = 157f;
         [Tooltip("Vertical gap between option rows (VerticalLayoutGroup spacing).")]
         [SerializeField] private float _rowSpacing = 3f;
 
         private Vector2 PanelAnchoredPosition => new Vector2(_panelPosX, _panelPosY);
+
+#if UNITY_EDITOR
+        private Vector2 _panelPosSyncStamp;
+        private bool    _panelPosSyncHasStamp;
+        private const float PanelPosSyncEpsilon = 0.01f;
+#endif
 
         private float ComputePanelHeight()
             => PanelPadding * 2f
@@ -132,8 +138,53 @@ namespace TexasHoldem
         {
             if (!Application.isPlaying)
                 EnsureBotThinkSliderRow();
+            SyncPanelPositionInEditor();
             ApplyCompactLayout();
             ApplySliderStyles();
+        }
+
+        /// <summary>
+        /// Scene-view / RectTransform drags update serialized Panel Pos X/Y; inspector edits push to the rect.
+        /// </summary>
+        private void SyncPanelPositionInEditor()
+        {
+            if (Application.isPlaying)
+                return;
+
+            var rt = transform as RectTransform;
+            if (rt == null)
+                return;
+
+            Vector2 fields = PanelAnchoredPosition;
+            Vector2 rect     = rt.anchoredPosition;
+
+            if (!_panelPosSyncHasStamp)
+            {
+                if ((fields - rect).sqrMagnitude > PanelPosSyncEpsilon * PanelPosSyncEpsilon)
+                {
+                    _panelPosX = rect.x;
+                    _panelPosY = rect.y;
+                    fields     = rect;
+                    UnityEditor.EditorUtility.SetDirty(this);
+                }
+
+                _panelPosSyncStamp   = fields;
+                _panelPosSyncHasStamp = true;
+                return;
+            }
+
+            bool fieldsMoved = (fields - _panelPosSyncStamp).sqrMagnitude > PanelPosSyncEpsilon * PanelPosSyncEpsilon;
+            bool rectMoved   = (rect - _panelPosSyncStamp).sqrMagnitude > PanelPosSyncEpsilon * PanelPosSyncEpsilon;
+
+            if (rectMoved && !fieldsMoved)
+            {
+                _panelPosX = rect.x;
+                _panelPosY = rect.y;
+                fields     = rect;
+                UnityEditor.EditorUtility.SetDirty(this);
+            }
+
+            _panelPosSyncStamp = fields;
         }
 #endif
 
