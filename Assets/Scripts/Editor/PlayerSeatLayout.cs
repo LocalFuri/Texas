@@ -60,8 +60,8 @@ namespace TexasHoldem
 
         private const float ActionBadgeW     = 120f;
         private const float ActionBadgeH     =  40f;
-        private const float ActionBadgeGlowW = 156f;
-        private const float ActionBadgeGlowH =  64f;
+        private const float ActionBadgeGlowW = 100f;
+        private const float ActionBadgeGlowH =  52f;
         private const float ActionBadgeX     =  TextX; // centred on name/chips band
         private const float ActionBadgeY     =  32f;   // above NameText, overlapping lower card edge (reference)
 
@@ -91,6 +91,8 @@ namespace TexasHoldem
         private const string Chip1Path       = "Assets/Graphic/Chips/chip1.png";
         private const string Chip5Path       = "Assets/Graphic/Chips/chip5.png";
         private const string Chip25Path      = "Assets/Graphic/Chips/chip25.png";
+        private const string Chip100Path     = "Assets/Graphic/Chips/chip100.png";
+        private const string Chip500Path     = "Assets/Graphic/Chips/chip500.png";
         private const string PrefabPath      = "Assets/Prefabs/PlayerView.prefab";
 
         // ── Undo mode — disabled when editing the prefab asset directly ───────
@@ -912,9 +914,11 @@ namespace TexasHoldem
             // ── ChipStack: Chip_0 / Chip_1 / Chip_2 — layout driven by ChipStackView.SetAmount ─
             float chipD = ChipStackView.ResolveChipSize();
 
-            Sprite chip1Sprite  = AssetDatabase.LoadAssetAtPath<Sprite>(Chip1Path);
-            Sprite chip5Sprite  = AssetDatabase.LoadAssetAtPath<Sprite>(Chip5Path);
-            Sprite chip25Sprite = AssetDatabase.LoadAssetAtPath<Sprite>(Chip25Path);
+            Sprite chip1Sprite   = AssetDatabase.LoadAssetAtPath<Sprite>(Chip1Path);
+            Sprite chip5Sprite   = AssetDatabase.LoadAssetAtPath<Sprite>(Chip5Path);
+            Sprite chip25Sprite  = AssetDatabase.LoadAssetAtPath<Sprite>(Chip25Path);
+            Sprite chip100Sprite = AssetDatabase.LoadAssetAtPath<Sprite>(Chip100Path);
+            Sprite chip500Sprite = AssetDatabase.LoadAssetAtPath<Sprite>(Chip500Path);
 
             GameObject chipStackGo = GetOrCreate(betDisplayGo.transform, "ChipStack");
             RecordObj(chipStackGo);
@@ -945,7 +949,8 @@ namespace TexasHoldem
 
             var chipStackView = GetOrAdd<ChipStackView>(chipStackGo);
             RecordObj(chipStackView);
-            WireChipStackView(chipStackView, slotImages, chip1Sprite, chip5Sprite, chip25Sprite);
+            WireChipStackView(chipStackView, slotImages, chip1Sprite, chip5Sprite, chip25Sprite,
+                chip100Sprite, chip500Sprite);
             chipStackView.Clear();
 
             // ── AmountBadge: dark rounded pill with the euro amount ───────────────
@@ -1160,16 +1165,20 @@ namespace TexasHoldem
         }
 
         private static void WireChipStackView(
-            ChipStackView view, Image[] slots, Sprite sprite1, Sprite sprite5, Sprite sprite25)
+            ChipStackView view, Image[] slots,
+            Sprite sprite1, Sprite sprite5, Sprite sprite25,
+            Sprite sprite100, Sprite sprite500)
         {
             var so = new SerializedObject(view);
             so.Update();
             if (slots.Length > 0) SetRef(so, "_chip0", slots[0]);
             if (slots.Length > 1) SetRef(so, "_chip1", slots[1]);
             if (slots.Length > 2) SetRef(so, "_chip2", slots[2]);
-            SetRef(so, "_sprite1",  sprite1);
-            SetRef(so, "_sprite5",  sprite5);
-            SetRef(so, "_sprite25", sprite25);
+            SetRef(so, "_sprite1",   sprite1);
+            SetRef(so, "_sprite5",   sprite5);
+            SetRef(so, "_sprite25",  sprite25);
+            SetRef(so, "_sprite100", sprite100);
+            SetRef(so, "_sprite500", sprite500);
             so.ApplyModifiedProperties();
         }
 

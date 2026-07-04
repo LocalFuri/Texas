@@ -6,10 +6,17 @@ namespace TexasHoldem
     /// <summary>Shared repair + layout for seat action confirmation pills.</summary>
     public static class ActionBadgeUtility
     {
-        public const float GlowRectWidth  = 156f;
-        public const float GlowRectHeight = 64f;
+        public const float GlowRectWidth  = 100f;
+        public const float GlowRectHeight = 52f;
         public const float LayoutX        = 25f;
         public const float LayoutY        = 32f;
+
+        /// <summary>Neon capsule layout — pill body plus halo outset baked into the badge rect.</summary>
+        public const float NeonGlowOutset    = 10f;
+        public const float NeonPillHeight    = 32f;
+        public const float NeonPillPadH      = 28f;
+        public const float NeonMinPillWidth  = 68f;
+        public static float NeonBadgeHeight => NeonPillHeight + NeonGlowOutset * 2f;
 
         public static void Repair(GameObject actionBadgeGo, ActionBadge badge)
         {
@@ -86,6 +93,10 @@ namespace TexasHoldem
             if (sdf != null)
                 DestroyGraphicImmediately(sdf);
 
+            Transform sdfFrame = go.transform.Find("SdfFrame");
+            if (sdfFrame != null)
+                DestroyObject(sdfFrame.gameObject);
+
             Image img = go.GetComponent<Image>();
             if (img == null)
                 return;
@@ -101,6 +112,19 @@ namespace TexasHoldem
                 return;
 
             Object.DestroyImmediate(graphic);
+        }
+
+        private static void DestroyObject(Object obj)
+        {
+            if (obj == null)
+                return;
+
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                Object.DestroyImmediate(obj);
+            else
+#endif
+                Object.Destroy(obj);
         }
 
         private static void DestroyComponent(Object component)

@@ -8,7 +8,7 @@ namespace TexasHoldem
         public static readonly Color Raise = ButtonLabelStyle.RaiseText;
         public static readonly Color Fold  = new Color32(255, 60, 60, 255);
         public static readonly Color Check = new Color32(40, 220, 90, 255);
-        public static readonly Color Call  = new Color32(0, 255, 255, 255);
+        public static readonly Color Call  = new Color32(40, 220, 90, 255);
         public static readonly Color AllIn = new Color32(170, 70, 255, 255);
 
         /// <summary>Check/call action-panel button — label vertex color and GreenNormal sprite tint.</summary>

@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace TexasHoldem
 {
-    /// <summary>SDF action pill above the player name when a player Checks, Folds, Raises, Calls, or All-In.</summary>
+    /// <summary>SDF action badge above the player name when a player Checks, Folds, Raises, Calls, or All-In.</summary>
     public class ActionBadge : MonoBehaviour
     {
         public const float DisplayDurationSecs = 3f;
@@ -28,6 +28,7 @@ namespace TexasHoldem
         [SerializeField] private TMP_Text              _label;
 
         private Coroutine _layoutRefreshCoroutine;
+        private Color     _lastAccent;
 
         private void Awake()
         {
@@ -86,9 +87,10 @@ namespace TexasHoldem
             ActionBadgeUtility.Repair(gameObject, this);
             ResolveReferences();
 
-            ApplyAccent(accent);
+            _lastAccent = accent;
             ApplyLabel(accent, text);
             FitBadgeToLabel();
+            ApplyAccent(accent);
             BringToFrontOfSeat();
             RefreshVisuals();
             ScheduleLayoutRefresh();
@@ -97,21 +99,23 @@ namespace TexasHoldem
             Invoke(nameof(Hide), duration);
         }
 
-        /// <summary>Resizes the badge RectTransform width to fit the current label text.</summary>
+        /// <summary>Resizes the badge rect to pill body + halo outset around the label.</summary>
         private void FitBadgeToLabel()
         {
             if (_label == null) return;
 
             _label.ForceMeshUpdate(true);
 
-            const float HorizontalPadding = 80f;
-            const float MinWidth          = 160f;
-
-            float requiredWidth = Mathf.Max(MinWidth, _label.preferredWidth + HorizontalPadding);
+            float pillW = Mathf.Max(
+                ActionBadgeUtility.NeonMinPillWidth,
+                _label.preferredWidth + ActionBadgeUtility.NeonPillPadH);
+            float outset = ActionBadgeUtility.NeonGlowOutset;
+            float rectW  = pillW + outset * 2f;
+            float rectH  = ActionBadgeUtility.NeonBadgeHeight;
 
             RectTransform rt = GetComponent<RectTransform>();
             if (rt != null)
-                rt.sizeDelta = new Vector2(requiredWidth, rt.sizeDelta.y);
+                rt.sizeDelta = new Vector2(rectW, rectH);
         }
 
         private void ScheduleLayoutRefresh()
@@ -129,14 +133,23 @@ namespace TexasHoldem
         {
             yield return null;
             if (this != null && gameObject.activeInHierarchy)
+            {
+                FitBadgeToLabel();
+                ApplyAccent(_lastAccent);
                 RefreshVisuals();
+            }
             _layoutRefreshCoroutine = null;
         }
 
         private void ApplyAccent(Color accent)
         {
-            if (_pillGraphic != null)
-                _pillGraphic.BorderColor = accent;
+            if (_pillGraphic == null)
+                return;
+
+            RectTransform rt = GetComponent<RectTransform>();
+            float w = rt != null && rt.rect.width  > 0f ? rt.rect.width  : ActionBadgeUtility.GlowRectWidth;
+            float h = rt != null && rt.rect.height > 0f ? rt.rect.height : ActionBadgeUtility.GlowRectHeight;
+            _pillGraphic.ApplyNeonCapsulePreset(accent, w, h);
         }
 
         private void ApplyLabel(Color accent, string text)
@@ -150,6 +163,7 @@ namespace TexasHoldem
                 _label.font               = font;
                 _label.fontSharedMaterial = font.material;
                 ButtonLabelStyle.Apply(_label, accent, LabelFontSize);
+                ApplyBadgeLabelGlow(_label, accent);
             }
             else
             {
@@ -158,10 +172,21 @@ namespace TexasHoldem
                 _label.fontStyle         = FontStyles.Bold;
                 _label.enableAutoSizing  = false;
                 _label.alignment         = TextAlignmentOptions.Center;
+                ApplyBadgeLabelGlow(_label, accent);
             }
 
             _label.text = text;
             _label.gameObject.SetActive(true);
+        }
+
+        /// <summary>Subtle same-color outline — mimics neon text bloom from the mock.</summary>
+        private static void ApplyBadgeLabelGlow(TMP_Text label, Color accent)
+        {
+            if (label == null)
+                return;
+
+            label.outlineWidth = 0.14f;
+            label.outlineColor = new Color(accent.r, accent.g, accent.b, 0.38f);
         }
 
         private void RefreshVisuals()

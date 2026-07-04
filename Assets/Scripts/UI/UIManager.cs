@@ -175,6 +175,7 @@ namespace TexasHoldem
             HideBettingControls();
             _rootCanvas = ResolveRootCanvas();
             EnsurePotChipStack();
+            EnsureBetChipHighDenominations();
             UpdatePotLabel();
             HidePotChipStack();
             SubscribeToGameEvents();
@@ -1091,6 +1092,22 @@ namespace TexasHoldem
             ApplyPotChipStackSettings();
             _potChipStack.Clear();
             stackGo.SetActive(false);
+        }
+
+        /// <summary>Seat bet stacks use the same 100/500 sprites as the pot chip stack.</summary>
+        private void EnsureBetChipHighDenominations()
+        {
+            if (_potChipSprite100 == null && _potChipSprite500 == null)
+                return;
+
+            foreach (PlayerView view in ResolvePlayerViews())
+            {
+                if (view == null)
+                    continue;
+
+                ChipStackView stack = view.GetComponentInChildren<ChipStackView>(true);
+                stack?.AssignHighDenominations(_potChipSprite100, _potChipSprite500);
+            }
         }
 
         private ChipStackView FindSampleBetChipStack()

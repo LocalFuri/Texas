@@ -134,34 +134,45 @@ Shader "UI/ActionBadgeSDF"
                 float  cornerR     = min(max(_CornerRadiusPx, 0.001), min(halfPill.x, halfPill.y));
                 float  borderW     = max(_BorderWidthPx, 0.001);
                 float  spread      = max(_GlowSpreadPx, 0.001);
+                float  falloff     = max(_GlowFalloff, 0.8);
 
                 float dist = sdRoundedBox(pixelOffset, halfPill, cornerR);
                 float aa   = max(fwidth(dist), 0.5);
 
-                // Solid dark fill — 1 inside the pill past the border band, 0 at the border.
-                float fillAlpha   = 1.0 - smoothstep(-aa, aa, dist + borderW);
+                float fillAlpha = 1.0 - smoothstep(-aa, aa, dist + borderW);
 
-                // Neon border band (dist: -borderW to 0).
-                // FIX: was `* (1 - smoothstep(...))` — that was inverted and leaked neon into fill.
                 float strokeAlpha = smoothstep(aa, 0.0, dist)
                                   * smoothstep(-borderW - aa, -borderW + aa, dist);
 
-                // Vertical fill gradient (defaults to black).
-                float  yNorm   = saturate((pixelOffset.y + halfPill.y) / max(halfPill.y * 2.0, 0.001));
-                fixed3 neonRgb = _BorderColor.rgb * IN.color.rgb;
+                // Tube: hot core toward inner edge of the stroke band.
+                float  strokeT    = saturate(-dist / borderW);
+                fixed3 tubeOuter  = _BorderColor.rgb * IN.color.rgb;
+                fixed3 tubeCore   = lerp(_BorderColor.rgb, _HighlightColor.rgb, _HighlightStrength) * IN.color.rgb;
+                fixed3 strokeRgb  = lerp(tubeOuter, tubeCore, pow(strokeT, 0.5));
+
+                float yNorm = saturate((pixelOffset.y + halfPill.y) / max(halfPill.y * 2.0, 0.001));
                 fixed3 fillRgb = lerp(_FillColorBot.rgb, _FillColorTop.rgb, yNorm);
 
-                // Body: dark fill + neon stroke.
-                fixed3 bodyRgb   = fillRgb * fillAlpha + neonRgb * strokeAlpha;
-                float  bodyAlpha = saturate(max(fillAlpha, strokeAlpha));
+                // Faint inner bleed — light seeping into the black fill near the tube.
+                float innerBleed = (1.0 - smoothstep(-borderW - aa, -borderW * 2.5, dist))
+                                 * fillAlpha
+                                 * _HighlightStrength
+                                 * 0.22;
+                fixed3 bodyRgb = fillRgb * fillAlpha
+                               + strokeRgb * strokeAlpha
+                               + tubeCore * innerBleed;
+                float bodyAlpha = saturate(max(fillAlpha, strokeAlpha) + innerBleed * 0.35);
 
-                // Outer glow — (1-bodyAlpha) keeps it out of the opaque body region.
-                float  glowT     = pow(saturate(1.0 - max(dist, 0.0) / spread), max(_GlowFalloff, 0.8));
-                float  glowAlpha = saturate(glowT * _GlowStrength * (1.0 - bodyAlpha));
+                // Dual outer halo: tight bright rim + wide soft bloom.
+                float distOut   = max(dist, 0.0);
+                float tightGlow = pow(saturate(1.0 - distOut / max(spread * 0.42, 0.001)), falloff * 1.15);
+                float wideGlow  = pow(saturate(1.0 - distOut / spread), falloff * 0.9);
+                float glowMix   = tightGlow * 0.6 + wideGlow * 0.4;
+                float glowAlpha = saturate(glowMix * _GlowStrength * (1.0 - saturate(bodyAlpha)));
 
-                // FIX: clean lerp composite — avoids squaring glowAlpha via double-multiply.
-                fixed3 rgb   = lerp(neonRgb, bodyRgb, bodyAlpha);
-                float  alpha = saturate(lerp(glowAlpha, 1.0, bodyAlpha)) * IN.color.a;
+                fixed3 glowRgb = lerp(tubeCore, tubeOuter, 0.25);
+                fixed3 rgb     = lerp(glowRgb, bodyRgb, saturate(bodyAlpha));
+                float  alpha   = saturate(lerp(glowAlpha, 1.0, saturate(bodyAlpha))) * IN.color.a;
 
                 return ApplyClip(fixed4(rgb, alpha), IN.worldPosition);
             }

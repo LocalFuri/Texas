@@ -61,8 +61,8 @@ namespace TexasHoldem
             => panelCenterY - (NameChipsGap + NameTextH) * 0.5f;
 
         public const float ActionBadgeY = 32f;
-        public const float ActionBadgeGlowW = 156f;
-        public const float ActionBadgeGlowH = 64f;
+        public const float ActionBadgeGlowW = 100f;
+        public const float ActionBadgeGlowH = 52f;
         public const float SeatActionMenuY  = 32f;
         public const float SeatActionMenuW  = 155f;
         public const float SeatActionMenuH  = 118f;
