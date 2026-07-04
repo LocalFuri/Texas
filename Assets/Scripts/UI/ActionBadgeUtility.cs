@@ -6,8 +6,7 @@ namespace TexasHoldem
     /// <summary>Shared repair + layout for seat action badge PNGs.</summary>
     public static class ActionBadgeUtility
     {
-        public const float LayoutX = 25f;
-        public const float LayoutY = 32f;
+        public const float LayoutX = PlayerHudLayout.TextX;
 
         public static void Repair(GameObject actionBadgeGo, ActionBadge badge)
         {
@@ -89,7 +88,7 @@ namespace TexasHoldem
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(LayoutX, LayoutY);
+            rt.anchoredPosition = new Vector2(LayoutX, PlayerHudLayout.ResolveActionBadgeY(rt.parent));
 
             ActionBadgeSprites.EnsureLoaded();
             Sprite sample = ActionBadgeSprites.For(BettingAction.Check)

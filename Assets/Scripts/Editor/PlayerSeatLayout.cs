@@ -58,12 +58,9 @@ namespace TexasHoldem
         private const float NameFontSize   = 20f;
         private const float StatusFontSize = 10f;
 
-        private const float ActionBadgeW     = 120f;
-        private const float ActionBadgeH     =  40f;
         private const float ActionBadgeGlowW = 120f;
         private const float ActionBadgeGlowH =  40f;
-        private const float ActionBadgeX     =  TextX; // centred on name/chips band
-        private const float ActionBadgeY     =  32f;   // above NameText, overlapping lower card edge (reference)
+        private const float ActionBadgeX     =  TextX; // centred on name/chips band horizontally
 
         private const float SeatActionMenuX  =  25f;
         private const float SeatActionMenuY  =  32f;  // name/chips band on the HUD pill (name hidden while open)
@@ -718,7 +715,7 @@ namespace TexasHoldem
                 badgeImg.sprite = defaultBadge;
 
             ActionBadgeUtility.Repair(actionBadgeGo, actionBadgeComp);
-            SetRect(actionBadgeGo, textX, PlayerHudLayout.ActionBadgeY,
+            SetRect(actionBadgeGo, textX, PlayerHudLayout.ResolveActionBadgeY(root),
                 ActionBadgeSprites.SizeForSprite(defaultBadge).x,
                 ActionBadgeSprites.SizeForSprite(defaultBadge).y);
 

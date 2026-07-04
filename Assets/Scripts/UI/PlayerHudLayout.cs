@@ -60,12 +60,30 @@ namespace TexasHoldem
         public static float GetCenteredChipsY(float panelCenterY)
             => panelCenterY - (NameChipsGap + NameTextH) * 0.5f;
 
-        public const float ActionBadgeY = 32f;
+        /// <summary>Hole-card row centre Y in seat root space (matches TableLayoutManager).</summary>
+        public const float HoleCardsAreaCenterY = 55f;
+
+        /// <summary>Action badge vertically centred on hole-card backs.</summary>
+        public const float ActionBadgeY = HoleCardsAreaCenterY;
         public const float ActionBadgeGlowW = 120f;
         public const float ActionBadgeGlowH = 40f;
         public const float SeatActionMenuY  = 32f;
         public const float SeatActionMenuW  = 155f;
         public const float SeatActionMenuH  = 118f;
+
+        /// <summary>Y centre for the action badge — follows hole cards when placed.</summary>
+        public static float ResolveActionBadgeY(Transform seatRoot)
+        {
+            if (seatRoot == null)
+                return ActionBadgeY;
+
+            var pv = seatRoot.GetComponent<PlayerView>();
+            if (pv == null)
+                return ActionBadgeY;
+
+            RectTransform card = pv.GetCardRect(1) ?? pv.GetCardRect(0);
+            return card != null ? card.anchoredPosition.y : ActionBadgeY;
+        }
 
         /// <summary>Extra avatar X away from table centre when hole cards match wider community cards.</summary>
         public static float LayoutAvatarOutwardPx { get; set; }
@@ -348,7 +366,7 @@ namespace TexasHoldem
             GetHudPanelLayout(root, out float panelCenterX, out float panelCenterY, out float panelWidth);
             ApplyHudPanelTextBlock(root, panelCenterX, panelCenterY, panelWidth);
 
-            SetRect(FindChild(root, "ActionBadge"),    textX, ActionBadgeY, ActionBadgeGlowW, ActionBadgeGlowH);
+            SetRect(FindChild(root, "ActionBadge"),    textX, ResolveActionBadgeY(root), ActionBadgeGlowW, ActionBadgeGlowH);
             SetRect(FindChild(root, "SeatActionMenu"), textX, SeatActionMenuY, SeatActionMenuW, SeatActionMenuH);
 
             ApplyHudDrawOrder(root, pv);
