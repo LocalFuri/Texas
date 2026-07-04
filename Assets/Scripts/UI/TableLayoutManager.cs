@@ -461,17 +461,18 @@ namespace TexasHoldem
         }
 
         /// <summary>
-        /// Dealer token just outside the avatar — mirrorHud seats: right edge; others: left edge; Y centred.
+        /// Dealer token just outside the avatar — mirrorHud seats: right edge; others: left edge;
+        /// Y aligned to the seat HudPanel centre.
         /// </summary>
-        private Vector2 ComputeDealerButtonPosition(SeatConfig cfg)
+        private Vector2 ComputeDealerButtonPosition(PlayerView view, SeatConfig cfg)
         {
             float avatarX = PlayerHudLayout.AvatarPosX(cfg.mirrorHud);
-            float avatarY = PlayerHudLayout.PillY;
+            PlayerHudLayout.GetHudPanelLayout(view.transform, out _, out float panelCenterY, out _);
             float avatarR = PlayerHudLayout.AvatarD * 0.5f;
             float outward = avatarR + _dealerButtonSize * 0.5f + _dealerOutsideGap;
             float x       = cfg.mirrorHud ? avatarX + outward : avatarX - outward;
 
-            return new Vector2(x, avatarY);
+            return new Vector2(x, panelCenterY);
         }
 
         private static void SetBetDisplayChildRect(RectTransform rt, float x, float y, float w, float h)
@@ -579,7 +580,7 @@ namespace TexasHoldem
             anchor.anchorMin        = new Vector2(0.5f, 0.5f);
             anchor.anchorMax        = new Vector2(0.5f, 0.5f);
             anchor.pivot            = new Vector2(0.5f, 0.5f);
-            anchor.anchoredPosition = ComputeDealerButtonPosition(cfg);
+            anchor.anchoredPosition = ComputeDealerButtonPosition(view, cfg);
         }
 
         // ── Unity Callbacks ───────────────────────────────────────────────
@@ -811,7 +812,7 @@ namespace TexasHoldem
                 // Dealer button anchor.
                 Gizmos.color = new Color(UiColors.PotGold.r, UiColors.PotGold.g, UiColors.PotGold.b, 0.85f);
                 Gizmos.DrawWireSphere(
-                    CanvasToWorld(seatRt.anchoredPosition + ComputeDealerButtonPosition(cfg)), r * 0.22f);
+                    CanvasToWorld(seatRt.anchoredPosition + ComputeDealerButtonPosition(_playerViews[i], cfg)), r * 0.22f);
             }
 
             // Pot label marker.
