@@ -59,6 +59,10 @@ namespace TexasHoldem
         private string _copyrightLabel = "v1.0";
         [SerializeField] private TMP_Text _copyrightLabelText;
 
+        [Header("Between Hands")]
+        [Tooltip("After each hand, opens the options menu; the next deal waits until the menu is closed.")]
+        [SerializeField] private bool _openMenuBetweenHands = true;
+
         [Header("Seat Bet Place")]
         [Tooltip("When off, bet chips appear instantly under the seat (GGPoker / PokerStars style).")]
         [SerializeField] private bool _animateBetPlace;
@@ -488,6 +492,7 @@ namespace TexasHoldem
             _tableLayout?.HideDealerButton();
 
             StopHumanHoleReveal();
+            HideAllActionBadges();
 
             foreach (PlayerView view in ResolvePlayerViews())
             {
@@ -825,13 +830,15 @@ namespace TexasHoldem
         {
             StopTurnTimer();
             HideBettingControls();
-            HideAllActionBadges();
             for (int i = 0; i < _playerViews.Count; i++)
                 _playerViews[i].SetActiveTurn(false);
 
             foreach (PlayerView view in _playerViews)
                 view?.HideBetDisplay();
             _previousBets.Clear();
+
+            if (_openMenuBetweenHands && OptionsMenu.Instance != null)
+                OptionsMenu.Instance.Open();
         }
 
         private void OnStartClicked()
@@ -1996,6 +2003,9 @@ namespace TexasHoldem
                     yield return null;
                 }
             }
+
+            if (duration > 0f)
+                yield return new WaitForSecondsRealtime(duration);
         }
 
         private IEnumerator SpawnFlyingChip(RectTransform origin, RectTransform target, float delay)

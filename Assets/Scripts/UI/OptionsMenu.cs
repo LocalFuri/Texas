@@ -227,6 +227,12 @@ namespace TexasHoldem
 
         // ── Visibility ────────────────────────────────────────────────────
 
+        /// <summary>Shows the options panel and pauses gameplay (time scale 0).</summary>
+        public void Open() => SetVisible(true);
+
+        /// <summary>Hides the options panel and restores time scale.</summary>
+        public void Close() => SetVisible(false);
+
         private void SetVisible(bool visible)
         {
             if (_isOpen == visible)

@@ -401,6 +401,7 @@ namespace TexasHoldem
             yield return DelaySeconds(_roundEndPauseSecs); // celebration window
 
             OnRoundEnded?.Invoke();
+            yield return new WaitUntil(() => !IsOptionsMenuOpen);
             DealerIndex = (DealerIndex + 1) % active.Count;
             SetPhase(GamePhase.RoundOver);
         }
