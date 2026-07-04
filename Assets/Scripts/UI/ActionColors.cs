@@ -14,6 +14,9 @@ namespace TexasHoldem
         /// <summary>Check/call action-panel button — label vertex color and GreenNormal sprite tint.</summary>
         public static readonly Color CheckCallGreen = new Color32(0, 255, 0, 255);
 
+        /// <summary>Fold action-panel button — label vertex color and RedNormal sprite tint.</summary>
+        public static readonly Color FoldRed = new Color32(255, 0, 0, 255);
+
         public static Color For(BettingAction action) => action switch
         {
             BettingAction.Raise => Raise,

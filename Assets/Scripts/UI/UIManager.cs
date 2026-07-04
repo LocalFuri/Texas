@@ -80,7 +80,7 @@ namespace TexasHoldem
 
         // Vertex colors copied from BlackJack (HIT/STAND/DOUBLE) + yellow for START/raise amount.
         private static readonly Color TextStart = UiColors.PotGold;
-        private static readonly Color TextFold  = new Color(1f, 0f, 0f, 1f);
+        private static readonly Color TextFold  = ActionColors.FoldRed;
         private static readonly Color TextCheck = ActionColors.CheckCallGreen;
         private static readonly Color TextRaise = ButtonLabelStyle.RaiseText;
         private static readonly Color TextAllIn = new Color(1f, 0f, 1f, 1f);
@@ -167,7 +167,7 @@ namespace TexasHoldem
             BindButtonListeners();
             RestoreActionPanelSpriteButtons();
             ApplyStyles();
-            ApplyCheckCallButtonSpriteTint();
+            ApplyActionButtonSpriteTints();
             _gameStarted = false;
             SetActionPanelVisible(true);
             HideBettingControls();
@@ -1329,11 +1329,17 @@ namespace TexasHoldem
         private Button ResolveCheckCallButton() =>
             _checkCallButton != null ? _checkCallButton : FindButtonInRow("CheckCallButton");
 
-        private void ApplyCheckCallButtonSpriteTint()
+        private void ApplyActionButtonSpriteTints()
         {
-            Image image = ResolveCheckCallButton()?.GetComponent<Image>();
-            if (image != null)
-                image.color = ActionColors.CheckCallGreen;
+            Image foldImage = _foldButton != null
+                ? _foldButton.GetComponent<Image>()
+                : FindButtonInRow("FoldButton")?.GetComponent<Image>();
+            if (foldImage != null)
+                foldImage.color = ActionColors.FoldRed;
+
+            Image checkCallImage = ResolveCheckCallButton()?.GetComponent<Image>();
+            if (checkCallImage != null)
+                checkCallImage.color = ActionColors.CheckCallGreen;
         }
 
         private void SetActionPanelVisible(bool visible)
@@ -1845,7 +1851,7 @@ namespace TexasHoldem
             if (check == null) return;
 
             check.gameObject.SetActive(true);
-            ApplyCheckCallButtonSpriteTint();
+            ApplyActionButtonSpriteTints();
 
             TMP_Text label = check.GetComponentInChildren<TMP_Text>(true);
             if (label == null) return;

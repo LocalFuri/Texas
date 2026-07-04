@@ -32,7 +32,7 @@ namespace TexasHoldem
             float buttonFontSize = GetButtonFontSize();
 
             StyleLabel(FindLabel("StartButton"),     "START", new Color(1f, 1f, 0f), font, buttonFontSize);
-            StyleLabel(FindLabel("FoldButton"),      "FOLD",  new Color(1f, 0f, 0f), font, buttonFontSize);
+            StyleLabel(FindLabel("FoldButton"),      "FOLD",  ActionColors.FoldRed, font, buttonFontSize);
             StyleLabel(FindLabel("CheckCallButton"), "CHECK", ActionColors.CheckCallGreen, font, buttonFontSize);
             StyleLabel(FindLabel("AllInButton"),     "ALL IN", new Color(1f, 0f, 1f), font, buttonFontSize);
             StyleLabel(FindLabel("RaiseButton"),     "RAISE", ButtonLabelStyle.RaiseText, font, buttonFontSize);

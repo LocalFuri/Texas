@@ -107,7 +107,7 @@ namespace TexasHoldem
         private void ApplyDefaultLabelStyle()
         {
             TMP_FontAsset font = Resources.Load<TMP_FontAsset>(HudFontResourcesPath);
-            StyleLabel(_foldLabel,      new Color(1f, 0f, 0f, 1f),  font, 15f);
+            StyleLabel(_foldLabel,      ActionColors.FoldRed, font, 15f);
             StyleLabel(_checkCallLabel, ActionColors.CheckCallGreen, font, 15f);
             StyleLabel(_raiseLabel,     ButtonLabelStyle.RaiseText,  font, 15f);
             StyleLabel(_allInLabel,     new Color(1f, 0f, 1f, 1f),  font, 15f);

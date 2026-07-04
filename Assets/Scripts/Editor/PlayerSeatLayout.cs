@@ -784,7 +784,7 @@ namespace TexasHoldem
             actionsLayout.childControlWidth      = true;
             actionsLayout.childControlHeight     = true;
 
-            Button foldBtn      = CreateSeatMenuButton(actionsColGo.transform, "FoldButton",      "FOLD",  new Color(1f, 0f, 0f, 1f),      casinoFont, SeatActionRowH);
+            Button foldBtn      = CreateSeatMenuButton(actionsColGo.transform, "FoldButton",      "FOLD",  ActionColors.FoldRed, casinoFont, SeatActionRowH);
             Button checkCallBtn = CreateSeatMenuButton(actionsColGo.transform, "CheckCallButton", "CHECK", ActionColors.CheckCallGreen, casinoFont, SeatActionRowH);
             Button raiseBtn     = CreateSeatMenuButton(actionsColGo.transform, "RaiseButton",     "RAISE", ButtonLabelStyle.RaiseText,     casinoFont, SeatActionRowH);
 
