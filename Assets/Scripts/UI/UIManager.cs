@@ -580,6 +580,7 @@ namespace TexasHoldem
             PlayerView humanView = null;
             PlayerState humanState = null;
             bool holeRevealRunning = _humanHoleRevealCoroutine != null;
+            bool anyBetIncreased   = false;
 
             for (int i = 0; i < views.Count && i < players.Count; i++)
             {
@@ -613,6 +614,8 @@ namespace TexasHoldem
                 // Update BetDisplay — animate chip only when the player's bet increases.
                 _previousBets.TryGetValue(i, out int prevBet);
                 bool betIncreased = player.CurrentBet > prevBet;
+                if (betIncreased)
+                    anyBetIncreased = true;
                 _previousBets[i]  = player.CurrentBet;
 
                 if (player.CurrentBet > 0)
@@ -630,7 +633,8 @@ namespace TexasHoldem
             TryScheduleHumanHoleReveal(humanView, humanState);
 
             UpdatePotLabel();
-            HidePotChipStack();
+            if (anyBetIncreased && !_collectInProgress)
+                HidePotChipStack();
             RefreshDealerButton();
             _playersRefreshCoroutine = null;
         }
@@ -1138,6 +1142,12 @@ namespace TexasHoldem
         {
             if (!Application.isPlaying || _gameManager == null)
                 yield break;
+
+            if (_playersRefreshCoroutine != null)
+            {
+                StopCoroutine(_playersRefreshCoroutine);
+                _playersRefreshCoroutine = null;
+            }
 
             _rootCanvas ??= ResolveRootCanvas();
             RectTransform potTarget = ResolvePotCollectTarget();
@@ -1858,7 +1868,6 @@ namespace TexasHoldem
                     EnsurePotChipStack();
                 ApplyPotChipStackSettings();
                 UpdatePotLabel();
-                HidePotChipStack();
                 return;
             }
 
