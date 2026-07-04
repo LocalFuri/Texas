@@ -38,8 +38,9 @@ namespace TexasHoldem
 
         private static readonly Color ChipAnimFallbackColor = new Color(0.12f, 0.42f, 0.19f, 1f);
 
-        private Canvas    _rootCanvas;
-        private Coroutine _chipCoroutine;
+        private Canvas     _rootCanvas;
+        private Coroutine  _chipCoroutine;
+        private GameObject _chipAnimGo;
 
         private void Awake()
         {
@@ -80,20 +81,33 @@ namespace TexasHoldem
 
             if (fromRect != null && _rootCanvas != null)
             {
-                if (_chipCoroutine != null) StopCoroutine(_chipCoroutine);
+                CancelChipAnim();
                 _chipCoroutine = StartCoroutine(AnimateChip(fromRect, amount));
             }
+            else
+                CancelChipAnim();
         }
 
         public void HideBet()
+        {
+            CancelChipAnim();
+            _chipStackView?.Clear();
+            gameObject.SetActive(false);
+        }
+
+        private void CancelChipAnim()
         {
             if (_chipCoroutine != null)
             {
                 StopCoroutine(_chipCoroutine);
                 _chipCoroutine = null;
             }
-            _chipStackView?.Clear();
-            gameObject.SetActive(false);
+
+            if (_chipAnimGo != null)
+            {
+                Destroy(_chipAnimGo);
+                _chipAnimGo = null;
+            }
         }
 
         /// <summary>Flies a chip from the bet stack toward the pot at end of a betting street.</summary>
@@ -179,27 +193,35 @@ namespace TexasHoldem
             chipRt.anchorMax  = new Vector2(0.5f, 0.5f);
             chipRt.pivot      = new Vector2(0.5f, 0.5f);
 
+            _chipAnimGo = chipGo;
+
             Vector2 startPos        = ToCanvasLocal(origin);
             Vector2 endPos          = ToCanvasLocal(target);
             chipRt.anchoredPosition = startPos;
 
-            float elapsed = 0f;
-            while (elapsed < AnimDuration)
+            try
             {
-                elapsed += Time.deltaTime;
-                float t = EaseCurve.Evaluate(Mathf.Clamp01(elapsed / AnimDuration));
-                chipRt.anchoredPosition = Vector2.Lerp(startPos, endPos, t);
-                chipRt.localScale       = Vector3.Lerp(Vector3.one * 1.4f, Vector3.one * 0.8f, t);
+                float elapsed = 0f;
+                while (elapsed < AnimDuration)
+                {
+                    elapsed += Time.deltaTime;
+                    float t = EaseCurve.Evaluate(Mathf.Clamp01(elapsed / AnimDuration));
+                    chipRt.anchoredPosition = Vector2.Lerp(startPos, endPos, t);
+                    chipRt.localScale       = Vector3.Lerp(Vector3.one * 1.4f, Vector3.one * 0.8f, t);
 
-                float alpha = chipSprite != null
-                    ? Mathf.Lerp(1f, 0f, t * t)
-                    : Mathf.Lerp(1f, 0f, t * t);
-                chipImg.color = new Color(chipImg.color.r, chipImg.color.g, chipImg.color.b, alpha);
-                yield return null;
+                    float alpha = Mathf.Lerp(1f, 0f, t * t);
+                    chipImg.color = new Color(chipImg.color.r, chipImg.color.g, chipImg.color.b, alpha);
+                    yield return null;
+                }
             }
-
-            if (chipGo != null) Destroy(chipGo);
-            _chipCoroutine = null;
+            finally
+            {
+                if (_chipAnimGo == chipGo)
+                    _chipAnimGo = null;
+                if (chipGo != null)
+                    Destroy(chipGo);
+                _chipCoroutine = null;
+            }
         }
 
         private Vector2 ToCanvasLocal(RectTransform rt)
