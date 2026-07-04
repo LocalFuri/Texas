@@ -5,11 +5,11 @@ namespace TexasHoldem
     /// <summary>Resolves PNG badge sprites for seat action display.</summary>
     public static class ActionBadgeSprites
     {
-        public const string CheckPath  = "Assets/Graphic/Badges/Check_Image_trans.png";
-        public const string FoldPath   = "Assets/Graphic/Badges/Fold_Image_trans.png";
-        public const string RaisePath  = "Assets/Graphic/Badges/Raise_Image_trans.png";
-        public const string AllInPath  = "Assets/Graphic/Badges/All-in_image_trans.png";
-        public const string WinnerPath = "Assets/Graphic/Badges/Winner_image_trans.png";
+        public const string CheckPath  = "Assets/Graphic/Badges/Check_Image_160.png";
+        public const string FoldPath   = "Assets/Graphic/Badges/Fold_Image_160.png";
+        public const string RaisePath  = "Assets/Graphic/Badges/Raise_Image_160.png";
+        public const string AllInPath  = "Assets/Graphic/Badges/All-in_image_160.png";
+        public const string WinnerPath = "Assets/Graphic/Badges/Winner_image_160.png";
 
         public const string ResourcesAssetPath = "Assets/Resources/ActionBadgeSpriteSet.asset";
         public const string ResourcesLoadName  = "ActionBadgeSpriteSet";

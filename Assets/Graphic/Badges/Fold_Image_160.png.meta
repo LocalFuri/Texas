@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: a5c7e75f7b148e147b8b64f7da922a52
+guid: eed5b2f91c09f6446b595f27637c4396
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -7639870733272903178
-    second: Raise_Image_trans_0
+      213: -4342717577866807214
+    second: Fold_Image_160_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,13 +100,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Raise_Image_trans_0
+      name: Fold_Image_160_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 1590
-        height: 606
+        width: 160
+        height: 62
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6f19d5dbb0ab9f590800000000000000
-      internalID: -7639870733272903178
+      spriteID: 25877632f519bb3c0800000000000000
+      internalID: -4342717577866807214
       vertices: []
       indices: 
       edges: []
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Raise_Image_trans_0: -7639870733272903178
+      Fold_Image_160_0: -4342717577866807214
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

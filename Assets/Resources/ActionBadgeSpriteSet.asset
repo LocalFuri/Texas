@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: ActionBadgeSpriteSet
   m_EditorClassIdentifier: Assembly-CSharp::TexasHoldem.ActionBadgeSpriteSet
   BadgeHeight: 40
-  Check: {fileID: -9154252510694863343, guid: 5ae73034f12b2ba42aa3e3a35f2b0728, type: 3}
-  Fold: {fileID: 7478782603234531461, guid: f49020e183c2f8649bb6643af34e0b78, type: 3}
-  Raise: {fileID: -7639870733272903178, guid: a5c7e75f7b148e147b8b64f7da922a52, type: 3}
-  AllIn: {fileID: -8099738067171667769, guid: a8b6cf052d86a944b80e852bf4ac536d, type: 3}
-  Winner: {fileID: 1907108081624959465, guid: 8a082ba265c75d84da8be881eda925a0, type: 3}
+  Check: {fileID: -5925822487913138996, guid: 21e8df625bd55b44aa428fda77324051, type: 3}
+  Fold: {fileID: -4342717577866807214, guid: eed5b2f91c09f6446b595f27637c4396, type: 3}
+  Raise: {fileID: 4993392960054828658, guid: 73970797caefce343a6e0e6f9a469a35, type: 3}
+  AllIn: {fileID: -580554623457789254, guid: 5b69de825174a804ca50ae7a25455eda, type: 3}
+  Winner: {fileID: -7815075958353488311, guid: 28675cb86c818534181d5ab3bb2e7275, type: 3}
