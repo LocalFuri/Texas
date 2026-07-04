@@ -86,8 +86,30 @@ namespace TexasHoldem
             set { _glowStrength = value; MarkRenderDirty(); }
         }
 
+        /// <summary>GGPoker-style call button: dark fill, soft amber glow, rounded rect (not full capsule).</summary>
+        public void ApplyGgpokerCallPreset(float buttonWidthPx, float buttonHeightPx)
+        {
+            const float glowMargin = 10f;
+            _pillWidthPx       = Mathf.Max(buttonWidthPx  - glowMargin * 2f, 48f);
+            _pillHeightPx      = Mathf.Max(buttonHeightPx - glowMargin * 2f, 24f);
+            _cornerRadiusPx    = Mathf.Clamp(buttonHeightPx * 0.22f, 10f, 16f);
+            _borderWidthPx     = 2.5f;
+            _glowSpreadPx      = 42f;
+            _glowStrength      = 1.65f;
+            _glowFalloff       = 2.1f;
+            _borderColor       = new Color(1f, 0.69f, 0.18f, 1f);
+            _fillColorTop      = new Color(0.14f, 0.14f, 0.16f, 1f);
+            _fillColorBot      = new Color(0.05f, 0.05f, 0.06f, 1f);
+            _highlightColor    = new Color(1f, 0.92f, 0.78f, 1f);
+            _highlightStrength = 0.14f;
+            MarkRenderDirty();
+        }
+
         public void ForceRefresh()
         {
+            if (this == null || rectTransform == null)
+                return;
+
             EnsureRendererSettings();
             MarkRenderDirty();
             if (!IsActive())
