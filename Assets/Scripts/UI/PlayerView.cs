@@ -430,6 +430,12 @@ namespace TexasHoldem
             if (!_isHuman || player == null)
                 return;
 
+            if (player.HasFolded)
+            {
+                HideAllCardSlots();
+                return;
+            }
+
             if (player.HoleCards.Count == 0)
             {
                 _revealedHoleCount = 0;
@@ -677,6 +683,12 @@ namespace TexasHoldem
         /// <summary>Flips all hole cards face-up during showdown.</summary>
         public void RevealCards(PlayerState player)
         {
+            if (player.HasFolded)
+            {
+                HideAllCardSlots();
+                return;
+            }
+
             for (int i = 0; i < _cardSlots.Count && i < player.HoleCards.Count; i++)
                 _cardSlots[i].Show(player.HoleCards[i]);
 

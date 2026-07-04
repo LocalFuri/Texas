@@ -8198,6 +8198,7 @@ MonoBehaviour:
   _potStackOverlapY: 6
   _copyrightLabel: CodeRed Soft \xAE 2026-07-02
   _copyrightLabelText: {fileID: 881100003}
+  _animateBetPlace: 0
   _animateStreetCollect: 0
   _collectFlyDuration: 0.5
   _collectSeatStagger: 0.08

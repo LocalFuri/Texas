@@ -13,7 +13,8 @@ namespace TexasHoldem
     ///   ChipStack — centred above amount badge
     ///   AmountBadge — below chip stack
     ///
-    /// When the bet increases, a chip graphic flies from the player's avatar to ChipStack.
+    /// When the bet increases and <see cref="UIManager"/> has Animate Bet Place enabled,
+    /// a chip graphic flies from the player's avatar to ChipStack.
     /// </summary>
     public class BetDisplay : MonoBehaviour
     {

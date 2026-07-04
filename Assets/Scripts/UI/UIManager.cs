@@ -59,6 +59,10 @@ namespace TexasHoldem
         private string _copyrightLabel = "v1.0";
         [SerializeField] private TMP_Text _copyrightLabelText;
 
+        [Header("Seat Bet Place")]
+        [Tooltip("When off, bet chips appear instantly under the seat (GGPoker / PokerStars style).")]
+        [SerializeField] private bool _animateBetPlace;
+
         [Header("Street Bet Collect")]
         [Tooltip("When off, seat bets clear instantly and the pot stack updates (GGPoker / PokerStars style).")]
         [SerializeField] private bool _animateStreetCollect;
@@ -611,7 +615,7 @@ namespace TexasHoldem
                     bool showBotCards = OptionsMenu.Instance != null && OptionsMenu.Instance.ShowBotCards;
                     bool isShowdown   = _gameManager != null
                                         && _gameManager.CurrentPhase == GamePhase.Showdown;
-                    if (isShowdown || showBotCards)
+                    if (!player.HasFolded && (isShowdown || showBotCards))
                         view.RevealCards(player);
                     else
                         view.RefreshOpponentCards(player);
@@ -627,7 +631,7 @@ namespace TexasHoldem
                 if (player.CurrentBet > 0)
                     view.ShowBetDisplay(
                         player.CurrentBet,
-                        betIncreased && !_collectInProgress ? view.AvatarRect : null);
+                        _animateBetPlace && betIncreased && !_collectInProgress ? view.AvatarRect : null);
                 else
                     view.HideBetDisplay();
 
