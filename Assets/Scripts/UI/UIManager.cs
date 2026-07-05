@@ -38,6 +38,8 @@ namespace TexasHoldem
         [SerializeField] private Button     _raiseButton;
         [SerializeField] private TMP_Text   _checkCallLabel;
         [SerializeField] private TMP_InputField _raiseInput;
+        [Tooltip("Vertical offset for the action button row (ActionPanel anchoredPosition.y). Tune in Play mode.")]
+        [SerializeField] private float          _actionPanelYOffset;
 
         [Header("HUD")]
         [SerializeField] private TMP_Text       _potText;
@@ -122,6 +124,8 @@ namespace TexasHoldem
         private ActionAmountBadge _checkCallAmountBadge;
         private ActionAmountBadge _allInAmountBadge;
         private bool              _actionAmountBadgesReady;
+        private float             _actionPanelBaseY;
+        private bool              _actionPanelBaseCaptured;
         private static TMP_FontAsset _runtimeButtonFont;
         private int                  _revealedCommunityCount;
         private Coroutine            _communityRevealCoroutine;
@@ -179,6 +183,9 @@ namespace TexasHoldem
                 _actionPanelGroup = _actionPanel.GetComponent<CanvasGroup>();
                 if (_actionPanelGroup == null)
                     _actionPanelGroup = _actionPanel.AddComponent<CanvasGroup>();
+
+                CaptureActionPanelBaseY();
+                ApplyActionPanelPosition();
             }
 
             if (_gameManager != null)
@@ -399,6 +406,27 @@ namespace TexasHoldem
                 return 0f;
 
             return ActionPanelLayout.BelowButtonSlotHeight(_actionAmountBadgeStyle.badgeHeight);
+        }
+
+        private void ApplyActionPanelPosition()
+        {
+            if (_actionPanel?.transform is not RectTransform rt)
+                return;
+
+            CaptureActionPanelBaseY();
+
+            Vector2 pos = rt.anchoredPosition;
+            pos.y       = _actionPanelBaseY + _actionPanelYOffset;
+            rt.anchoredPosition = pos;
+        }
+
+        private void CaptureActionPanelBaseY()
+        {
+            if (_actionPanelBaseCaptured || _actionPanel?.transform is not RectTransform rt)
+                return;
+
+            _actionPanelBaseY       = rt.anchoredPosition.y - _actionPanelYOffset;
+            _actionPanelBaseCaptured = true;
         }
 
         private void ApplyActionAmountBadgeSettings()
@@ -2072,6 +2100,8 @@ namespace TexasHoldem
 
         private void OnValidate()
         {
+            ApplyActionPanelPosition();
+
             if (Application.isPlaying)
             {
                 if (_potChipStack == null && _potText != null)
