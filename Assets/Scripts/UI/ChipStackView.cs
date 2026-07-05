@@ -7,7 +7,7 @@ namespace TexasHoldem
     /// <summary>
     /// Chip graphics — identical denominations stack vertically with slight overlap;
     /// different denominations sit in horizontal columns.
-    /// Bet stacks use up to three chips ({25,5,1}); pot stacks use the full breakdown.
+    /// Bet stacks use exact chip breakdown ({500,100,25,5,1}); pot stacks use the same via SetExactAmount.
     /// </summary>
     public class ChipStackView : MonoBehaviour
     {
@@ -155,7 +155,7 @@ namespace TexasHoldem
         public Sprite SpriteForDenomination(int denomination) => SpriteFor(denomination);
 
         public Sprite SpriteForAmount(int amount)
-            => SpriteFor(ChipBreakdown.LargestDenomination(amount, ChipBreakdown.StackDenominations));
+            => SpriteFor(ChipBreakdown.LargestDenomination(amount, ChipBreakdown.Denominations));
 
         private void ApplyBreakdown(List<int> denoms)
         {

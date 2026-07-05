@@ -144,7 +144,7 @@ namespace TexasHoldem
             if (_amountText != null)
                 _amountText.text = amount.ToString("N0", GermanNFI);
 
-            _chipStackView?.SetAmount(amount);
+            _chipStackView?.SetExactAmount(amount);
             gameObject.SetActive(true);
 
             if (fromRect != null && _rootCanvas != null)
