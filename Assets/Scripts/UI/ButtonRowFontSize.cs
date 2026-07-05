@@ -123,6 +123,19 @@ namespace TexasHoldem
             hlg.childControlHeight     = false;
             hlg.childForceExpandWidth  = false;
             hlg.childForceExpandHeight = false;
+
+            UIManager ui = ResolveUIManager();
+            if (ui != null)
+                hlg.spacing = ui.ActionButtonSpacing;
+        }
+
+        private static UIManager ResolveUIManager()
+        {
+#if UNITY_2022_2_OR_NEWER
+            return FindFirstObjectByType<UIManager>(FindObjectsInactive.Include);
+#else
+            return FindObjectOfType<UIManager>(true);
+#endif
         }
 
         private void ApplyButtonDimensions(float buttonWidth, float buttonHeight)

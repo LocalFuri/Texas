@@ -40,6 +40,11 @@ namespace TexasHoldem
         [SerializeField] private TMP_InputField _raiseInput;
         [Tooltip("Vertical offset for the action button row (ActionPanel anchoredPosition.y). Tune in Play mode.")]
         [SerializeField] private float          _actionPanelYOffset;
+        [Tooltip("Horizontal gap between action buttons (ButtonRow Horizontal Layout Group spacing). Tune in Play mode.")]
+        [SerializeField, Min(0f)] private float _actionButtonSpacing = 12f;
+
+        /// <summary>Horizontal gap between action-panel buttons (see Action Button Spacing).</summary>
+        public float ActionButtonSpacing => _actionButtonSpacing;
 
         [Header("HUD")]
         [SerializeField] private TMP_Text       _potText;
@@ -186,6 +191,7 @@ namespace TexasHoldem
 
                 CaptureActionPanelBaseY();
                 ApplyActionPanelPosition();
+                RebuildActionButtonRowLayout();
             }
 
             if (_gameManager != null)
@@ -427,6 +433,23 @@ namespace TexasHoldem
 
             _actionPanelBaseY       = rt.anchoredPosition.y - _actionPanelYOffset;
             _actionPanelBaseCaptured = true;
+        }
+
+        private void ApplyActionButtonSpacing()
+        {
+            Transform row = GetButtonRowTransform();
+            if (row == null || !row.TryGetComponent(out HorizontalLayoutGroup hlg))
+                return;
+
+            hlg.spacing = _actionButtonSpacing;
+        }
+
+        private void RebuildActionButtonRowLayout()
+        {
+            ApplyActionButtonSpacing();
+
+            if (GetButtonRowTransform() is RectTransform rowRt)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rowRt);
         }
 
         private void ApplyActionAmountBadgeSettings()
@@ -1616,6 +1639,8 @@ namespace TexasHoldem
 
             if (canRaise)
                 UpdateRaiseButtonLabel();
+
+            RebuildActionButtonRowLayout();
         }
 
         private void SyncBettingRowBottomAlignment(bool canCheck, bool canCall, bool canRaise, bool canAllIn)
@@ -2101,6 +2126,7 @@ namespace TexasHoldem
         private void OnValidate()
         {
             ApplyActionPanelPosition();
+            RebuildActionButtonRowLayout();
 
             if (Application.isPlaying)
             {
@@ -2166,6 +2192,7 @@ namespace TexasHoldem
         {
             if (_actionPanel == null) return;
             _actionPanel.transform.Find("ButtonRow")?.GetComponent<ButtonRowFontSize>()?.Apply();
+            RebuildActionButtonRowLayout();
         }
 
         // ── Winner Celebration ─────────────────────────────────────────────
