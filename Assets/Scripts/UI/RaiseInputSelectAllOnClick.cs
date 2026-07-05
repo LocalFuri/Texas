@@ -11,7 +11,9 @@ namespace TexasHoldem
     [RequireComponent(typeof(TMP_InputField))]
     public class RaiseInputSelectAllOnClick : MonoBehaviour, IPointerDownHandler, IPointerClickHandler
     {
-        private const float IdleSelectAllDelay = 0.3f;
+        private const float IdleSelectAllDelay = 0f;
+        /// <summary>While typing one amount (e.g. 150), block select-all until this long after the last key.</summary>
+        private const float MultiDigitEntryTimeout = 0.4f;
 
         private TMP_InputField _input;
         private Coroutine      _selectCoroutine;
@@ -42,14 +44,21 @@ namespace TexasHoldem
             if (_input == null || !_input.isFocused || !_input.interactable)
                 return;
 
-            if (Time.unscaledTime - _lastEditTime < IdleSelectAllDelay)
+            float idle = Time.unscaledTime - _lastEditTime;
+
+            if (_inMultiDigitBurst && idle < MultiDigitEntryTimeout)
+                return;
+
+            if (_inMultiDigitBurst)
+                _inMultiDigitBurst = false;
+
+            if (idle < IdleSelectAllDelay)
                 return;
 
             if (_idleSelectApplied && HasFullSelection())
                 return;
 
             RaiseInputBuilder.SelectAllText(_input);
-            _inMultiDigitBurst  = false;
             _idleSelectApplied  = true;
             _textBeforeChange   = _input.text ?? string.Empty;
         }
