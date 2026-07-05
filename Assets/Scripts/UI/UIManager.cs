@@ -151,6 +151,7 @@ namespace TexasHoldem
         private int           _pendingBadgeAmount;
         private bool              _raiseInputListenersBound;
         private TMP_InputField    _raiseInputListenerTarget;
+        private bool              _suppressRaiseClamp;
 
         private void OnEnable()
         {
@@ -495,12 +496,15 @@ namespace TexasHoldem
                 return;
 
             RaiseInputBuilder.EnableSelectAllOnFocusAndClick(_raiseInput);
+            ApplyRaiseInputLimits();
 
             if (_raiseInputListenerTarget == _raiseInput)
                 return;
 
             _raiseInput.onSubmit.AddListener(_ => OnRaiseClicked());
             _raiseInput.onSelect.AddListener(_ => SelectAllRaiseInput());
+            _raiseInput.onValueChanged.AddListener(OnRaiseInputValueChanged);
+            _raiseInput.onEndEdit.AddListener(OnRaiseInputEndEdit);
             _raiseInputListenerTarget = _raiseInput;
             _raiseInputListenersBound = true;
         }
@@ -1082,16 +1086,18 @@ namespace TexasHoldem
             EnsureBettingButtonsResolved();
             if (_raiseInput == null) return;
 
-            int minIncrement = GetMinRaiseIncrement();
-            int maxIncrement = GetMaxRaiseIncrement();
-            if (maxIncrement < minIncrement || minIncrement <= 0)
+            if (!CanHumanRaise())
             {
                 _raiseInput.text = string.Empty;
                 return;
             }
 
-            _raiseInput.text = minIncrement.ToString();
-            UpdateRaiseInputPlaceholder(minIncrement, maxIncrement);
+            int minTotal = GetMinRaiseTotal();
+            int maxTotal = GetMaxRaiseTotal();
+
+            _raiseInput.text = minTotal.ToString();
+            UpdateRaiseInputPlaceholder(minTotal, maxTotal);
+            ApplyRaiseInputLimits();
             StyleRaiseInput();
             RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
         }
@@ -1100,13 +1106,13 @@ namespace TexasHoldem
         {
             if (_humanPlayer == null || _gameManager == null) return;
 
-            int minIncrement = GetMinRaiseIncrement();
-            int maxIncrement = GetMaxRaiseIncrement();
-            bool canRaise    = maxIncrement >= minIncrement && minIncrement > 0;
+            bool canRaise = CanHumanRaise();
+            int minTotal  = GetMinRaiseTotal();
+            int maxTotal  = GetMaxRaiseTotal();
 
             if (_raiseInput == null) return;
 
-            UpdateRaiseInputPlaceholder(minIncrement, maxIncrement);
+            UpdateRaiseInputPlaceholder(minTotal, maxTotal);
 
             if (!canRaise)
             {
@@ -1115,24 +1121,120 @@ namespace TexasHoldem
             }
 
             if (!preserveTypedValue || string.IsNullOrWhiteSpace(_raiseInput.text))
-                _raiseInput.text = minIncrement.ToString();
+                _raiseInput.text = minTotal.ToString();
 
+            ApplyRaiseInputLimits();
             StyleRaiseInput();
             RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
         }
 
-        private void UpdateRaiseInputPlaceholder(int minIncrement, int maxIncrement)
+        private void ApplyRaiseInputLimits()
+        {
+            if (_raiseInput == null)
+                return;
+
+            _raiseInput.characterLimit = 0;
+
+            if (!_raiseInput.isFocused)
+                NormalizeRaiseInputText();
+        }
+
+        private void OnRaiseInputValueChanged(string _)
+        {
+            if (_suppressRaiseClamp)
+                return;
+
+            StripLeadingZerosInRaiseInput();
+        }
+
+        private void OnRaiseInputEndEdit(string _)
+        {
+            if (_suppressRaiseClamp)
+                return;
+
+            NormalizeRaiseInputText();
+        }
+
+        private void StripLeadingZerosInRaiseInput()
+        {
+            if (_raiseInput == null)
+                return;
+
+            string raw = _raiseInput.text;
+            if (string.IsNullOrEmpty(raw))
+                return;
+
+            string normalized = StripLeadingZeros(raw);
+            if (normalized == raw)
+                return;
+
+            _suppressRaiseClamp = true;
+            _raiseInput.SetTextWithoutNotify(normalized);
+            _raiseInput.caretPosition  = normalized.Length;
+            _raiseInput.stringPosition = normalized.Length;
+            _suppressRaiseClamp = false;
+            RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, normalized);
+        }
+
+        private void NormalizeRaiseInputText()
+        {
+            if (_raiseInput == null)
+                return;
+
+            string raw = _raiseInput.text;
+            if (string.IsNullOrEmpty(raw))
+                return;
+
+            string normalized = StripLeadingZeros(raw);
+
+            if (int.TryParse(normalized, out int value))
+            {
+                int maxTotal = GetMaxRaiseTotal();
+                if (maxTotal > 0 && value > maxTotal)
+                    normalized = maxTotal.ToString();
+            }
+
+            if (normalized == raw)
+                return;
+
+            _suppressRaiseClamp = true;
+            _raiseInput.SetTextWithoutNotify(normalized);
+            _raiseInput.caretPosition  = normalized.Length;
+            _raiseInput.stringPosition = normalized.Length;
+            _suppressRaiseClamp = false;
+            RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, normalized);
+        }
+
+        private static string StripLeadingZeros(string raw)
+        {
+            if (string.IsNullOrEmpty(raw))
+                return raw;
+
+            int i = 0;
+            while (i < raw.Length - 1 && raw[i] == '0')
+                i++;
+
+            return raw.Substring(i);
+        }
+
+        private void UpdateRaiseInputPlaceholder(int minTotal, int maxTotal)
         {
             if (_raiseInput?.placeholder is not TMP_Text placeholder)
                 return;
 
-            placeholder.text = maxIncrement > minIncrement
-                ? $"{minIncrement} - {maxIncrement}"
-                : minIncrement.ToString();
+            placeholder.text = maxTotal > minTotal
+                ? $"{minTotal} - {maxTotal}"
+                : minTotal.ToString();
         }
 
         private static string FormatEuroAmount(int amount) =>
             amount.ToString("N0", GermanNFI);
+
+        private int GetCallAmount()
+        {
+            if (_humanPlayer == null || _gameManager == null) return 0;
+            return Mathf.Max(0, _gameManager.CurrentBet - _humanPlayer.CurrentBet);
+        }
 
         private int GetMinRaiseIncrement() =>
             _gameManager != null ? _gameManager.BigBlindAmount * 2 : 40;
@@ -1140,9 +1242,14 @@ namespace TexasHoldem
         private int GetMaxRaiseIncrement()
         {
             if (_humanPlayer == null || _gameManager == null) return 0;
-            int callAmount = _gameManager.CurrentBet - _humanPlayer.CurrentBet;
-            return _humanPlayer.Chips - callAmount;
+            return _humanPlayer.Chips - GetCallAmount();
         }
+
+        /// <summary>Minimum total chips to put in via raise (call + min raise increment).</summary>
+        private int GetMinRaiseTotal() => GetCallAmount() + GetMinRaiseIncrement();
+
+        /// <summary>Maximum total chips to put in via raise (full stack).</summary>
+        private int GetMaxRaiseTotal() => _humanPlayer?.Chips ?? 0;
 
         private int ParseRaiseIncrement()
         {
@@ -1152,20 +1259,26 @@ namespace TexasHoldem
             int maxIncrement = GetMaxRaiseIncrement();
             if (maxIncrement < minIncrement) return 0;
 
+            int minTotal = GetMinRaiseTotal();
+            int maxTotal = GetMaxRaiseTotal();
+            int callAmount = GetCallAmount();
+
+            NormalizeRaiseInputText();
+
             string raw = _raiseInput != null ? _raiseInput.text : string.Empty;
 
-            if (!int.TryParse(raw, out int amount))
-                amount = minIncrement;
+            if (!int.TryParse(raw, out int totalIn))
+                totalIn = minTotal;
 
-            amount = Mathf.Clamp(amount, minIncrement, maxIncrement);
+            totalIn = Mathf.Clamp(totalIn, minTotal, maxTotal);
 
             if (_raiseInput != null)
             {
-                _raiseInput.text = amount.ToString();
+                _raiseInput.text = totalIn.ToString();
                 RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
             }
 
-            return amount;
+            return totalIn - callAmount;
         }
 
         /// <summary>Updates the pot number only — used while a betting street is in progress.</summary>

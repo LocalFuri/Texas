@@ -11,9 +11,9 @@ namespace TexasHoldem
     [RequireComponent(typeof(TMP_InputField))]
     public class RaiseInputSelectAllOnClick : MonoBehaviour, IPointerDownHandler, IPointerClickHandler
     {
-        private const float IdleSelectAllDelay = 0f;
-        /// <summary>While typing one amount (e.g. 150), block select-all until this long after the last key.</summary>
-        private const float MultiDigitEntryTimeout = 0.4f;
+        private const float IdleSelectAllDelay = 0.75f;
+        /// <summary>While typing one amount (e.g. 1000), block select-all until this long after the last key.</summary>
+        private const float MultiDigitEntryTimeout = 1.5f;
 
         private TMP_InputField _input;
         private Coroutine      _selectCoroutine;

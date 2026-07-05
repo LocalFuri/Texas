@@ -57,6 +57,7 @@ namespace TexasHoldem
             input.contentType          = TMP_InputField.ContentType.IntegerNumber;
             input.lineType             = TMP_InputField.LineType.SingleLine;
             input.characterValidation  = TMP_InputField.CharacterValidation.Integer;
+            input.characterLimit       = 0;
 
             var textArea = new GameObject("Text Area", typeof(RectTransform));
             textArea.transform.SetParent(root.transform, false);
