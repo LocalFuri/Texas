@@ -87,6 +87,10 @@ namespace TexasHoldem
         [Header("Button Font")]
         [SerializeField] private TMP_FontAsset _buttonFont;
 
+        [Header("Action Amount Badges")]
+        [Tooltip("Style for amount pills under Call and All-In. Edit in Play mode to tune live.")]
+        [SerializeField] private ActionAmountBadgeStyle _actionAmountBadgeStyle = new ActionAmountBadgeStyle();
+
         private const string Casino3DSdfPath             = "Assets/TextMesh Pro/Fonts/Casino3D SDF.asset";
         private const string Casino3DSdfResourcesPath   = "Fonts/Casino3D SDF";
 
@@ -386,6 +390,21 @@ namespace TexasHoldem
             }
 
             _actionAmountBadgesReady = true;
+            ApplyActionAmountBadgeSettings();
+        }
+
+        private float ResolveActionBelowSlotHeight(bool reserveBelow)
+        {
+            if (!reserveBelow)
+                return 0f;
+
+            return ActionPanelLayout.BelowButtonSlotHeight(_actionAmountBadgeStyle.badgeHeight);
+        }
+
+        private void ApplyActionAmountBadgeSettings()
+        {
+            _checkCallAmountBadge?.Configure(_actionAmountBadgeStyle);
+            _allInAmountBadge?.Configure(_actionAmountBadgeStyle);
         }
 
         private void BindButtonListeners()
@@ -1559,7 +1578,9 @@ namespace TexasHoldem
         {
             float buttonHeight = _gameManager != null ? _gameManager.ButtonHeight : 50f;
             bool reserveBelow  = canCall || canRaise || canAllIn;
-            float belowSlot    = reserveBelow ? ActionPanelLayout.BelowButtonSlotHeight : 0f;
+            float belowSlot    = ResolveActionBelowSlotHeight(reserveBelow);
+
+            ApplyActionAmountBadgeSettings();
 
             Transform row = GetButtonRowTransform();
             ActionPanelLayout.ConfigureRowAlignment(row);
@@ -1633,7 +1654,7 @@ namespace TexasHoldem
             if (_raiseButton != null && _raiseInput != null)
             {
                 bool reserveBelow = canCall || canRaise || canAllIn;
-                float belowSlot   = reserveBelow ? ActionPanelLayout.BelowButtonSlotHeight : 0f;
+                float belowSlot   = ResolveActionBelowSlotHeight(reserveBelow);
                 float width       = _raiseButton.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
                 ActionPanelLayout.SyncRaiseColumn(
                     _raiseButton,
@@ -1735,7 +1756,7 @@ namespace TexasHoldem
 
             float buttonHeight = _gameManager != null ? _gameManager.ButtonHeight : 50f;
             float width        = _raiseButton.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
-            float belowSlot    = visible ? ActionPanelLayout.BelowButtonSlotHeight : 0f;
+            float belowSlot    = visible ? ResolveActionBelowSlotHeight(reserveBelow: true) : 0f;
             ActionPanelLayout.SyncRaiseColumn(_raiseButton, _raiseInput, visible, buttonHeight, belowSlot, width);
 
             if (visible)
@@ -1752,7 +1773,7 @@ namespace TexasHoldem
             float buttonHeight = _gameManager != null ? _gameManager.ButtonHeight : 50f;
             bool visible       = _raiseInput.gameObject.activeSelf;
             float width        = _raiseButton.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
-            float belowSlot    = visible ? ActionPanelLayout.BelowButtonSlotHeight : 0f;
+            float belowSlot    = visible ? ResolveActionBelowSlotHeight(reserveBelow: true) : 0f;
             ActionPanelLayout.SyncRaiseColumn(_raiseButton, _raiseInput, visible, buttonHeight, belowSlot, width);
 
             if (_actionPanel != null)
@@ -2041,6 +2062,7 @@ namespace TexasHoldem
                     EnsurePotChipStack();
                 ApplyPotChipStackSettings();
                 UpdatePotLabel();
+                ApplyActionAmountBadgeSettings();
                 return;
             }
 

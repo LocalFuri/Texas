@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using TMPro;
 using UnityEngine;
@@ -5,11 +6,42 @@ using UnityEngine.UI;
 
 namespace TexasHoldem
 {
-    /// <summary>Dark rounded pill + gold amount — matches seat BetDisplay AmountBadge.</summary>
+    [Serializable]
+    public class ActionAmountBadgeStyle
+    {
+        public const float DefaultBadgeWidth  = 90f;
+        public const float DefaultBadgeHeight = 30f;
+        public const float DefaultFontSize    = 14f;
+
+        private static readonly Color DefaultTextColor = new Color(1f, 0.85f, 0.2f, 1f);
+
+        [Header("Colors")]
+        public Color backgroundColor = BetDisplay.DefaultAmountBadgeColor;
+        public Color textColor       = DefaultTextColor;
+
+        [Header("Text")]
+        public float fontSize = DefaultFontSize;
+
+        [Header("Size")]
+        public float badgeWidth  = DefaultBadgeWidth;
+        public float badgeHeight = DefaultBadgeHeight;
+        [Tooltip("When on, badge width follows the action button width.")]
+        public bool matchButtonWidth = true;
+
+        [Header("Position")]
+        [Tooltip("Local X/Y offset inside the below-button slot.")]
+        public Vector2 anchoredOffset;
+
+        public float BelowSlotHeight =>
+            Mathf.Max(badgeHeight, RaiseInputBuilder.InputHeight) + RaiseInputBuilder.ColumnSpacing;
+    }
+
+    /// <summary>Dark rounded pill + gold amount under action-panel buttons.</summary>
+    [ExecuteAlways]
     public class ActionAmountBadge : MonoBehaviour
     {
-        public const float BadgeWidth  = 90f;
-        public const float BadgeHeight = 30f;
+        public const float BadgeWidth  = ActionAmountBadgeStyle.DefaultBadgeWidth;
+        public const float BadgeHeight = ActionAmountBadgeStyle.DefaultBadgeHeight;
 
         private static readonly NumberFormatInfo GermanNFI = new NumberFormatInfo
         {
@@ -19,12 +51,51 @@ namespace TexasHoldem
             NumberGroupSizes       = new[] { 3 }
         };
 
+        [SerializeField] private ActionAmountBadgeStyle _style = new ActionAmountBadgeStyle();
         [SerializeField] private Image    _background;
         [SerializeField] private TMP_Text _amountText;
+
+        public ActionAmountBadgeStyle Style => _style;
+
+        public float LayoutHeight => _style.badgeHeight;
+
+        public void Configure(ActionAmountBadgeStyle style)
+        {
+            if (style == null)
+                return;
+
+            _style = style;
+            ApplyStyle();
+        }
+
+        public void ApplyLayout(float buttonWidth)
+        {
+            EnsureRefs();
+
+            float width = _style.matchButtonWidth && buttonWidth > 0f
+                ? buttonWidth
+                : _style.badgeWidth;
+
+            if (transform is RectTransform rt)
+            {
+                rt.sizeDelta        = new Vector2(width, _style.badgeHeight);
+                rt.anchoredPosition = _style.anchoredOffset;
+            }
+
+            var element = GetComponent<LayoutElement>() ?? gameObject.AddComponent<LayoutElement>();
+            element.minWidth        = width;
+            element.preferredWidth  = width;
+            element.minHeight       = _style.badgeHeight;
+            element.preferredHeight = _style.badgeHeight;
+            element.flexibleWidth   = 0f;
+            element.flexibleHeight  = 0f;
+        }
 
         public void SetAmount(int amount)
         {
             EnsureRefs();
+            ApplyStyle();
+
             if (_amountText != null)
                 _amountText.text = amount.ToString("N0", GermanNFI);
 
@@ -69,7 +140,21 @@ namespace TexasHoldem
             return created;
         }
 
+        private void OnValidate()
+        {
+            if (!isActiveAndEnabled)
+                return;
+
+            ApplyStyle();
+        }
+
         private void Build()
+        {
+            EnsureRefs();
+            ApplyStyle();
+        }
+
+        private void ApplyStyle()
         {
             EnsureRefs();
 
@@ -78,18 +163,9 @@ namespace TexasHoldem
             {
                 _background.sprite        = sprite;
                 _background.type          = sprite != null ? Image.Type.Sliced : Image.Type.Simple;
-                _background.color         = BetDisplay.DefaultAmountBadgeColor;
+                _background.color         = _style.backgroundColor;
                 _background.raycastTarget = false;
             }
-
-            var rt = (RectTransform)transform;
-            rt.sizeDelta = new Vector2(BadgeWidth, BadgeHeight);
-
-            var element = GetComponent<LayoutElement>() ?? gameObject.AddComponent<LayoutElement>();
-            element.minHeight       = BadgeHeight;
-            element.preferredHeight = BadgeHeight;
-            element.flexibleWidth   = 0f;
-            element.flexibleHeight  = 0f;
 
             if (_amountText != null)
             {
@@ -98,10 +174,12 @@ namespace TexasHoldem
                 _amountText.enableWordWrapping = false;
                 _amountText.overflowMode       = TextOverflowModes.Ellipsis;
                 _amountText.raycastTarget      = false;
-                _amountText.color              = UiColors.PotGold;
-                _amountText.fontSize           = PlayerHudLayout.StackAmountFontSize;
+                _amountText.color              = _style.textColor;
+                _amountText.fontSize           = _style.fontSize;
                 PlayerHudLayout.ApplyStackAmountFontIfMissing(_amountText);
             }
+
+            ApplyLayout(buttonWidth: 0f);
         }
 
         private void EnsureRefs()

@@ -14,8 +14,8 @@ namespace TexasHoldem
         public const string FoldColumnName      = "FoldColumn";
         public const string BelowSpacerName     = "BelowSpacer";
 
-        public static float BelowButtonSlotHeight =>
-            ActionAmountBadge.BadgeHeight + RaiseInputBuilder.ColumnSpacing;
+        public static float BelowButtonSlotHeight(float badgeHeight) =>
+            Mathf.Max(badgeHeight, RaiseInputBuilder.InputHeight) + RaiseInputBuilder.ColumnSpacing;
 
         private const float ButtonRowHeight = 50f;
         private const float PanelHeight     = 94f;
@@ -246,8 +246,8 @@ namespace TexasHoldem
             if (buttonWidth <= 0f && button.transform is RectTransform buttonRect)
                 buttonWidth = buttonRect.sizeDelta.x;
 
-            if (badge != null && badgeVisible && buttonWidth > 0f && badge.transform is RectTransform badgeRt)
-                badgeRt.sizeDelta = new Vector2(buttonWidth, ActionAmountBadge.BadgeHeight);
+            if (badge != null)
+                badge.ApplyLayout(buttonWidth);
 
             SyncColumnLayout(column, buttonHeight, belowSlotHeight, buttonWidth);
         }
