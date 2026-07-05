@@ -69,7 +69,7 @@ namespace TexasHoldem
             placeholderGo.transform.SetParent(textArea.transform, false);
             StretchFull((RectTransform)placeholderGo.transform);
             var placeholder = placeholderGo.AddComponent<TextMeshProUGUI>();
-            placeholder.text               = "40";
+            placeholder.text               = string.Empty;
             placeholder.font               = font;
             placeholder.fontSize           = 16f;
             placeholder.color              = new Color(1f, 1f, 1f, 0.4f);

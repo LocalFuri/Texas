@@ -1093,10 +1093,9 @@ namespace TexasHoldem
             }
 
             int minTotal = GetMinRaiseTotal();
-            int maxTotal = GetMaxRaiseTotal();
 
             _raiseInput.text = minTotal.ToString();
-            UpdateRaiseInputPlaceholder(minTotal, maxTotal);
+            UpdateRaiseInputPlaceholder();
             ApplyRaiseInputLimits();
             StyleRaiseInput();
             RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
@@ -1108,11 +1107,10 @@ namespace TexasHoldem
 
             bool canRaise = CanHumanRaise();
             int minTotal  = GetMinRaiseTotal();
-            int maxTotal  = GetMaxRaiseTotal();
 
             if (_raiseInput == null) return;
 
-            UpdateRaiseInputPlaceholder(minTotal, maxTotal);
+            UpdateRaiseInputPlaceholder();
 
             if (!canRaise)
             {
@@ -1196,14 +1194,12 @@ namespace TexasHoldem
             return raw.Substring(i);
         }
 
-        private void UpdateRaiseInputPlaceholder(int minTotal, int maxTotal)
+        private void UpdateRaiseInputPlaceholder()
         {
             if (_raiseInput?.placeholder is not TMP_Text placeholder)
                 return;
 
-            placeholder.text = maxTotal > minTotal
-                ? $"{minTotal} - {maxTotal}"
-                : minTotal.ToString();
+            placeholder.text = string.Empty;
         }
 
         private static string FormatEuroAmount(int amount) =>
