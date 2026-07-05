@@ -26,9 +26,16 @@ namespace TexasHoldem
             NumberGroupSizes       = new[] { 3 }
         };
 
+        public static readonly Color DefaultAmountBadgeColor = new Color(0.06f, 0.06f, 0.08f, 0.93f);
+
         [SerializeField] private TMP_Text       _amountText;
         [SerializeField] private ChipStackView    _chipStackView;
         [SerializeField] private RectTransform    _chipStackRoot;
+
+        [Header("Amount Badge")]
+        [Tooltip("Rounded pill behind the bet amount. Tint here — layout code does not overwrite this.")]
+        [SerializeField] private Image _amountBadgeImage;
+        [SerializeField] private Color _amountBadgeColor = DefaultAmountBadgeColor;
 
         private const float AnimDuration = 0.45f;
 
@@ -59,6 +66,36 @@ namespace TexasHoldem
 
             if (_amountText == null)
                 _amountText = transform.Find("AmountBadge/AmountText")?.GetComponent<TMP_Text>();
+
+            ResolveAmountBadgeImage();
+            ApplyAmountBadgeColor();
+        }
+
+        private void Start() => ApplyAmountBadgeColor();
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            ResolveAmountBadgeImage();
+            ApplyAmountBadgeColor();
+        }
+#endif
+
+        private void ResolveAmountBadgeImage()
+        {
+            if (_amountBadgeImage != null)
+                return;
+
+            Transform badge = transform.Find("AmountBadge");
+            if (badge != null)
+                _amountBadgeImage = badge.GetComponent<Image>();
+        }
+
+        private void ApplyAmountBadgeColor()
+        {
+            ResolveAmountBadgeImage();
+            if (_amountBadgeImage != null)
+                _amountBadgeImage.color = _amountBadgeColor;
         }
 
         public const float ChipFlyDuration = AnimDuration;
@@ -74,6 +111,8 @@ namespace TexasHoldem
 
         public void ShowBet(int amount, RectTransform fromRect = null)
         {
+            ApplyAmountBadgeColor();
+
             if (_amountText != null)
                 _amountText.text = amount.ToString("N0", GermanNFI);
 

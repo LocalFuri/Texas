@@ -946,7 +946,7 @@ namespace TexasHoldem
             RecordObj(amountBadgeImg);
             amountBadgeImg.sprite        = roundedRect;
             amountBadgeImg.type          = Image.Type.Sliced;
-            amountBadgeImg.color         = new Color(0.06f, 0.06f, 0.08f, 0.93f);
+            amountBadgeImg.color         = BetDisplay.DefaultAmountBadgeColor;
             amountBadgeImg.raycastTarget = false;
             SetRect(badgeGo, 0f, badgeCenterY, 90f, 30f);
 
@@ -975,6 +975,7 @@ namespace TexasHoldem
             SetRef(betDispSo, "_amountText",    amountTMP);
             SetRef(betDispSo, "_chipStackView", chipStackView);
             SetRef(betDispSo, "_chipStackRoot", (RectTransform)chipStackGo.transform);
+            SetRef(betDispSo, "_amountBadgeImage", amountBadgeImg);
             betDispSo.ApplyModifiedProperties();
 
             betDisplayGo.SetActive(false);
