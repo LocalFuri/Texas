@@ -221,6 +221,9 @@ namespace TexasHoldem
             SubscribeToGameEvents();
             StartCoroutine(BindOptionsMenuWhenReady());
             HideAllSeatMenus();
+            EnsureWinningHandLabel();
+            if (_winningHandText != null)
+                _winningHandText.gameObject.SetActive(false);
         }
 
         private void OnDestroy()
@@ -982,7 +985,6 @@ namespace TexasHoldem
         {
             StopTurnTimer();
             HideBettingControls();
-            ClearWinningHandDisplay();
             for (int i = 0; i < _playerViews.Count; i++)
                 _playerViews[i].SetActiveTurn(false);
 
@@ -2376,47 +2378,94 @@ namespace TexasHoldem
 
         private void EnsureWinningHandLabel()
         {
-            if (_winningHandText != null)
-                return;
+            if (_winningHandText == null)
+            {
+                Transform parent = _potText != null
+                    ? _potText.transform.parent
+                    : transform;
 
-            Transform parent = _potText != null
+                Transform existing = parent != null ? parent.Find("WinningHandLabel") : null;
+                if (existing != null)
+                    _winningHandText = existing.GetComponent<TMP_Text>();
+            }
+
+            if (_winningHandText != null)
+            {
+                StyleWinningHandLabel();
+                return;
+            }
+
+            Transform labelParent = _potText != null
                 ? _potText.transform.parent
                 : transform;
 
             var labelGo = new GameObject("WinningHandLabel", typeof(RectTransform));
-            labelGo.transform.SetParent(parent, false);
+            labelGo.transform.SetParent(labelParent, false);
 
             var rt = (RectTransform)labelGo.transform;
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = new Vector2(0f, _winningHandLabelY);
-            rt.sizeDelta        = new Vector2(640f, 36f);
+            rt.sizeDelta        = new Vector2(640f, 40f);
 
             _winningHandText = labelGo.AddComponent<TextMeshProUGUI>();
-            _winningHandText.alignment         = TextAlignmentOptions.Center;
-            _winningHandText.fontSize          = _potText != null ? _potText.fontSize : 28f;
-            _winningHandText.color             = UiColors.PotGold;
-            _winningHandText.raycastTarget     = false;
+            StyleWinningHandLabel();
+            labelGo.transform.SetAsLastSibling();
+        }
+
+        private void StyleWinningHandLabel()
+        {
+            if (_winningHandText == null)
+                return;
+
+            TMP_FontAsset font = _potText != null && _potText.font != null
+                ? _potText.font
+                : ResolveButtonFont();
+
+            if (font != null)
+                _winningHandText.font = font;
+
+            _winningHandText.alignment          = TextAlignmentOptions.Center;
+            _winningHandText.fontSize           = _potText != null ? _potText.fontSize : 28f;
+            _winningHandText.color              = UiColors.PotGold;
+            _winningHandText.raycastTarget      = false;
             _winningHandText.enableWordWrapping = false;
-            if (_potText != null && _potText.font != null)
-                _winningHandText.font = _potText.font;
+
+            if (_winningHandText.transform is RectTransform rt)
+            {
+                rt.anchorMin        = new Vector2(0.5f, 0.5f);
+                rt.anchorMax        = new Vector2(0.5f, 0.5f);
+                rt.pivot            = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = new Vector2(0f, _winningHandLabelY);
+            }
         }
 
         private void ShowWinningHandDisplay(PlayerState winner, PlayerView winnerView)
         {
+            EnsureWinningHandLabel();
+            if (_winningHandText == null)
+                return;
+
             WinningHandEvaluation evaluation = _gameManager?.LastWinningHand;
-            if (evaluation?.Result == null)
+            string message = evaluation?.Result != null
+                ? HandDisplayNames.FormatWithWinner(winner?.Name, evaluation.Result)
+                : string.IsNullOrEmpty(winner?.Name) ? string.Empty : $"{winner.Name} wins";
+
+            if (string.IsNullOrEmpty(message))
             {
                 ClearWinningHandDisplay();
                 return;
             }
 
-            EnsureWinningHandLabel();
-            _winningHandText.text = HandDisplayNames.FormatWithWinner(winner?.Name, evaluation.Result);
+            _winningHandText.text = message;
             _winningHandText.gameObject.SetActive(true);
+            _winningHandText.transform.SetAsLastSibling();
 
-            ApplyWinningCardHighlights(winner, winnerView, evaluation.BestCards);
+            if (evaluation?.BestCards != null && evaluation.BestCards.Count > 0)
+                ApplyWinningCardHighlights(winner, winnerView, evaluation.BestCards);
+            else
+                ClearWinningCardHighlights();
         }
 
         private void ApplyWinningCardHighlights(
