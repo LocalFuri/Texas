@@ -26,10 +26,10 @@ namespace TexasHoldem
         public float badgeWidth  = DefaultBadgeWidth;
         public float badgeHeight = DefaultBadgeHeight;
         [Tooltip("When on, badge width follows the action button width.")]
-        public bool matchButtonWidth = true;
+        public bool matchButtonWidth = false;
 
         [Header("Position")]
-        [Tooltip("Local X/Y offset inside the below-button slot.")]
+        [Tooltip("Offset from the center of the below-button slot. Positive Y moves toward the button.")]
         public Vector2 anchoredOffset;
 
         public float BelowSlotHeight =>
@@ -68,7 +68,7 @@ namespace TexasHoldem
             ApplyStyle();
         }
 
-        public void ApplyLayout(float buttonWidth)
+        public void ApplyLayout(float buttonWidth, float belowSlotHeight)
         {
             EnsureRefs();
 
@@ -76,19 +76,19 @@ namespace TexasHoldem
                 ? buttonWidth
                 : _style.badgeWidth;
 
-            if (transform is RectTransform rt)
-            {
-                rt.sizeDelta        = new Vector2(width, _style.badgeHeight);
-                rt.anchoredPosition = _style.anchoredOffset;
-            }
+            if (transform is not RectTransform rt)
+                return;
+
+            rt.anchorMin        = new Vector2(0.5f, 0f);
+            rt.anchorMax        = new Vector2(0.5f, 0f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta        = new Vector2(width, _style.badgeHeight);
+            rt.anchoredPosition = new Vector2(
+                _style.anchoredOffset.x,
+                belowSlotHeight * 0.5f + _style.anchoredOffset.y);
 
             var element = GetComponent<LayoutElement>() ?? gameObject.AddComponent<LayoutElement>();
-            element.minWidth        = width;
-            element.preferredWidth  = width;
-            element.minHeight       = _style.badgeHeight;
-            element.preferredHeight = _style.badgeHeight;
-            element.flexibleWidth   = 0f;
-            element.flexibleHeight  = 0f;
+            element.ignoreLayout = true;
         }
 
         public void SetAmount(int amount)
@@ -124,15 +124,21 @@ namespace TexasHoldem
             {
                 var badge = existing.GetComponent<ActionAmountBadge>();
                 if (badge != null)
-                    return badge;
-            }
+                {
+                    if (existing.parent != column)
+                    {
+                        existing.SetParent(column, false);
+                        existing.SetAsLastSibling();
+                    }
 
-            Transform parent = ActionPanelLayout.EnsureBelowSpacer(column) ?? column;
+                    return badge;
+                }
+            }
 
             var badgeGo = new GameObject("AmountBadge", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
                 typeof(ActionAmountBadge));
-            badgeGo.transform.SetParent(parent, false);
-            badgeGo.transform.SetAsFirstSibling();
+            badgeGo.transform.SetParent(column, false);
+            badgeGo.transform.SetAsLastSibling();
 
             var created = badgeGo.GetComponent<ActionAmountBadge>();
             created.Build();
@@ -179,7 +185,6 @@ namespace TexasHoldem
                 PlayerHudLayout.ApplyStackAmountFontIfMissing(_amountText);
             }
 
-            ApplyLayout(buttonWidth: 0f);
         }
 
         private void EnsureRefs()

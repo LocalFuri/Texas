@@ -228,14 +228,17 @@ namespace TexasHoldem
             if (column == null)
                 return;
 
-            Transform spacer = EnsureBelowSpacer(column);
             ApplyBottomAlignedColumn(column);
+            EnsureBelowSpacer(column);
             button.transform.SetSiblingIndex(1);
 
             if (badge != null)
             {
-                badge.transform.SetParent(spacer, false);
-                badge.transform.SetAsFirstSibling();
+                if (badge.transform.parent != column)
+                {
+                    badge.transform.SetParent(column, false);
+                    badge.transform.SetAsLastSibling();
+                }
 
                 if (badgeVisible)
                     badge.gameObject.SetActive(true);
@@ -246,10 +249,10 @@ namespace TexasHoldem
             if (buttonWidth <= 0f && button.transform is RectTransform buttonRect)
                 buttonWidth = buttonRect.sizeDelta.x;
 
-            if (badge != null)
-                badge.ApplyLayout(buttonWidth);
-
             SyncColumnLayout(column, buttonHeight, belowSlotHeight, buttonWidth);
+
+            if (badge != null)
+                badge.ApplyLayout(buttonWidth, belowSlotHeight);
         }
 
         public static void SyncRaiseColumn(

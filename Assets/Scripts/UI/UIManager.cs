@@ -405,6 +405,22 @@ namespace TexasHoldem
         {
             _checkCallAmountBadge?.Configure(_actionAmountBadgeStyle);
             _allInAmountBadge?.Configure(_actionAmountBadgeStyle);
+            RefreshActionAmountBadgeLayout();
+        }
+
+        private void RefreshActionAmountBadgeLayout()
+        {
+            if (!Application.isPlaying)
+                return;
+
+            float buttonHeight = _gameManager != null ? _gameManager.ButtonHeight : 50f;
+            float belowSlot    = ResolveActionBelowSlotHeight(reserveBelow: true);
+
+            if (_checkCallAmountBadge != null && ResolveCheckCallButton()?.transform is RectTransform checkRt)
+                _checkCallAmountBadge.ApplyLayout(checkRt.sizeDelta.x, belowSlot);
+
+            if (_allInAmountBadge != null && _allInButton?.transform is RectTransform allInRt)
+                _allInAmountBadge.ApplyLayout(allInRt.sizeDelta.x, belowSlot);
         }
 
         private void BindButtonListeners()

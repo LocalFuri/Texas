@@ -8220,7 +8220,7 @@ MonoBehaviour:
     badgeWidth: 30
     badgeHeight: 30
     matchButtonWidth: 1
-    anchoredOffset: {x: 0, y: 0}
+    anchoredOffset: {x: 0, y: -28}
 --- !u!1 &911390311
 GameObject:
   m_ObjectHideFlags: 0
