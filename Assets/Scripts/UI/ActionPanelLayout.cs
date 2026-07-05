@@ -119,9 +119,7 @@ namespace TexasHoldem
             if (input == null)
                 input = RaiseInputBuilder.CreateInputField(buttonRow, font);
 
-            Transform legacyRow = actionPanel?.Find(RaiseInputBuilder.RaiseRowName);
-            if (legacyRow != null)
-                legacyRow.gameObject.SetActive(false);
+            HideLegacyRaiseRow(actionPanel);
 
             Transform column = EnsureRaiseColumn(raiseButton, buttonRow);
             Transform spacer   = EnsureBelowSpacer(column);
@@ -129,15 +127,35 @@ namespace TexasHoldem
             input.transform.SetAsFirstSibling();
             raiseButton.transform.SetSiblingIndex(1);
 
-            RaiseInputBuilder.ConfigureInputLayoutElement(input);
+            float buttonWidth = raiseButton.transform is RectTransform raiseRt
+                ? raiseRt.sizeDelta.x
+                : 0f;
+
+            float fontSize = ButtonLabelStyle.ActionButtonFontSize;
+            if (font != null)
+                RaiseInputBuilder.ApplyTextStyle(input, font, fontSize);
+            else
+                RaiseInputBuilder.NormalizeInputLayout(input, buttonWidth, fontSize);
             RaiseInputBuilder.ApplyButtonBackground(input, raiseButton);
 
-            float buttonHeight = raiseButton.transform is RectTransform raiseRt
-                ? raiseRt.sizeDelta.y
+            float buttonHeight = raiseButton.transform is RectTransform raiseHeightRt
+                ? raiseHeightRt.sizeDelta.y
                 : ButtonRowHeight;
             SyncRaiseColumn(raiseButton, input, inputVisible: false, buttonHeight, belowSlotHeight: 0f);
 
             return input;
+        }
+
+        public static void HideLegacyRaiseRow(Transform actionPanel)
+        {
+            if (actionPanel == null)
+                return;
+
+            Transform legacyRow = actionPanel.Find(RaiseInputBuilder.RaiseRowName);
+            if (legacyRow == null)
+                return;
+
+            legacyRow.gameObject.SetActive(false);
         }
 
         public static Transform EnsureRaiseColumn(Button raiseButton, Transform buttonRow)
@@ -266,9 +284,13 @@ namespace TexasHoldem
             if (raiseButton == null)
                 return;
 
+            Transform buttonRow = ResolveButtonRow(raiseButton);
+            if (buttonRow == null)
+                return;
+
             Transform column = raiseButton.transform.parent;
             if (column == null || column.name != RaiseInputBuilder.RaiseColumnName)
-                return;
+                column = EnsureRaiseColumn(raiseButton, buttonRow);
 
             ApplyBottomAlignedColumn(column);
             Transform spacer = EnsureBelowSpacer(column);
@@ -284,21 +306,38 @@ namespace TexasHoldem
                 if (buttonWidth <= 0f && raiseButton.transform is RectTransform raiseRt)
                     buttonWidth = raiseRt.sizeDelta.x;
 
-                if (buttonWidth > 0f && input.transform is RectTransform inputRt)
+                float fontSize = ButtonLabelStyle.ActionButtonFontSize;
+                RaiseInputBuilder.NormalizeInputLayout(input, buttonWidth, fontSize);
+
+                if (buttonWidth > 0f)
                 {
                     var inputElement = input.GetComponent<LayoutElement>();
                     if (inputElement != null)
                     {
                         inputElement.minWidth       = buttonWidth;
                         inputElement.preferredWidth = buttonWidth;
+                        inputElement.flexibleWidth    = 0f;
                     }
-
-                    inputRt.sizeDelta = new Vector2(buttonWidth, RaiseInputBuilder.InputHeight);
                 }
             }
 
             float slotHeight = belowSlotHeight;
             SyncColumnLayout(column, buttonHeight, slotHeight, buttonWidth);
+        }
+
+        private static Transform ResolveButtonRow(Button raiseButton)
+        {
+            Transform node = raiseButton?.transform.parent;
+            if (node == null)
+                return null;
+
+            if (node.name == ButtonRowName)
+                return node;
+
+            if (IsButtonColumn(node.name))
+                return node.parent;
+
+            return node;
         }
 
         public static void RebuildPanel(RectTransform panel)

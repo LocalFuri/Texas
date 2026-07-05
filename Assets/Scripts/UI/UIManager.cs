@@ -368,6 +368,7 @@ namespace TexasHoldem
 
             ActionPanelLayout.ConfigureRowAlignment(row);
             EnsureActionAmountBadges();
+            EnsureRaiseColumnAttached();
         }
 
         private void EnsureActionAmountBadges()
@@ -1078,6 +1079,7 @@ namespace TexasHoldem
 
             _raiseInput.text = minIncrement.ToString();
             UpdateRaiseInputPlaceholder(minIncrement, maxIncrement);
+            StyleRaiseInput();
         }
 
         private void UpdateRaiseInput(bool preserveTypedValue = true)
@@ -1100,6 +1102,8 @@ namespace TexasHoldem
 
             if (!preserveTypedValue || string.IsNullOrWhiteSpace(_raiseInput.text))
                 _raiseInput.text = minIncrement.ToString();
+
+            StyleRaiseInput();
         }
 
         private void UpdateRaiseInputPlaceholder(int minIncrement, int maxIncrement)
@@ -1630,6 +1634,7 @@ namespace TexasHoldem
             {
                 UpdateRaiseButtonLabel();
                 UpdateRaiseInput(preserveTypedValue: true);
+                StyleRaiseInput();
                 FocusRaiseInputWhenReady();
             }
 
@@ -1815,11 +1820,8 @@ namespace TexasHoldem
             if (_raiseInput == null || _raiseButton == null)
                 return;
 
-            Transform legacyRow = _actionPanel != null
-                ? _actionPanel.transform.Find(RaiseInputBuilder.RaiseRowName)
-                : null;
-            if (legacyRow != null)
-                legacyRow.gameObject.SetActive(false);
+            EnsureRaiseColumnAttached();
+            ActionPanelLayout.HideLegacyRaiseRow(_actionPanel != null ? _actionPanel.transform : null);
 
             _raiseInput.gameObject.SetActive(visible);
 
@@ -1844,6 +1846,7 @@ namespace TexasHoldem
             float width        = _raiseButton.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
             float belowSlot    = visible ? ResolveActionBelowSlotHeight(reserveBelow: true) : 0f;
             ActionPanelLayout.SyncRaiseColumn(_raiseButton, _raiseInput, visible, buttonHeight, belowSlot, width);
+            StyleRaiseInput();
 
             if (_actionPanel != null)
                 ActionPanelLayout.RebuildPanel((RectTransform)_actionPanel.transform);
@@ -1906,48 +1909,48 @@ namespace TexasHoldem
             if (_raiseButton == null || _actionPanel == null)
                 return;
 
-            Transform column = _raiseButton.transform.parent;
-            if (column == null || column.name != RaiseInputBuilder.RaiseColumnName)
-            {
-                _raiseInput = ActionPanelLayout.AttachRaiseInputToButton(
-                    _raiseButton,
-                    _actionPanel.transform,
-                    _buttonFont);
-            }
+            _raiseInput = ActionPanelLayout.AttachRaiseInputToButton(
+                _raiseButton,
+                _actionPanel.transform,
+                _buttonFont != null ? _buttonFont : ResolveButtonFont());
+
+            StyleRaiseInput();
 
             Transform row = GetButtonRowTransform();
             ActionPanelLayout.ConfigureRowAlignment(row);
-            HideLegacyRaiseRow();
+            ActionPanelLayout.HideLegacyRaiseRow(_actionPanel.transform);
         }
 
         private void HideLegacyRaiseRow()
         {
-            if (_actionPanel == null) return;
+            if (_actionPanel == null)
+                return;
 
-            Transform legacyRow = _actionPanel.transform.Find(RaiseInputBuilder.RaiseRowName);
-            if (legacyRow != null)
-                legacyRow.gameObject.SetActive(false);
+            ActionPanelLayout.HideLegacyRaiseRow(_actionPanel.transform);
         }
 
-        private void StyleRaiseInput(TMP_FontAsset font)
+        private float ResolveActionButtonFontSize() =>
+            _gameManager != null ? _gameManager.ButtonFontSize : ButtonLabelStyle.ActionButtonFontSize;
+
+        private void StyleRaiseInput(TMP_FontAsset font = null)
         {
-            if (_raiseInput == null || !IsUsableButtonFont(font)) return;
+            if (_raiseInput == null)
+                return;
+
+            font ??= _buttonFont ?? ResolveButtonFont();
+            if (!IsUsableButtonFont(font))
+                return;
 
             if (_raiseButton != null)
                 RaiseInputBuilder.ApplyButtonBackground(_raiseInput, _raiseButton);
 
-            if (_raiseInput.textComponent != null)
-            {
-                StylePanelLabel(_raiseInput.textComponent, TextRaise, 16f);
-                _raiseInput.textComponent.alignment = TextAlignmentOptions.Midline;
-            }
+            float fontSize = ResolveActionButtonFontSize();
+            float width    = _raiseButton != null && _raiseButton.transform is RectTransform rt
+                ? rt.sizeDelta.x
+                : 0f;
 
-            if (_raiseInput.placeholder is TMP_Text placeholder)
-            {
-                StylePanelLabel(placeholder, new Color(1f, 1f, 1f, 0.4f), 16f);
-                placeholder.fontStyle = FontStyles.Italic;
-                placeholder.alignment = TextAlignmentOptions.Midline;
-            }
+            RaiseInputBuilder.ApplyTextStyle(_raiseInput, font, fontSize);
+            RaiseInputBuilder.NormalizeInputLayout(_raiseInput, width, fontSize);
         }
 
         private TMP_FontAsset ResolveButtonFont()
@@ -2077,6 +2080,7 @@ namespace TexasHoldem
             }
 
             RestoreSceneModeButtonState();
+            EnsureRaiseColumnAttached();
             ApplyButtonRowSize();
             ApplyActionButtonLabelsInEditor();
             EnsureCheckCallSceneVisibility();
@@ -2193,6 +2197,7 @@ namespace TexasHoldem
             if (_actionPanel == null) return;
             _actionPanel.transform.Find("ButtonRow")?.GetComponent<ButtonRowFontSize>()?.Apply();
             RebuildActionButtonRowLayout();
+            StyleRaiseInput();
         }
 
         // ── Winner Celebration ─────────────────────────────────────────────

@@ -95,17 +95,68 @@ namespace TexasHoldem
 
             ConfigureInputLayoutElement(input);
 
+            if (font != null)
+                ApplyTextStyle(input, font, ButtonLabelStyle.ActionButtonFontSize);
+
             return input;
         }
 
-        public static void ConfigureInputLayoutElement(TMP_InputField input)
+        public static void ApplyTextStyle(TMP_InputField input, TMP_FontAsset font, float fontSize)
+        {
+            if (input == null || font == null)
+                return;
+
+            var placeholderColor = new Color(
+                ButtonLabelStyle.RaiseText.r,
+                ButtonLabelStyle.RaiseText.g,
+                ButtonLabelStyle.RaiseText.b,
+                0.45f);
+
+            if (input.textComponent != null)
+            {
+                input.textComponent.font = font;
+                ButtonLabelStyle.Apply(input.textComponent, ButtonLabelStyle.RaiseText, fontSize);
+                input.textComponent.alignment = TextAlignmentOptions.Midline;
+            }
+
+            if (input.placeholder is TMP_Text placeholder)
+            {
+                placeholder.font = font;
+                ButtonLabelStyle.Apply(placeholder, placeholderColor, fontSize);
+                placeholder.alignment = TextAlignmentOptions.Midline;
+            }
+
+            input.pointSize = fontSize;
+            ApplySelectionStyle(input);
+            ConfigureInputLayoutElement(input, ResolveInputHeight(fontSize));
+        }
+
+        public static void ApplySelectionStyle(TMP_InputField input)
+        {
+            if (input == null)
+                return;
+
+            input.selectionColor = new Color(
+                ButtonLabelStyle.RaiseText.r,
+                ButtonLabelStyle.RaiseText.g,
+                ButtonLabelStyle.RaiseText.b,
+                0.2f);
+            input.caretColor = ButtonLabelStyle.RaiseText;
+        }
+
+        public static float ResolveInputHeight(float fontSize) =>
+            Mathf.Max(InputHeight, fontSize + 6f);
+
+        public static void ConfigureInputLayoutElement(TMP_InputField input, float height = 0f)
         {
             if (input == null) return;
 
+            float resolvedHeight = height > 0f ? height : InputHeight;
+
             var element = input.GetComponent<LayoutElement>()
                        ?? input.gameObject.AddComponent<LayoutElement>();
-            element.minHeight        = InputHeight;
-            element.preferredHeight  = InputHeight;
+            element.minHeight        = resolvedHeight;
+            element.preferredHeight  = resolvedHeight;
             element.flexibleWidth    = 1f;
             element.flexibleHeight   = 0f;
         }
@@ -122,6 +173,40 @@ namespace TexasHoldem
             dst.type            = src.type;
             dst.preserveAspect  = src.preserveAspect;
             dst.raycastTarget   = true;
+        }
+
+        /// <summary>Resets legacy scene rects so text/placeholder render inside the field.</summary>
+        public static void NormalizeInputLayout(TMP_InputField input, float width = 0f, float fontSize = 0f)
+        {
+            if (input == null)
+                return;
+
+            float height = fontSize > 0f ? ResolveInputHeight(fontSize) : InputHeight;
+
+            if (input.transform is RectTransform inputRt)
+            {
+                inputRt.anchorMin        = new Vector2(0.5f, 0.5f);
+                inputRt.anchorMax        = new Vector2(0.5f, 0.5f);
+                inputRt.pivot            = new Vector2(0.5f, 0.5f);
+                inputRt.anchoredPosition = Vector2.zero;
+
+                float resolvedWidth = width > 0f
+                    ? width
+                    : inputRt.sizeDelta.x > 0f ? inputRt.sizeDelta.x : 120f;
+
+                inputRt.sizeDelta = new Vector2(resolvedWidth, height);
+            }
+
+            if (input.textViewport != null)
+                StretchFull(input.textViewport);
+
+            if (input.textComponent != null && input.textComponent.transform is RectTransform textRt)
+                StretchFull(textRt);
+
+            if (input.placeholder is TMP_Text placeholder && placeholder.transform is RectTransform placeholderRt)
+                StretchFull(placeholderRt);
+
+            ConfigureInputLayoutElement(input, height);
         }
 
         private static void StretchFull(RectTransform rt)
