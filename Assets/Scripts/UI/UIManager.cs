@@ -494,7 +494,19 @@ namespace TexasHoldem
                 return;
 
             _raiseInputListenersBound = true;
+            _raiseInput.onFocusSelectAll = true;
             _raiseInput.onSubmit.AddListener(_ => OnRaiseClicked());
+            _raiseInput.onSelect.AddListener(_ => SelectAllRaiseInput());
+        }
+
+        private void SelectAllRaiseInput()
+        {
+            if (_raiseInput == null || !_raiseInput.interactable)
+                return;
+
+            int length = _raiseInput.text != null ? _raiseInput.text.Length : 0;
+            _raiseInput.selectionAnchorPosition = 0;
+            _raiseInput.selectionFocusPosition  = length;
         }
 
         /// <summary>Human is always seat index 0 in TableLayoutManager.</summary>
@@ -1797,7 +1809,9 @@ namespace TexasHoldem
                 yield break;
 
             _raiseInput.ActivateInputField();
-            _raiseInput.Select();
+            SelectAllRaiseInput();
+            yield return null;
+            SelectAllRaiseInput();
         }
 
         private void SetAllBettingInteractable(bool interactable)

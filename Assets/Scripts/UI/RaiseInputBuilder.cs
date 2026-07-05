@@ -92,6 +92,7 @@ namespace TexasHoldem
             input.targetGraphic = image;
             input.interactable  = true;
             input.readOnly      = false;
+            input.onFocusSelectAll = true;
 
             ConfigureInputLayoutElement(input);
 
