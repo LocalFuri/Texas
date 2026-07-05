@@ -8356,7 +8356,8 @@ MonoBehaviour:
   _winChipCount: 8
   _winChipStagger: 0.08
   _winningHandText: {fileID: 0}
-  _winningHandLabelY: 90
+  _winningHandLabelX: 0
+  _winningHandLabelY: 130
   _buttonFont: {fileID: 11400000, guid: 6903839b2f8979c419d5db103af926f7, type: 2}
   _actionAmountBadgeStyle:
     backgroundColor: {r: 0, g: 0.101960786, b: 0, a: 1}

@@ -93,7 +93,8 @@ namespace TexasHoldem
 
         [Header("Winning Hand")]
         [SerializeField] private TMP_Text _winningHandText;
-        [Tooltip("Vertical position on Canvas between PotText and CommunityCards.")]
+        [Tooltip("Canvas position of WinningHandLabel (center anchor). Tune in Play mode.")]
+        [SerializeField] private float _winningHandLabelX = 0f;
         [SerializeField] private float _winningHandLabelY = 90f;
 
         [Header("Button Font")]
@@ -223,7 +224,10 @@ namespace TexasHoldem
             HideAllSeatMenus();
             EnsureWinningHandLabel();
             if (_winningHandText != null)
+            {
+                ApplyWinningHandLabelLayout();
                 _winningHandText.gameObject.SetActive(false);
+            }
         }
 
         private void OnDestroy()
@@ -2223,6 +2227,8 @@ namespace TexasHoldem
                 ApplyPotChipStackSettings();
                 UpdatePotLabel();
                 ApplyActionAmountBadgeSettings();
+                EnsureWinningHandLabel();
+                ApplyWinningHandLabelLayout();
                 return;
             }
 
@@ -2406,7 +2412,7 @@ namespace TexasHoldem
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(0f, _winningHandLabelY);
+            rt.anchoredPosition = WinningHandLabelPosition;
             rt.sizeDelta        = new Vector2(640f, 40f);
 
             _winningHandText = labelGo.AddComponent<TextMeshProUGUI>();
@@ -2433,12 +2439,24 @@ namespace TexasHoldem
             _winningHandText.enableWordWrapping = false;
 
             if (_winningHandText.transform is RectTransform rt)
-            {
-                rt.anchorMin        = new Vector2(0.5f, 0.5f);
-                rt.anchorMax        = new Vector2(0.5f, 0.5f);
-                rt.pivot            = new Vector2(0.5f, 0.5f);
-                rt.anchoredPosition = new Vector2(0f, _winningHandLabelY);
-            }
+                ApplyWinningHandLabelLayout(rt);
+        }
+
+        private Vector2 WinningHandLabelPosition =>
+            new Vector2(_winningHandLabelX, _winningHandLabelY);
+
+        private void ApplyWinningHandLabelLayout(RectTransform rt = null)
+        {
+            if (rt == null && _winningHandText != null)
+                rt = _winningHandText.transform as RectTransform;
+
+            if (rt == null)
+                return;
+
+            rt.anchorMin        = new Vector2(0.5f, 0.5f);
+            rt.anchorMax        = new Vector2(0.5f, 0.5f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = WinningHandLabelPosition;
         }
 
         private void ShowWinningHandDisplay(PlayerState winner, PlayerView winnerView)
