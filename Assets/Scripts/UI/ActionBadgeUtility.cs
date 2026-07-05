@@ -29,8 +29,11 @@ namespace TexasHoldem
                 label.gameObject.SetActive(false);
 
             if (badge != null && badge.UsesCustomLayout)
+            {
                 badge.ApplyCustomLayout(actionBadgeGo.transform as RectTransform,
                     ActionBadgeSprites.For(BettingAction.Check) ?? ActionBadgeSprites.Winner);
+                ApplyGlobalOffset(actionBadgeGo.transform as RectTransform);
+            }
             else
                 ApplyAutoLayoutRect(actionBadgeGo.transform as RectTransform);
 
@@ -90,13 +93,24 @@ namespace TexasHoldem
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(
-                PlayerHudLayout.ResolveActionBadgeX(rt.parent),
-                PlayerHudLayout.ResolveActionBadgeY(rt.parent));
+            rt.anchoredPosition = ActionBadgeAnchoredPosition(rt.parent);
 
             ActionBadgeSprites.EnsureLoaded();
             sprite ??= ActionBadgeSprites.For(BettingAction.Check) ?? ActionBadgeSprites.Winner;
             rt.sizeDelta = ActionBadgeSprites.SizeForSprite(sprite);
+        }
+
+        public static Vector2 ActionBadgeAnchoredPosition(Transform seatRoot) =>
+            new Vector2(
+                PlayerHudLayout.ResolveActionBadgeX(seatRoot) + PlayerHudLayout.ActionBadgeOffset.x,
+                PlayerHudLayout.ResolveActionBadgeY(seatRoot) + PlayerHudLayout.ActionBadgeOffset.y);
+
+        public static void ApplyGlobalOffset(RectTransform rt)
+        {
+            if (rt == null || PlayerHudLayout.ActionBadgeOffset == Vector2.zero)
+                return;
+
+            rt.anchoredPosition += PlayerHudLayout.ActionBadgeOffset;
         }
 
         /// <summary>Legacy name — applies automatic card-centre layout.</summary>

@@ -717,7 +717,9 @@ namespace TexasHoldem
             ActionBadgeUtility.Repair(actionBadgeGo, actionBadgeComp);
             if (!actionBadgeComp.UsesCustomLayout)
             {
-                SetRect(actionBadgeGo, PlayerHudLayout.ResolveActionBadgeX(root), PlayerHudLayout.ResolveActionBadgeY(root),
+                float badgeX = PlayerHudLayout.ResolveActionBadgeX(root) + PlayerHudLayout.ActionBadgeOffset.x;
+                float badgeY = PlayerHudLayout.ResolveActionBadgeY(root) + PlayerHudLayout.ActionBadgeOffset.y;
+                SetRect(actionBadgeGo, badgeX, badgeY,
                     ActionBadgeSprites.SizeForSprite(defaultBadge).x,
                     ActionBadgeSprites.SizeForSprite(defaultBadge).y);
             }

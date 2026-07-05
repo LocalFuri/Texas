@@ -106,9 +106,21 @@ namespace TexasHoldem
                 return;
 
             if (_useCustomLayout)
+            {
                 ApplyCustomLayout(rt, sprite);
+                ActionBadgeUtility.ApplyGlobalOffset(rt);
+            }
             else
                 ActionBadgeUtility.ApplyAutoLayoutRect(rt, sprite);
+        }
+
+        /// <summary>Re-applies layout (e.g. after global offset changes in Play mode).</summary>
+        public void RefreshLayout()
+        {
+            ResolveReferences();
+            Sprite sprite = _badgeImage != null ? _badgeImage.sprite : null;
+            sprite ??= ActionBadgeSprites.For(BettingAction.Check) ?? ActionBadgeSprites.Winner;
+            ApplyLayout(sprite);
         }
 
         private void HideLabelChild()

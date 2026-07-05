@@ -43,6 +43,13 @@ namespace TexasHoldem
         [Tooltip("Horizontal gap between action buttons (ButtonRow Horizontal Layout Group spacing). Tune in Play mode.")]
         [SerializeField, Min(0f)] private float _actionButtonSpacing = 12f;
 
+        [Header("Action Column Offsets")]
+        [Tooltip("Fine-tune each action column after auto-layout. Positive X = right, positive Y = up. Tune in Play mode.")]
+        [SerializeField] private Vector2 _foldColumnOffset;
+        [SerializeField] private Vector2 _checkCallColumnOffset;
+        [SerializeField] private Vector2 _raiseColumnOffset;
+        [SerializeField] private Vector2 _allInColumnOffset;
+
         /// <summary>Horizontal gap between action-panel buttons (see Action Button Spacing).</summary>
         public float ActionButtonSpacing => _actionButtonSpacing;
 
@@ -96,6 +103,10 @@ namespace TexasHoldem
         [Tooltip("Canvas position of WinningHandLabel (center anchor). Tune in Play mode.")]
         [SerializeField] private float _winningHandLabelX = 0f;
         [SerializeField] private float _winningHandLabelY = 90f;
+
+        [Header("Seat Action Badges")]
+        [Tooltip("Global nudge for CALL / FOLD / RAISE badges on every player seat. Positive X = right, positive Y = up. Tune in Play mode.")]
+        [SerializeField] private Vector2 _seatActionBadgeOffset;
 
         [Header("Button Font")]
         [SerializeField] private TMP_FontAsset _buttonFont;
@@ -182,6 +193,7 @@ namespace TexasHoldem
             if (_tableLayout != null)
                 _playerViews = new List<PlayerView>(_tableLayout.GetPlayerViews());
 
+            SyncSeatActionBadgeOffset();
             RepairAllActionBadges();
             ActionBadgeSprites.EnsureLoaded();
             ApplyPlayerAvatars();
@@ -304,6 +316,31 @@ namespace TexasHoldem
                 if (view == null) continue;
                 ActionBadge badge = view.GetComponentInChildren<ActionBadge>(true);
                 if (badge != null)
+                    ActionBadgeUtility.Repair(badge.gameObject, badge);
+            }
+        }
+
+        private void SyncSeatActionBadgeOffset()
+        {
+            PlayerHudLayout.ActionBadgeOffset = _seatActionBadgeOffset;
+        }
+
+        private void RefreshVisibleSeatActionBadges()
+        {
+            SyncSeatActionBadgeOffset();
+
+            foreach (PlayerView view in ResolvePlayerViews())
+            {
+                if (view == null)
+                    continue;
+
+                ActionBadge badge = view.GetComponentInChildren<ActionBadge>(true);
+                if (badge == null)
+                    continue;
+
+                if (badge.gameObject.activeInHierarchy)
+                    badge.RefreshLayout();
+                else
                     ActionBadgeUtility.Repair(badge.gameObject, badge);
             }
         }
@@ -465,6 +502,32 @@ namespace TexasHoldem
 
             if (GetButtonRowTransform() is RectTransform rowRt)
                 LayoutRebuilder.ForceRebuildLayoutImmediate(rowRt);
+
+            ApplyActionColumnOffsets();
+        }
+
+        private void ApplyActionColumnOffsets()
+        {
+            Transform row = GetButtonRowTransform();
+            if (row == null)
+                return;
+
+            ApplyColumnOffset(row, ActionPanelLayout.FoldColumnName, _foldColumnOffset);
+            ApplyColumnOffset(row, ActionPanelLayout.CheckCallColumnName, _checkCallColumnOffset);
+            ApplyColumnOffset(row, RaiseInputBuilder.RaiseColumnName, _raiseColumnOffset);
+            ApplyColumnOffset(row, ActionPanelLayout.AllInColumnName, _allInColumnOffset);
+        }
+
+        private static void ApplyColumnOffset(Transform row, string columnName, Vector2 offset)
+        {
+            if (offset == Vector2.zero)
+                return;
+
+            Transform column = row.Find(columnName);
+            if (column is not RectTransform rt)
+                return;
+
+            rt.anchoredPosition += offset;
         }
 
         private void ApplyActionAmountBadgeSettings()
@@ -2217,6 +2280,7 @@ namespace TexasHoldem
 
         private void OnValidate()
         {
+            SyncSeatActionBadgeOffset();
             ApplyActionPanelPosition();
             RebuildActionButtonRowLayout();
 
@@ -2229,10 +2293,12 @@ namespace TexasHoldem
                 ApplyActionAmountBadgeSettings();
                 EnsureWinningHandLabel();
                 ApplyWinningHandLabelLayout();
+                RefreshVisibleSeatActionBadges();
                 return;
             }
 
             ApplySceneModePreview();
+            RepairAllActionBadges();
         }
 
         [ContextMenu("Apply Copyright Label To TMP")]

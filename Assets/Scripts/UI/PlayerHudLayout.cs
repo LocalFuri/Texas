@@ -67,6 +67,9 @@ namespace TexasHoldem
         public const float ActionBadgeY = HoleCardsAreaCenterY;
         public const float ActionBadgeGlowW = 120f;
         public const float ActionBadgeGlowH = 40f;
+
+        /// <summary>Global nudge from UIManager — added on top of auto or per-seat custom badge layout.</summary>
+        public static Vector2 ActionBadgeOffset { get; set; }
         public const float SeatActionMenuY  = 32f;
         public const float SeatActionMenuW  = 155f;
         public const float SeatActionMenuH  = 118f;
@@ -395,7 +398,10 @@ namespace TexasHoldem
                 ActionBadgeSprites.EnsureLoaded();
                 Sprite sample = ActionBadgeSprites.For(BettingAction.Check) ?? ActionBadgeSprites.Winner;
                 Vector2 badgeSize = ActionBadgeSprites.SizeForSprite(sample);
-                SetRect(actionBadge, ResolveActionBadgeX(root), ResolveActionBadgeY(root), badgeSize.x, badgeSize.y);
+                SetRect(actionBadge,
+                    ResolveActionBadgeX(root) + ActionBadgeOffset.x,
+                    ResolveActionBadgeY(root) + ActionBadgeOffset.y,
+                    badgeSize.x, badgeSize.y);
             }
 
             SetRect(FindChild(root, "SeatActionMenu"), textX, SeatActionMenuY, SeatActionMenuW, SeatActionMenuH);
