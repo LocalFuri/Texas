@@ -41,7 +41,7 @@ namespace TexasHoldem
                     continue;
 
                 TMP_Text label = button.GetComponentInChildren<TMP_Text>();
-                if (label == null)
+                if (label == null || label.GetComponentInParent<ActionAmountBadge>() != null)
                     continue;
 
                 label.enableAutoSizing = false;
@@ -61,7 +61,10 @@ namespace TexasHoldem
                     continue;
 
                 if (button.transform is RectTransform rt)
+                {
                     ApplyButtonDimensions(rt, targetWidth, buttonHeight);
+                    ApplyColumnWidth(button.transform.parent, targetWidth);
+                }
             }
 
             foreach (Button button in buttons)
@@ -70,7 +73,7 @@ namespace TexasHoldem
                     continue;
 
                 TMP_Text label = button.GetComponentInChildren<TMP_Text>();
-                if (label != null)
+                if (label != null && label.GetComponentInParent<ActionAmountBadge>() == null)
                     label.fontSize = fontSize;
             }
 
@@ -83,8 +86,13 @@ namespace TexasHoldem
 
             foreach (Transform child in transform)
             {
-                if (child is RectTransform rt)
-                    ApplyButtonDimensions(rt, buttonWidth, buttonHeight);
+                if (child is not RectTransform rt)
+                    continue;
+
+                if (child.GetComponent<VerticalLayoutGroup>() != null)
+                    continue;
+
+                ApplyButtonDimensions(rt, buttonWidth, buttonHeight);
             }
 
             ApplyLabelFontSize(fontSize, buttonWidth);
@@ -110,6 +118,7 @@ namespace TexasHoldem
             var hlg = GetComponent<HorizontalLayoutGroup>();
             if (hlg == null) return;
 
+            hlg.childAlignment         = TextAnchor.LowerCenter;
             hlg.childControlWidth      = false;
             hlg.childControlHeight     = false;
             hlg.childForceExpandWidth  = false;
@@ -120,8 +129,13 @@ namespace TexasHoldem
         {
             foreach (Transform child in transform)
             {
-                if (child is RectTransform rt)
-                    ApplyButtonDimensions(rt, buttonWidth, buttonHeight);
+                if (child is not RectTransform rt)
+                    continue;
+
+                if (child.GetComponent<VerticalLayoutGroup>() != null)
+                    continue;
+
+                ApplyButtonDimensions(rt, buttonWidth, buttonHeight);
             }
         }
 
@@ -144,6 +158,21 @@ namespace TexasHoldem
             element.flexibleHeight   = -1f;
         }
 
+        private static void ApplyColumnWidth(Transform column, float buttonWidth)
+        {
+            if (column == null || buttonWidth <= 0f)
+                return;
+
+            if (column.GetComponent<VerticalLayoutGroup>() == null)
+                return;
+
+            var element = column.GetComponent<LayoutElement>()
+                       ?? column.gameObject.AddComponent<LayoutElement>();
+
+            element.minWidth       = buttonWidth;
+            element.preferredWidth = buttonWidth;
+        }
+
         private void ApplyLabelFontSize(float fontSize, float buttonWidth)
         {
             TMP_Text[] labels = GetComponentsInChildren<TMP_Text>(includeInactive: true);
@@ -151,6 +180,9 @@ namespace TexasHoldem
 
             foreach (TMP_Text label in labels)
             {
+                if (label.GetComponentInParent<ActionAmountBadge>() != null)
+                    continue;
+
                 label.enableAutoSizing = false;
                 label.overflowMode     = TextOverflowModes.Overflow;
                 label.fontSize         = fontSize;
@@ -161,6 +193,9 @@ namespace TexasHoldem
             float minScaleFactor = 1f;
             foreach (TMP_Text label in labels)
             {
+                if (label.GetComponentInParent<ActionAmountBadge>() != null)
+                    continue;
+
                 float containerWidth = label.rectTransform.rect.width;
                 if (containerWidth <= 0f) continue;
 
@@ -175,7 +210,12 @@ namespace TexasHoldem
 
             float finalSize = Mathf.Max(minFontSize, fontSize * minScaleFactor);
             foreach (TMP_Text label in labels)
+            {
+                if (label.GetComponentInParent<ActionAmountBadge>() != null)
+                    continue;
+
                 label.fontSize = finalSize;
+            }
         }
     }
 }

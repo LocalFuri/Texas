@@ -115,6 +115,9 @@ namespace TexasHoldem
         private PlayerState _humanPlayer;
         private bool        _gameStarted;
         private Button      _allInButton;
+        private ActionAmountBadge _checkCallAmountBadge;
+        private ActionAmountBadge _allInAmountBadge;
+        private bool              _actionAmountBadgesReady;
         private static TMP_FontAsset _runtimeButtonFont;
         private int                  _revealedCommunityCount;
         private Coroutine            _communityRevealCoroutine;
@@ -345,6 +348,44 @@ namespace TexasHoldem
             Transform row = GetButtonRowTransform();
             if (row != null && !row.gameObject.activeSelf)
                 row.gameObject.SetActive(true);
+
+            ActionPanelLayout.ConfigureRowAlignment(row);
+            EnsureActionAmountBadges();
+        }
+
+        private void EnsureActionAmountBadges()
+        {
+            if (_actionAmountBadgesReady)
+                return;
+
+            EnsureBettingButtonsResolved();
+            Transform row = GetButtonRowTransform();
+            if (row == null)
+                return;
+
+            if (_checkCallButton != null)
+            {
+                Transform column = ActionPanelLayout.EnsureButtonColumn(
+                    _checkCallButton, row, ActionPanelLayout.CheckCallColumnName);
+                _checkCallAmountBadge = ActionAmountBadge.Ensure(column);
+
+                if (_checkCallLabel == null)
+                {
+                    TMP_Text label = _checkCallButton.GetComponentInChildren<TMP_Text>(true);
+                    if (label != null && label.GetComponentInParent<ActionAmountBadge>() == null)
+                        _checkCallLabel = label;
+                }
+            }
+
+            ResolveAllInButton();
+            if (_allInButton != null)
+            {
+                Transform column = ActionPanelLayout.EnsureButtonColumn(
+                    _allInButton, row, ActionPanelLayout.AllInColumnName);
+                _allInAmountBadge = ActionAmountBadge.Ensure(column);
+            }
+
+            _actionAmountBadgesReady = true;
         }
 
         private void BindButtonListeners()
@@ -882,16 +923,32 @@ namespace TexasHoldem
 
         private void UpdateCheckCallLabel()
         {
-            if (_humanPlayer == null) return;
+            if (_humanPlayer == null || _gameManager == null) return;
 
             int callAmount = _gameManager.CurrentBet - _humanPlayer.CurrentBet;
-            string label = callAmount <= 0 ? "Check"
-                : "Call " + FormatEuroAmount(callAmount);
+            bool isCheck   = callAmount <= 0;
+            string action  = isCheck ? "CHECK" : "CALL";
 
-            if (_checkCallLabel != null)
+            TMP_Text label = _checkCallLabel;
+            if (label == null && _checkCallButton != null)
             {
-                _checkCallLabel.text = label;
-                StylePanelLabel(_checkCallLabel, TextCheck);
+                label = _checkCallButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null && label.GetComponentInParent<ActionAmountBadge>() != null)
+                    label = null;
+            }
+
+            if (label != null)
+            {
+                label.text = action;
+                StylePanelLabel(label, TextCheck);
+            }
+
+            if (_checkCallAmountBadge != null)
+            {
+                if (isCheck)
+                    _checkCallAmountBadge.Hide();
+                else
+                    _checkCallAmountBadge.SetAmount(callAmount);
             }
         }
 
@@ -899,11 +956,14 @@ namespace TexasHoldem
         {
             if (_humanPlayer == null || _allInButton == null) return;
 
-            TMP_Text label = _allInButton.GetComponentInChildren<TMP_Text>();
-            if (label == null) return;
+            TMP_Text label = _allInButton.GetComponentInChildren<TMP_Text>(true);
+            if (label != null && label.GetComponentInParent<ActionAmountBadge>() == null)
+            {
+                label.text = "ALL IN";
+                StylePanelLabel(label, TextAllIn);
+            }
 
-            label.text = "All In " + FormatEuroAmount(_humanPlayer.Chips);
-            StylePanelLabel(label, TextAllIn);
+            _allInAmountBadge?.SetAmount(_humanPlayer.Chips);
         }
 
         private void UpdateRaiseButtonLabel()
@@ -1367,7 +1427,21 @@ namespace TexasHoldem
         private Button FindButtonInRow(string buttonName)
         {
             Transform row = GetButtonRowTransform();
-            return row != null ? row.Find(buttonName)?.GetComponent<Button>() : null;
+            if (row == null)
+                return null;
+
+            Transform direct = row.Find(buttonName);
+            if (direct != null)
+                return direct.GetComponent<Button>();
+
+            foreach (Transform child in row)
+            {
+                Transform nested = child.Find(buttonName);
+                if (nested != null)
+                    return nested.GetComponent<Button>();
+            }
+
+            return null;
         }
 
         private Button ResolveCheckCallButton() =>
@@ -1397,7 +1471,12 @@ namespace TexasHoldem
         private void SetActionButtonVisible(Button button, bool visible)
         {
             if (!Application.isPlaying || button == null) return;
+
             button.gameObject.SetActive(visible);
+
+            Transform column = button.transform.parent;
+            if (column != null && ActionPanelLayout.IsButtonColumn(column.name))
+                column.gameObject.SetActive(visible);
         }
 
         private void HideSeatMenuOnly()
@@ -1470,9 +1549,51 @@ namespace TexasHoldem
 
             EnsureRaiseInputLayout();
             FitBettingButtonWidths(canCheck, canCall, canRaise, canAllIn);
+            SyncBettingRowBottomAlignment(canCheck, canCall, canRaise, canAllIn);
 
             if (canRaise)
                 UpdateRaiseButtonLabel();
+        }
+
+        private void SyncBettingRowBottomAlignment(bool canCheck, bool canCall, bool canRaise, bool canAllIn)
+        {
+            float buttonHeight = _gameManager != null ? _gameManager.ButtonHeight : 50f;
+            bool reserveBelow  = canCall || canRaise || canAllIn;
+            float belowSlot    = reserveBelow ? ActionPanelLayout.BelowButtonSlotHeight : 0f;
+
+            Transform row = GetButtonRowTransform();
+            ActionPanelLayout.ConfigureRowAlignment(row);
+            if (row == null)
+                return;
+
+            if (_foldButton != null && _foldButton.gameObject.activeSelf)
+            {
+                ActionPanelLayout.EnsurePlainButtonColumn(_foldButton, row, ActionPanelLayout.FoldColumnName);
+                float width = _foldButton.transform is RectTransform foldRt ? foldRt.sizeDelta.x : 0f;
+                ActionPanelLayout.SyncPlainButtonColumn(_foldButton, buttonHeight, belowSlot, width);
+            }
+
+            if (canCheck || canCall)
+            {
+                float width = ResolveCheckCallButton()?.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
+                ActionPanelLayout.SyncAmountBadgeColumn(
+                    ResolveCheckCallButton(), _checkCallAmountBadge, canCall, buttonHeight, belowSlot, width);
+            }
+
+            ResolveAllInButton();
+            if (_allInButton != null && _allInButton.gameObject.activeSelf && canAllIn)
+            {
+                float width = _allInButton.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
+                ActionPanelLayout.SyncAmountBadgeColumn(
+                    _allInButton, _allInAmountBadge, badgeVisible: true, buttonHeight, belowSlot, width);
+            }
+
+            if (_raiseButton != null && _raiseButton.gameObject.activeSelf && canRaise)
+            {
+                float width = _raiseButton.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
+                ActionPanelLayout.SyncRaiseColumn(
+                    _raiseButton, _raiseInput, inputVisible: true, buttonHeight, belowSlot, width);
+            }
         }
 
         private void FitBettingButtonWidths(bool canCheck, bool canCall, bool canRaise, bool canAllIn)
@@ -1511,11 +1632,16 @@ namespace TexasHoldem
 
             if (_raiseButton != null && _raiseInput != null)
             {
+                bool reserveBelow = canCall || canRaise || canAllIn;
+                float belowSlot   = reserveBelow ? ActionPanelLayout.BelowButtonSlotHeight : 0f;
+                float width       = _raiseButton.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
                 ActionPanelLayout.SyncRaiseColumn(
                     _raiseButton,
                     _raiseInput,
                     canRaise,
-                    _gameManager.ButtonHeight);
+                    _gameManager.ButtonHeight,
+                    belowSlot,
+                    width);
             }
         }
 
@@ -1608,7 +1734,9 @@ namespace TexasHoldem
             _raiseInput.gameObject.SetActive(visible);
 
             float buttonHeight = _gameManager != null ? _gameManager.ButtonHeight : 50f;
-            ActionPanelLayout.SyncRaiseColumn(_raiseButton, _raiseInput, visible, buttonHeight);
+            float width        = _raiseButton.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
+            float belowSlot    = visible ? ActionPanelLayout.BelowButtonSlotHeight : 0f;
+            ActionPanelLayout.SyncRaiseColumn(_raiseButton, _raiseInput, visible, buttonHeight, belowSlot, width);
 
             if (visible)
                 EnsureRaiseInputLayout();
@@ -1622,8 +1750,10 @@ namespace TexasHoldem
             RaiseInputBuilder.ApplyButtonBackground(_raiseInput, _raiseButton);
 
             float buttonHeight = _gameManager != null ? _gameManager.ButtonHeight : 50f;
-            bool visible = _raiseInput.gameObject.activeSelf;
-            ActionPanelLayout.SyncRaiseColumn(_raiseButton, _raiseInput, visible, buttonHeight);
+            bool visible       = _raiseInput.gameObject.activeSelf;
+            float width        = _raiseButton.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
+            float belowSlot    = visible ? ActionPanelLayout.BelowButtonSlotHeight : 0f;
+            ActionPanelLayout.SyncRaiseColumn(_raiseButton, _raiseInput, visible, buttonHeight, belowSlot, width);
 
             if (_actionPanel != null)
                 ActionPanelLayout.RebuildPanel((RectTransform)_actionPanel.transform);
@@ -1696,9 +1826,7 @@ namespace TexasHoldem
             }
 
             Transform row = GetButtonRowTransform();
-            if (row != null && row.TryGetComponent(out HorizontalLayoutGroup hlg))
-                hlg.childAlignment = TextAnchor.LowerCenter;
-
+            ActionPanelLayout.ConfigureRowAlignment(row);
             HideLegacyRaiseRow();
         }
 

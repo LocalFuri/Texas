@@ -98,6 +98,34 @@ namespace TexasHoldem
                 _amountBadgeImage.color = _amountBadgeColor;
         }
 
+        public Sprite GetAmountBadgeSprite()
+        {
+            ResolveAmountBadgeImage();
+            return _amountBadgeImage != null ? _amountBadgeImage.sprite : null;
+        }
+
+        /// <summary>RoundedRect sprite from any seat bet badge, for action-panel amount pills.</summary>
+        public static Sprite ResolveAmountBadgeSprite()
+        {
+#if UNITY_2022_2_OR_NEWER
+            BetDisplay[] displays = Object.FindObjectsByType<BetDisplay>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+#else
+            BetDisplay[] displays = Object.FindObjectsOfType<BetDisplay>(true);
+#endif
+            foreach (BetDisplay display in displays)
+            {
+                Sprite sprite = display.GetAmountBadgeSprite();
+                if (sprite != null)
+                    return sprite;
+            }
+
+#if UNITY_EDITOR
+            return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Graphic/UI/RoundedRect.png");
+#else
+            return null;
+#endif
+        }
+
         public const float ChipFlyDuration = AnimDuration;
 
         public bool HasVisibleBet => gameObject.activeSelf;

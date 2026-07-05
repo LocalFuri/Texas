@@ -9,8 +9,31 @@ namespace TexasHoldem
     {
         private const string ButtonRowName = "ButtonRow";
 
+        public const string CheckCallColumnName = "CheckCallColumn";
+        public const string AllInColumnName     = "AllInColumn";
+        public const string FoldColumnName      = "FoldColumn";
+        public const string BelowSpacerName     = "BelowSpacer";
+
+        public static float BelowButtonSlotHeight =>
+            ActionAmountBadge.BadgeHeight + RaiseInputBuilder.ColumnSpacing;
+
         private const float ButtonRowHeight = 50f;
         private const float PanelHeight     = 94f;
+
+        public static bool IsButtonColumn(string columnName) =>
+            columnName == CheckCallColumnName
+            || columnName == AllInColumnName
+            || columnName == FoldColumnName
+            || columnName == RaiseInputBuilder.RaiseColumnName;
+
+        public static void ConfigureRowAlignment(Transform buttonRow)
+        {
+            if (buttonRow == null)
+                return;
+
+            if (buttonRow.TryGetComponent(out HorizontalLayoutGroup hlg))
+                hlg.childAlignment = TextAnchor.LowerCenter;
+        }
 
         public static TMP_InputField Apply(
             GameObject actionPanel,
@@ -26,6 +49,7 @@ namespace TexasHoldem
             Transform existingRow = panel.Find(ButtonRowName);
             if (existingRow != null)
             {
+                ConfigureRowAlignment(existingRow);
                 var sizer = existingRow.GetComponent<ButtonRowFontSize>()
                             ?? existingRow.gameObject.AddComponent<ButtonRowFontSize>();
                 sizer.Apply();
@@ -82,6 +106,9 @@ namespace TexasHoldem
                 return null;
 
             Transform buttonRow = raiseButton.transform.parent;
+            if (buttonRow != null && IsButtonColumn(buttonRow.name))
+                buttonRow = buttonRow.parent;
+
             if (buttonRow == null)
                 buttonRow = actionPanel?.Find(ButtonRowName);
 
@@ -97,8 +124,10 @@ namespace TexasHoldem
                 legacyRow.gameObject.SetActive(false);
 
             Transform column = EnsureRaiseColumn(raiseButton, buttonRow);
-            input.transform.SetParent(column, false);
-            input.transform.SetSiblingIndex(1);
+            Transform spacer   = EnsureBelowSpacer(column);
+            input.transform.SetParent(spacer, false);
+            input.transform.SetAsFirstSibling();
+            raiseButton.transform.SetSiblingIndex(1);
 
             RaiseInputBuilder.ConfigureInputLayoutElement(input);
             RaiseInputBuilder.ApplyButtonBackground(input, raiseButton);
@@ -106,33 +135,46 @@ namespace TexasHoldem
             float buttonHeight = raiseButton.transform is RectTransform raiseRt
                 ? raiseRt.sizeDelta.y
                 : ButtonRowHeight;
-            SyncRaiseColumn(raiseButton, input, visible: false, buttonHeight);
+            SyncRaiseColumn(raiseButton, input, inputVisible: false, buttonHeight, belowSlotHeight: 0f);
 
             return input;
         }
 
         public static Transform EnsureRaiseColumn(Button raiseButton, Transform buttonRow)
+            => EnsureButtonColumn(raiseButton, buttonRow, RaiseInputBuilder.RaiseColumnName);
+
+        public static Transform EnsurePlainButtonColumn(Button button, Transform buttonRow, string columnName)
+            => EnsureButtonColumn(button, buttonRow, columnName);
+
+        public static Transform EnsureButtonColumn(Button button, Transform buttonRow, string columnName)
         {
-            Transform existingColumn = raiseButton.transform.parent;
-            if (existingColumn != null && existingColumn.name == RaiseInputBuilder.RaiseColumnName)
+            if (button == null || buttonRow == null)
+                return null;
+
+            Transform existingColumn = button.transform.parent;
+            if (existingColumn != null && existingColumn.name == columnName)
+            {
+                ApplyBottomAlignedColumn(existingColumn);
+                EnsureBelowSpacer(existingColumn);
+                button.transform.SetSiblingIndex(1);
                 return existingColumn;
+            }
 
-            int raiseIndex = raiseButton.transform.GetSiblingIndex();
+            int index = button.transform.GetSiblingIndex();
+            if (buttonRow == button.transform.parent)
+                index = button.transform.GetSiblingIndex();
+            else if (existingColumn != null && existingColumn.parent == buttonRow)
+                index = existingColumn.GetSiblingIndex();
 
-            var columnGo = new GameObject(RaiseInputBuilder.RaiseColumnName, typeof(RectTransform));
+            var columnGo = new GameObject(columnName, typeof(RectTransform));
             Transform column = columnGo.transform;
             column.SetParent(buttonRow, false);
-            column.SetSiblingIndex(raiseIndex);
+            column.SetSiblingIndex(index);
 
-            raiseButton.transform.SetParent(column, false);
-
-            var vlg = columnGo.AddComponent<VerticalLayoutGroup>();
-            vlg.spacing                = RaiseInputBuilder.ColumnSpacing;
-            vlg.childAlignment         = TextAnchor.UpperCenter;
-            vlg.childControlWidth      = true;
-            vlg.childControlHeight     = true;
-            vlg.childForceExpandWidth  = true;
-            vlg.childForceExpandHeight = false;
+            button.transform.SetParent(column, false);
+            ApplyBottomAlignedColumn(column);
+            EnsureBelowSpacer(column);
+            button.transform.SetSiblingIndex(1);
 
             var colElement = columnGo.AddComponent<LayoutElement>();
             colElement.flexibleWidth = 0f;
@@ -140,7 +182,83 @@ namespace TexasHoldem
             return column;
         }
 
-        public static void SyncRaiseColumn(Button raiseButton, TMP_InputField input, bool visible, float buttonHeight)
+        public static Transform EnsureBelowSpacer(Transform column)
+        {
+            if (column == null)
+                return null;
+
+            Transform slot = column.Find(BelowSpacerName);
+            if (slot != null)
+                return slot;
+
+            var go = new GameObject(BelowSpacerName, typeof(RectTransform));
+            slot = go.transform;
+            slot.SetParent(column, false);
+            slot.SetSiblingIndex(0);
+
+            var le = go.AddComponent<LayoutElement>();
+            le.minHeight        = 0f;
+            le.preferredHeight  = 0f;
+            le.flexibleHeight   = 0f;
+            le.flexibleWidth    = 0f;
+
+            return slot;
+        }
+
+        public static void SyncPlainButtonColumn(Button button, float buttonHeight, float belowSlotHeight, float buttonWidth = 0f)
+        {
+            if (button == null)
+                return;
+
+            SyncColumnLayout(button.transform.parent, buttonHeight, belowSlotHeight, buttonWidth);
+        }
+
+        public static void SyncAmountBadgeColumn(
+            Button button,
+            ActionAmountBadge badge,
+            bool badgeVisible,
+            float buttonHeight,
+            float belowSlotHeight,
+            float buttonWidth = 0f)
+        {
+            if (button == null)
+                return;
+
+            Transform column = button.transform.parent;
+            if (column == null)
+                return;
+
+            Transform spacer = EnsureBelowSpacer(column);
+            ApplyBottomAlignedColumn(column);
+            button.transform.SetSiblingIndex(1);
+
+            if (badge != null)
+            {
+                badge.transform.SetParent(spacer, false);
+                badge.transform.SetAsFirstSibling();
+
+                if (badgeVisible)
+                    badge.gameObject.SetActive(true);
+                else
+                    badge.Hide();
+            }
+
+            if (buttonWidth <= 0f && button.transform is RectTransform buttonRect)
+                buttonWidth = buttonRect.sizeDelta.x;
+
+            if (badge != null && badgeVisible && buttonWidth > 0f && badge.transform is RectTransform badgeRt)
+                badgeRt.sizeDelta = new Vector2(buttonWidth, ActionAmountBadge.BadgeHeight);
+
+            SyncColumnLayout(column, buttonHeight, belowSlotHeight, buttonWidth);
+        }
+
+        public static void SyncRaiseColumn(
+            Button raiseButton,
+            TMP_InputField input,
+            bool inputVisible,
+            float buttonHeight,
+            float belowSlotHeight,
+            float buttonWidth = 0f)
         {
             if (raiseButton == null)
                 return;
@@ -149,14 +267,19 @@ namespace TexasHoldem
             if (column == null || column.name != RaiseInputBuilder.RaiseColumnName)
                 return;
 
+            ApplyBottomAlignedColumn(column);
+            Transform spacer = EnsureBelowSpacer(column);
+            raiseButton.transform.SetSiblingIndex(1);
+
             if (input != null)
             {
-                input.gameObject.SetActive(visible);
+                input.transform.SetParent(spacer, false);
+                input.transform.SetAsFirstSibling();
+                input.gameObject.SetActive(inputVisible);
                 RaiseInputBuilder.ApplyButtonBackground(input, raiseButton);
 
-                float buttonWidth = raiseButton.transform is RectTransform raiseRt
-                    ? raiseRt.sizeDelta.x
-                    : 0f;
+                if (buttonWidth <= 0f && raiseButton.transform is RectTransform raiseRt)
+                    buttonWidth = raiseRt.sizeDelta.x;
 
                 if (buttonWidth > 0f && input.transform is RectTransform inputRt)
                 {
@@ -171,39 +294,76 @@ namespace TexasHoldem
                 }
             }
 
-            float columnHeight = buttonHeight + (visible
-                ? RaiseInputBuilder.InputHeight + RaiseInputBuilder.ColumnSpacing
-                : 0f);
-
-            var colElement = column.GetComponent<LayoutElement>()
-                          ?? column.gameObject.AddComponent<LayoutElement>();
-
-            colElement.minHeight       = columnHeight;
-            colElement.preferredHeight = columnHeight;
-
-            if (raiseButton.transform is RectTransform raiseRect)
-            {
-                float buttonWidth = raiseRect.sizeDelta.x;
-                if (buttonWidth > 0f)
-                {
-                    colElement.minWidth       = buttonWidth;
-                    colElement.preferredWidth = buttonWidth;
-                }
-            }
-
-            Transform buttonRow = column.parent;
-            var rowElement = buttonRow?.GetComponent<LayoutElement>();
-            if (rowElement != null)
-                rowElement.preferredHeight = Mathf.Max(buttonHeight, columnHeight);
-
-            if (buttonRow is RectTransform rowRt)
-                LayoutRebuilder.ForceRebuildLayoutImmediate(rowRt);
+            float slotHeight = belowSlotHeight;
+            SyncColumnLayout(column, buttonHeight, slotHeight, buttonWidth);
         }
 
         public static void RebuildPanel(RectTransform panel)
         {
             if (panel != null)
                 LayoutRebuilder.ForceRebuildLayoutImmediate(panel);
+        }
+
+        private static void ApplyBottomAlignedColumn(Transform column)
+        {
+            if (column == null)
+                return;
+
+            var vlg = column.GetComponent<VerticalLayoutGroup>()
+                   ?? column.gameObject.AddComponent<VerticalLayoutGroup>();
+
+            vlg.spacing                = RaiseInputBuilder.ColumnSpacing;
+            vlg.childAlignment         = TextAnchor.LowerCenter;
+            vlg.childControlWidth      = true;
+            vlg.childControlHeight     = true;
+            vlg.childForceExpandWidth  = true;
+            vlg.childForceExpandHeight = false;
+        }
+
+        private static void SyncColumnLayout(Transform column, float buttonHeight, float belowSlotHeight, float buttonWidth)
+        {
+            if (column == null)
+                return;
+
+            ApplyBottomAlignedColumn(column);
+            SetLayoutElementHeight(EnsureBelowSpacer(column), belowSlotHeight);
+
+            float columnHeight = buttonHeight + belowSlotHeight;
+            var colElement = column.GetComponent<LayoutElement>()
+                          ?? column.gameObject.AddComponent<LayoutElement>();
+
+            colElement.minHeight       = columnHeight;
+            colElement.preferredHeight = columnHeight;
+
+            if (buttonWidth > 0f)
+            {
+                colElement.minWidth       = buttonWidth;
+                colElement.preferredWidth = buttonWidth;
+            }
+
+            Transform buttonRow = column.parent;
+            if (buttonRow != null)
+            {
+                var rowElement = buttonRow.GetComponent<LayoutElement>();
+                if (rowElement != null)
+                    rowElement.preferredHeight = Mathf.Max(buttonHeight, columnHeight);
+
+                if (buttonRow is RectTransform rowRt)
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(rowRt);
+            }
+        }
+
+        private static void SetLayoutElementHeight(Transform target, float height)
+        {
+            if (target == null)
+                return;
+
+            var le = target.GetComponent<LayoutElement>()
+                  ?? target.gameObject.AddComponent<LayoutElement>();
+
+            le.minHeight       = height;
+            le.preferredHeight = height;
+            le.flexibleHeight  = 0f;
         }
 
         private static void EnsurePanelHeight(Transform panel)
