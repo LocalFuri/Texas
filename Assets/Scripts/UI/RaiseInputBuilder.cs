@@ -92,7 +92,8 @@ namespace TexasHoldem
             input.targetGraphic = image;
             input.interactable  = true;
             input.readOnly      = false;
-            input.onFocusSelectAll = true;
+
+            EnableSelectAllOnFocusAndClick(input);
 
             ConfigureInputLayoutElement(input);
 
@@ -129,6 +130,7 @@ namespace TexasHoldem
 
             input.pointSize = fontSize;
             ApplySelectionStyle(input);
+            EnableSelectAllOnFocusAndClick(input);
             ConfigureInputLayoutElement(input, ResolveInputHeight(fontSize));
         }
 
@@ -143,6 +145,38 @@ namespace TexasHoldem
                 ButtonLabelStyle.RaiseText.b,
                 0.2f);
             input.caretColor = ButtonLabelStyle.RaiseText;
+        }
+
+        public static void SelectAllText(TMP_InputField input)
+        {
+            if (input == null || !input.interactable)
+                return;
+
+            input.onFocusSelectAll = true;
+
+            int length = input.text != null ? input.text.Length : 0;
+            input.selectionAnchorPosition = 0;
+            input.selectionFocusPosition  = length;
+        }
+
+        public static void EnableSelectAllOnFocusAndClick(TMP_InputField input)
+        {
+            if (input == null)
+                return;
+
+            input.onFocusSelectAll = true;
+            var behavior = input.gameObject.GetComponent<RaiseInputSelectAllOnClick>()
+                        ?? input.gameObject.AddComponent<RaiseInputSelectAllOnClick>();
+            behavior.ResetEntryState(input.text);
+        }
+
+        public static void ResetRaiseInputEntryState(TMP_InputField input, string text = null)
+        {
+            if (input == null)
+                return;
+
+            input.gameObject.GetComponent<RaiseInputSelectAllOnClick>()
+                ?.ResetEntryState(text ?? input.text);
         }
 
         public static float ResolveInputHeight(float fontSize) =>

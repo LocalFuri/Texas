@@ -149,7 +149,8 @@ namespace TexasHoldem
         private PlayerState   _pendingBadgePlayer;
         private BettingAction _pendingBadgeAction;
         private int           _pendingBadgeAmount;
-        private bool          _raiseInputListenersBound;
+        private bool              _raiseInputListenersBound;
+        private TMP_InputField    _raiseInputListenerTarget;
 
         private void OnEnable()
         {
@@ -490,23 +491,23 @@ namespace TexasHoldem
         private void BindRaiseInputListeners()
         {
             EnsureBettingButtonsResolved();
-            if (_raiseInput == null || _raiseInputListenersBound)
+            if (_raiseInput == null)
                 return;
 
-            _raiseInputListenersBound = true;
-            _raiseInput.onFocusSelectAll = true;
+            RaiseInputBuilder.EnableSelectAllOnFocusAndClick(_raiseInput);
+
+            if (_raiseInputListenerTarget == _raiseInput)
+                return;
+
             _raiseInput.onSubmit.AddListener(_ => OnRaiseClicked());
             _raiseInput.onSelect.AddListener(_ => SelectAllRaiseInput());
+            _raiseInputListenerTarget = _raiseInput;
+            _raiseInputListenersBound = true;
         }
 
         private void SelectAllRaiseInput()
         {
-            if (_raiseInput == null || !_raiseInput.interactable)
-                return;
-
-            int length = _raiseInput.text != null ? _raiseInput.text.Length : 0;
-            _raiseInput.selectionAnchorPosition = 0;
-            _raiseInput.selectionFocusPosition  = length;
+            RaiseInputBuilder.SelectAllText(_raiseInput);
         }
 
         /// <summary>Human is always seat index 0 in TableLayoutManager.</summary>
@@ -1092,6 +1093,7 @@ namespace TexasHoldem
             _raiseInput.text = minIncrement.ToString();
             UpdateRaiseInputPlaceholder(minIncrement, maxIncrement);
             StyleRaiseInput();
+            RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
         }
 
         private void UpdateRaiseInput(bool preserveTypedValue = true)
@@ -1116,6 +1118,7 @@ namespace TexasHoldem
                 _raiseInput.text = minIncrement.ToString();
 
             StyleRaiseInput();
+            RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
         }
 
         private void UpdateRaiseInputPlaceholder(int minIncrement, int maxIncrement)
@@ -1157,7 +1160,10 @@ namespace TexasHoldem
             amount = Mathf.Clamp(amount, minIncrement, maxIncrement);
 
             if (_raiseInput != null)
+            {
                 _raiseInput.text = amount.ToString();
+                RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
+            }
 
             return amount;
         }
@@ -1810,6 +1816,7 @@ namespace TexasHoldem
 
             _raiseInput.ActivateInputField();
             SelectAllRaiseInput();
+            RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
             yield return null;
             SelectAllRaiseInput();
         }
@@ -1930,6 +1937,7 @@ namespace TexasHoldem
 
             StyleRaiseInput();
 
+            BindRaiseInputListeners();
             Transform row = GetButtonRowTransform();
             ActionPanelLayout.ConfigureRowAlignment(row);
             ActionPanelLayout.HideLegacyRaiseRow(_actionPanel.transform);
@@ -1965,6 +1973,7 @@ namespace TexasHoldem
 
             RaiseInputBuilder.ApplyTextStyle(_raiseInput, font, fontSize);
             RaiseInputBuilder.NormalizeInputLayout(_raiseInput, width, fontSize);
+            RaiseInputBuilder.EnableSelectAllOnFocusAndClick(_raiseInput);
         }
 
         private TMP_FontAsset ResolveButtonFont()
