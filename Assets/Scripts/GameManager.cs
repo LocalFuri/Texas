@@ -81,6 +81,8 @@ namespace TexasHoldem
         public float             DealerButtonDelay       => _dealerButtonDelay;
         public float             BlindPostDelay          => _blindPostDelay;
         public int               LastPotAwarded          { get; private set; }
+        public WinningHandEvaluation LastWinningHand     { get; private set; }
+        public IReadOnlyList<Card> CommunityCards        => _boardManager?.CommunityCards;
 
         /// <summary>Seat index (0-based) of the current dealer among <see cref="Players"/>.</summary>
         public int GetDealerSeatIndex()
@@ -375,8 +377,8 @@ namespace TexasHoldem
             SetPhase(GamePhase.Showdown);
 
             var contenders = GetNonFolded(active);
-            PlayerState winner     = contenders[0];
-            HandResult  bestResult = null;
+            PlayerState winner         = contenders[0];
+            WinningHandEvaluation best = null;
 
             foreach (var player in contenders)
             {
@@ -384,14 +386,15 @@ namespace TexasHoldem
                 cards.AddRange(_boardManager.CommunityCards);
                 if (cards.Count < 5) continue;
 
-                var result = HandEvaluator.Evaluate(cards);
-                if (bestResult == null || result.CompareTo(bestResult) > 0)
+                WinningHandEvaluation evaluation = HandEvaluator.EvaluateBest(cards);
+                if (best == null || evaluation.Result.CompareTo(best.Result) > 0)
                 {
-                    bestResult = result;
-                    winner     = player;
+                    best   = evaluation;
+                    winner = player;
                 }
             }
 
+            LastWinningHand = best;
             LastPotAwarded  = _bettingManager.Pot;
             winner.Chips   += LastPotAwarded;
             OnGameMessage?.Invoke($"{winner.Name} wins the pot of ${LastPotAwarded}!");

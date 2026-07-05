@@ -701,6 +701,32 @@ namespace TexasHoldem
                 slot?.Hide();
         }
 
+        public void ApplyWinningCardHighlights(PlayerState player, IReadOnlyList<Card> winningCards)
+        {
+            if (_cardSlots == null || player?.HoleCards == null)
+                return;
+
+            for (int i = 0; i < _cardSlots.Count; i++)
+            {
+                CardView slot = _cardSlots[i];
+                if (slot == null)
+                    continue;
+
+                bool highlight = i < player.HoleCards.Count
+                                 && WinningHandEvaluation.ContainsCard(winningCards, player.HoleCards[i]);
+                slot.SetWinnerHighlight(highlight);
+            }
+        }
+
+        public void ClearWinningCardHighlights()
+        {
+            if (_cardSlots == null)
+                return;
+
+            foreach (CardView slot in _cardSlots)
+                slot?.SetWinnerHighlight(false);
+        }
+
         /// <summary>
         /// Triggers the winner celebration: shimmering gold ring, HUD glow pulse, and WIN badge.
         /// Automatically cleaned up when OnRoundEnded calls SetActiveTurn(false).

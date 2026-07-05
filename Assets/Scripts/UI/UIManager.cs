@@ -91,6 +91,11 @@ namespace TexasHoldem
         [SerializeField, Min(1)]  private int   _winChipCount   = 8;
         [SerializeField, Min(0f)] private float _winChipStagger = 0.08f;
 
+        [Header("Winning Hand")]
+        [SerializeField] private TMP_Text _winningHandText;
+        [Tooltip("Vertical position on Canvas between PotText and CommunityCards.")]
+        [SerializeField] private float _winningHandLabelY = 90f;
+
         [Header("Button Font")]
         [SerializeField] private TMP_FontAsset _buttonFont;
 
@@ -646,6 +651,7 @@ namespace TexasHoldem
             }
 
             _previousBets.Clear();
+            ClearWinningHandDisplay();
         }
 
         private void OnDealerButtonPlaced(int seatIndex)
@@ -949,6 +955,7 @@ namespace TexasHoldem
             HideBettingControls();
             SetActionPanelVisible(true);
             SetStartButtonVisible(true);
+            ClearWinningHandDisplay();
 
             foreach (PlayerView view in ResolvePlayerViews())
             {
@@ -975,6 +982,7 @@ namespace TexasHoldem
         {
             StopTurnTimer();
             HideBettingControls();
+            ClearWinningHandDisplay();
             for (int i = 0; i < _playerViews.Count; i++)
                 _playerViews[i].SetActiveTurn(false);
 
@@ -2286,11 +2294,15 @@ namespace TexasHoldem
             PlayerView view = _playerViews[index];
             if (view == null) return;
 
-            StartCoroutine(ShowWinnerCelebration(view, _gameManager.LastPotAwarded, _gameManager.RoundEndPauseSecs));
+            StartCoroutine(ShowWinnerCelebration(view, winner, _gameManager.LastPotAwarded, _gameManager.RoundEndPauseSecs));
         }
 
-        private IEnumerator ShowWinnerCelebration(PlayerView view, int potAmount, float duration)
+        private IEnumerator ShowWinnerCelebration(PlayerView view, PlayerState winner, int potAmount, float duration)
         {
+            yield return null;
+            yield return null;
+
+            ShowWinningHandDisplay(winner, view);
             view.StartWinnerHighlight(potAmount, duration);
 
             // Fly chips from the pot label position to the winner's avatar.
@@ -2360,6 +2372,98 @@ namespace TexasHoldem
             }
 
             if (chipGo != null) Destroy(chipGo);
+        }
+
+        private void EnsureWinningHandLabel()
+        {
+            if (_winningHandText != null)
+                return;
+
+            Transform parent = _potText != null
+                ? _potText.transform.parent
+                : transform;
+
+            var labelGo = new GameObject("WinningHandLabel", typeof(RectTransform));
+            labelGo.transform.SetParent(parent, false);
+
+            var rt = (RectTransform)labelGo.transform;
+            rt.anchorMin        = new Vector2(0.5f, 0.5f);
+            rt.anchorMax        = new Vector2(0.5f, 0.5f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(0f, _winningHandLabelY);
+            rt.sizeDelta        = new Vector2(640f, 36f);
+
+            _winningHandText = labelGo.AddComponent<TextMeshProUGUI>();
+            _winningHandText.alignment         = TextAlignmentOptions.Center;
+            _winningHandText.fontSize          = _potText != null ? _potText.fontSize : 28f;
+            _winningHandText.color             = UiColors.PotGold;
+            _winningHandText.raycastTarget     = false;
+            _winningHandText.enableWordWrapping = false;
+            if (_potText != null && _potText.font != null)
+                _winningHandText.font = _potText.font;
+        }
+
+        private void ShowWinningHandDisplay(PlayerState winner, PlayerView winnerView)
+        {
+            WinningHandEvaluation evaluation = _gameManager?.LastWinningHand;
+            if (evaluation?.Result == null)
+            {
+                ClearWinningHandDisplay();
+                return;
+            }
+
+            EnsureWinningHandLabel();
+            _winningHandText.text = HandDisplayNames.FormatWithWinner(winner?.Name, evaluation.Result);
+            _winningHandText.gameObject.SetActive(true);
+
+            ApplyWinningCardHighlights(winner, winnerView, evaluation.BestCards);
+        }
+
+        private void ApplyWinningCardHighlights(
+            PlayerState winner, PlayerView winnerView, IReadOnlyList<Card> winningCards)
+        {
+            ClearWinningCardHighlights();
+
+            if (winningCards == null || winningCards.Count == 0)
+                return;
+
+            if (_communityCardSlots != null && _gameManager?.CommunityCards != null)
+            {
+                IReadOnlyList<Card> board = _gameManager.CommunityCards;
+                for (int i = 0; i < _communityCardSlots.Length && i < board.Count; i++)
+                {
+                    CardView slot = _communityCardSlots[i];
+                    if (slot == null)
+                        continue;
+
+                    slot.SetWinnerHighlight(WinningHandEvaluation.ContainsCard(winningCards, board[i]));
+                }
+            }
+
+            winnerView?.ApplyWinningCardHighlights(winner, winningCards);
+        }
+
+        private void ClearWinningCardHighlights()
+        {
+            if (_communityCardSlots != null)
+            {
+                foreach (CardView slot in _communityCardSlots)
+                    slot?.SetWinnerHighlight(false);
+            }
+
+            if (_playerViews == null)
+                return;
+
+            foreach (PlayerView view in _playerViews)
+                view?.ClearWinningCardHighlights();
+        }
+
+        private void ClearWinningHandDisplay()
+        {
+            ClearWinningCardHighlights();
+
+            if (_winningHandText != null)
+                _winningHandText.gameObject.SetActive(false);
         }
 
         /// <summary>Walks up the Canvas hierarchy to find the root canvas for spawning overlay objects.</summary>

@@ -45,19 +45,28 @@ namespace TexasHoldem
     public static class HandEvaluator
     {
         /// <summary>Evaluates the best 5-card poker hand from 5–7 provided cards.</summary>
-        public static HandResult Evaluate(List<Card> cards)
+        public static HandResult Evaluate(List<Card> cards) => EvaluateBest(cards).Result;
+
+        /// <summary>Evaluates the best hand and returns the five cards that make it.</summary>
+        public static WinningHandEvaluation EvaluateBest(List<Card> cards)
         {
             if (cards.Count < 5)
-                throw new ArgumentException("At least 5 cards are required for evaluation.");
+                throw new System.ArgumentException("At least 5 cards are required for evaluation.");
 
-            HandResult best = null;
-            foreach (var combo in GetFiveCardCombinations(cards))
+            HandResult bestResult = null;
+            List<Card> bestFive   = null;
+
+            foreach (List<Card> combo in GetFiveCardCombinations(cards))
             {
-                var result = EvaluateFive(combo);
-                if (best == null || result.CompareTo(best) > 0)
-                    best = result;
+                HandResult result = EvaluateFive(combo);
+                if (bestResult == null || result.CompareTo(bestResult) > 0)
+                {
+                    bestResult = result;
+                    bestFive   = combo;
+                }
             }
-            return best;
+
+            return new WinningHandEvaluation(bestResult, bestFive);
         }
 
         private static IEnumerable<List<Card>> GetFiveCardCombinations(List<Card> cards)

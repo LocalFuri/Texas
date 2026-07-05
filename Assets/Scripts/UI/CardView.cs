@@ -18,7 +18,10 @@ namespace TexasHoldem
 
         private Sprite    _faceSprite;
         private bool      _isFaceUp;
+        private bool      _winnerHighlight;
         private Coroutine _flipCoroutine;
+
+        private static readonly Color WinnerHighlightColor = new Color(1f, 0.95f, 0.55f, 1f);
 
         private void Awake()
         {
@@ -30,6 +33,13 @@ namespace TexasHoldem
 
             if (GetComponent<RectMask2D>() == null)
                 gameObject.AddComponent<RectMask2D>();
+        }
+
+        /// <summary>Highlights this card when it is part of the winning five-card hand.</summary>
+        public void SetWinnerHighlight(bool highlighted)
+        {
+            _winnerHighlight = highlighted;
+            ApplyFaceColor();
         }
 
         /// <summary>Displays the card face-up using the sprite from the library.</summary>
@@ -47,7 +57,7 @@ namespace TexasHoldem
 
             _faceSprite = _spriteLibrary != null ? _spriteLibrary.GetSprite(card) : null;
             _isFaceUp    = true;
-            _cardBackground.color  = Color.white;
+            ApplyFaceColor();
             _cardBackground.sprite = _faceSprite;
             ResetScale();
         }
@@ -150,7 +160,16 @@ namespace TexasHoldem
 
             rt.localScale = orig;
             _flipCoroutine  = null;
+            ApplyFaceColor();
             onComplete?.Invoke();
+        }
+
+        private void ApplyFaceColor()
+        {
+            if (_cardBackground == null || !_isFaceUp)
+                return;
+
+            _cardBackground.color = _winnerHighlight ? WinnerHighlightColor : Color.white;
         }
 
         private void StopFlip()
