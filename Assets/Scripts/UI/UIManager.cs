@@ -1144,7 +1144,7 @@ namespace TexasHoldem
             if (_suppressRaiseClamp)
                 return;
 
-            StripLeadingZerosInRaiseInput();
+            NormalizeRaiseInputText();
         }
 
         private void OnRaiseInputEndEdit(string _)
@@ -1153,27 +1153,6 @@ namespace TexasHoldem
                 return;
 
             NormalizeRaiseInputText();
-        }
-
-        private void StripLeadingZerosInRaiseInput()
-        {
-            if (_raiseInput == null)
-                return;
-
-            string raw = _raiseInput.text;
-            if (string.IsNullOrEmpty(raw))
-                return;
-
-            string normalized = StripLeadingZeros(raw);
-            if (normalized == raw)
-                return;
-
-            _suppressRaiseClamp = true;
-            _raiseInput.SetTextWithoutNotify(normalized);
-            _raiseInput.caretPosition  = normalized.Length;
-            _raiseInput.stringPosition = normalized.Length;
-            _suppressRaiseClamp = false;
-            RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, normalized);
         }
 
         private void NormalizeRaiseInputText()
@@ -1191,7 +1170,7 @@ namespace TexasHoldem
             {
                 int maxTotal = GetMaxRaiseTotal();
                 if (maxTotal > 0 && value > maxTotal)
-                    normalized = maxTotal.ToString();
+                    normalized = string.Empty;
             }
 
             if (normalized == raw)
@@ -1267,8 +1246,8 @@ namespace TexasHoldem
 
             string raw = _raiseInput != null ? _raiseInput.text : string.Empty;
 
-            if (!int.TryParse(raw, out int totalIn))
-                totalIn = minTotal;
+            if (string.IsNullOrWhiteSpace(raw) || !int.TryParse(raw, out int totalIn))
+                return 0;
 
             totalIn = Mathf.Clamp(totalIn, minTotal, maxTotal);
 
