@@ -1685,12 +1685,6 @@ namespace TexasHoldem
         {
             if (!Application.isPlaying) return;
 
-            if (_focusRaiseInputCoroutine != null)
-            {
-                StopCoroutine(_focusRaiseInputCoroutine);
-                _focusRaiseInputCoroutine = null;
-            }
-
             SetActionButtonVisible(_foldButton, false);
             SetActionButtonVisible(ResolveCheckCallButton(), false);
             SetActionButtonVisible(_raiseButton, false);
@@ -1741,7 +1735,6 @@ namespace TexasHoldem
                 UpdateRaiseButtonLabel();
                 UpdateRaiseInput(preserveTypedValue: true);
                 StyleRaiseInput();
-                FocusRaiseInputWhenReady();
             }
 
             EnsureRaiseInputLayout();
@@ -1871,42 +1864,12 @@ namespace TexasHoldem
             ShowBottomBettingControls(canCheck, canCall, canRaise, canAllIn);
         }
 
-        private Coroutine _focusRaiseInputCoroutine;
-
         private void EnableRaiseInputForKeyboard(bool enabled)
         {
             if (_raiseInput == null) return;
 
             _raiseInput.interactable = enabled;
             _raiseInput.readOnly     = !enabled;
-        }
-
-        private void FocusRaiseInputWhenReady()
-        {
-            if (_focusRaiseInputCoroutine != null)
-                StopCoroutine(_focusRaiseInputCoroutine);
-
-            _focusRaiseInputCoroutine = StartCoroutine(FocusRaiseInputNextFrame());
-        }
-
-        private IEnumerator FocusRaiseInputNextFrame()
-        {
-            yield return null;
-            _focusRaiseInputCoroutine = null;
-
-            if (_raiseInput == null || !_raiseInput.gameObject.activeInHierarchy)
-                yield break;
-
-            EnableRaiseInputForKeyboard(true);
-
-            if (OptionsMenu.Instance != null && OptionsMenu.Instance.IsOpen)
-                yield break;
-
-            _raiseInput.ActivateInputField();
-            SelectAllRaiseInput();
-            RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
-            yield return null;
-            SelectAllRaiseInput();
         }
 
         private void SetAllBettingInteractable(bool interactable)
