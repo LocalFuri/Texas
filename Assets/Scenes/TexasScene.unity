@@ -8217,7 +8217,7 @@ MonoBehaviour:
     backgroundColor: {r: 0, g: 0.101960786, b: 0, a: 1}
     textColor: {r: 1, g: 0.85, b: 0.2, a: 1}
     fontSize: 20
-    badgeWidth: 30
+    badgeWidth: 64
     badgeHeight: 30
     matchButtonWidth: 1
     anchoredOffset: {x: 0, y: -28}
