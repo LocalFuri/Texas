@@ -44,6 +44,9 @@ namespace TexasHoldem
         [Tooltip("Pause between dealer button, small blind, and big blind.")]
         [SerializeField, Min(0f)] private float _blindPostDelay = 0.5f;
 
+        [Header("Rake")]
+        [SerializeField] private PokerRakeSettings _rake = new PokerRakeSettings();
+
         [Header("Events")]
         public UnityEvent<GamePhase>        OnPhaseChanged;
         public UnityEvent<List<PlayerState>> OnPlayersUpdated;
@@ -81,6 +84,9 @@ namespace TexasHoldem
         public float             DealerButtonDelay       => _dealerButtonDelay;
         public float             BlindPostDelay          => _blindPostDelay;
         public int               LastPotAwarded          { get; private set; }
+        public int               LastGrossPot            { get; private set; }
+        public int               LastRakeAmount          { get; private set; }
+        public IReadOnlyList<PlayerState> LastRoundWinners { get; private set; }
         public WinningHandEvaluation LastWinningHand     { get; private set; }
         public IReadOnlyList<Card> CommunityCards        => _boardManager?.CommunityCards;
 
@@ -379,36 +385,96 @@ namespace TexasHoldem
             SetPhase(GamePhase.Showdown);
 
             var contenders = GetNonFolded(active);
-            PlayerState winner         = contenders[0];
-            WinningHandEvaluation best = null;
+            if (contenders.Count == 0)
+                yield break;
 
-            foreach (var player in contenders)
-            {
-                var cards = new List<Card>(player.HoleCards);
-                cards.AddRange(_boardManager.CommunityCards);
-                if (cards.Count < 5) continue;
+            RoundWinners roundWinners = ResolveRoundWinners(contenders);
+            LastWinningHand = roundWinners.BestEvaluation;
+            LastRoundWinners = roundWinners.Players;
 
-                WinningHandEvaluation evaluation = HandEvaluator.EvaluateBest(cards);
-                if (best == null || evaluation.Result.CompareTo(best.Result) > 0)
-                {
-                    best   = evaluation;
-                    winner = player;
-                }
-            }
+            LastGrossPot   = _bettingManager.Pot;
+            bool flopDealt = _boardManager.CommunityCards.Count >= 3;
+            LastRakeAmount = _rake.Calculate(LastGrossPot, _bigBlind, flopDealt);
+            LastPotAwarded = LastGrossPot - LastRakeAmount;
 
-            LastWinningHand = best;
-            LastPotAwarded  = _bettingManager.Pot;
-            winner.Chips   += LastPotAwarded;
-            OnGameMessage?.Invoke($"{winner.Name} wins the pot of ${LastPotAwarded}!");
-            OnWinnerDetermined?.Invoke(winner);
+            PotAward.Split(LastPotAwarded, roundWinners.Players);
+
+            OnGameMessage?.Invoke(BuildRoundEndMessage(roundWinners.Players, LastPotAwarded, LastRakeAmount));
+            OnWinnerDetermined?.Invoke(roundWinners.Players[0]);
             NotifyPlayersUpdated();
 
-            yield return DelaySeconds(_roundEndPauseSecs); // celebration window
+            yield return DelaySeconds(_roundEndPauseSecs);
 
             OnRoundEnded?.Invoke();
             yield return new WaitUntil(() => !IsOptionsMenuOpen);
             DealerIndex = (DealerIndex + 1) % active.Count;
             SetPhase(GamePhase.RoundOver);
+        }
+
+        private struct RoundWinners
+        {
+            public List<PlayerState> Players;
+            public WinningHandEvaluation BestEvaluation;
+
+            public RoundWinners(List<PlayerState> players, WinningHandEvaluation bestEvaluation)
+            {
+                Players        = players;
+                BestEvaluation = bestEvaluation;
+            }
+        }
+
+        private RoundWinners ResolveRoundWinners(List<PlayerState> contenders)
+        {
+            WinningHandEvaluation bestEval = null;
+            var evaluated = new List<(PlayerState player, WinningHandEvaluation evaluation)>();
+
+            foreach (PlayerState player in contenders)
+            {
+                var cards = new List<Card>(player.HoleCards);
+                cards.AddRange(_boardManager.CommunityCards);
+                if (cards.Count < 5)
+                    continue;
+
+                WinningHandEvaluation evaluation = HandEvaluator.EvaluateBest(cards);
+                evaluated.Add((player, evaluation));
+
+                if (bestEval == null || evaluation.Result.CompareTo(bestEval.Result) > 0)
+                    bestEval = evaluation;
+            }
+
+            var winners = new List<PlayerState>();
+            if (bestEval != null)
+            {
+                foreach ((PlayerState player, WinningHandEvaluation evaluation) in evaluated)
+                {
+                    if (evaluation.Result.CompareTo(bestEval.Result) == 0)
+                        winners.Add(player);
+                }
+            }
+            else
+            {
+                winners.Add(contenders[0]);
+            }
+
+            return new RoundWinners(winners, bestEval);
+        }
+
+        private static string BuildRoundEndMessage(
+            IReadOnlyList<PlayerState> winners, int netPot, int rake)
+        {
+            if (winners == null || winners.Count == 0)
+                return string.Empty;
+
+            string names = winners.Count == 1
+                ? winners[0].Name
+                : string.Join(" & ", winners.Select(p => p.Name));
+
+            string rakeNote = rake > 0 ? $" (rake ${rake})" : string.Empty;
+
+            if (winners.Count == 1)
+                return $"{names} wins the pot of ${netPot}{rakeNote}!";
+
+            return $"{names} split the pot of ${netPot}{rakeNote}!";
         }
 
         /// <summary>Called by the UI to submit the human player's chosen betting action.</summary>
@@ -541,3 +607,4 @@ namespace TexasHoldem
 #endif
     }
 }
+

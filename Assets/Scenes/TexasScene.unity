@@ -8362,6 +8362,8 @@ MonoBehaviour:
   _winningHandText: {fileID: 0}
   _winningHandLabelX: 0
   _winningHandLabelY: 130
+  _rakeText: {fileID: 0}
+  _rakeOffsetFromPot: {x: 0, y: -55}
   _seatActionBadgeOffset: {x: 0, y: 0}
   _buttonFont: {fileID: 11400000, guid: 6903839b2f8979c419d5db103af926f7, type: 2}
   _actionAmountBadgeStyle:
@@ -11361,6 +11363,11 @@ MonoBehaviour:
   _roundEndPauseSecs: 2.5
   _dealerButtonDelay: 0
   _blindPostDelay: 0.5
+  _rake:
+    enabled: 1
+    percent: 5
+    capBigBlinds: 3
+    noFlopNoRake: 1
   OnPhaseChanged:
     m_PersistentCalls:
       m_Calls: []

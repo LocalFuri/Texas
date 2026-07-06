@@ -69,7 +69,7 @@ namespace TexasHoldem
 
         [Header("Copyright")]
         [SerializeField, InspectorName("CopyrightLabel")]
-        [Tooltip("Copyright/version text. Edit Canvas → CopyrightLabel TMP directly, or set this and use context menu Apply Copyright Label To TMP.")]
+        [Tooltip("Copyright/version text. Edit Canvas â†’ CopyrightLabel TMP directly, or set this and use context menu Apply Copyright Label To TMP.")]
         private string _copyrightLabel = "v1.0";
         [SerializeField] private TMP_Text _copyrightLabelText;
 
@@ -104,6 +104,11 @@ namespace TexasHoldem
         [SerializeField] private float _winningHandLabelX = 0f;
         [SerializeField] private float _winningHandLabelY = 90f;
 
+        [Header("Showdown Rake")]
+        [SerializeField] private TMP_Text _rakeText;
+        [Tooltip("Rake label offset from PotText center. Negative Y = below pot. Tune in Play mode.")]
+        [SerializeField] private Vector2 _rakeOffsetFromPot = new Vector2(0f, -55f);
+
         [Header("Seat Action Badges")]
         [Tooltip("Global nudge for CALL / FOLD / RAISE badges on every player seat. Positive X = right, positive Y = up. Tune in Play mode.")]
         [SerializeField] private Vector2 _seatActionBadgeOffset;
@@ -125,7 +130,7 @@ namespace TexasHoldem
         private static readonly Color TextRaise = ButtonLabelStyle.RaiseText;
         private static readonly Color TextAllIn = new Color(1f, 0f, 1f, 1f);
 
-        // Platform-independent German number format: 1000 → "1.000"
+        // Platform-independent German number format: 1000 â†’ "1.000"
         private static readonly NumberFormatInfo GermanNFI = new NumberFormatInfo
         {
             NumberGroupSeparator   = ".",
@@ -138,6 +143,7 @@ namespace TexasHoldem
         private const float InactiveAlpha      = 0.0f;
         private const float StartHideDelaySecs = 0.15f;
         private const string RaiseButtonLabel  = "RAISE";
+        private const string RakeLabelName = "RakeLabel";
 
         private CanvasGroup _actionPanelGroup;
         private PlayerState _humanPlayer;
@@ -241,6 +247,9 @@ namespace TexasHoldem
                 ApplyWinningHandLabelLayout();
                 _winningHandText.gameObject.SetActive(false);
             }
+
+            EnsureRakeLabel();
+            HideRakeDisplay();
         }
 
         private void OnDestroy()
@@ -613,7 +622,7 @@ namespace TexasHoldem
         {
             if (_gameManager == null)
             {
-                Debug.LogError("[UIManager] GameManager reference missing — action badges and betting will not work.");
+                Debug.LogError("[UIManager] GameManager reference missing â€” action badges and betting will not work.");
                 return;
             }
 
@@ -858,7 +867,7 @@ namespace TexasHoldem
                         view.RefreshOpponentCards(player);
                 }
 
-                // Update BetDisplay — animate chip only when the player's bet increases.
+                // Update BetDisplay â€” animate chip only when the player's bet increases.
                 _previousBets.TryGetValue(i, out int prevBet);
                 bool betIncreased = player.CurrentBet > prevBet;
                 if (betIncreased)
@@ -1348,7 +1357,7 @@ namespace TexasHoldem
             return totalIn - callAmount;
         }
 
-        /// <summary>Updates the pot number only — used while a betting street is in progress.</summary>
+        /// <summary>Updates the pot number only â€” used while a betting street is in progress.</summary>
         private void UpdatePotLabel()
         {
             if (_potText == null || _gameManager == null)
@@ -1373,7 +1382,7 @@ namespace TexasHoldem
             _potChipStack.StackRoot.gameObject.SetActive(false);
         }
 
-        /// <summary>Shows the pot chip breakdown — after street bets are collected into the pot.</summary>
+        /// <summary>Shows the pot chip breakdown â€” after street bets are collected into the pot.</summary>
         private void ShowPotChipStack(int potAmount = -1)
         {
             if (_potText == null || _gameManager == null)
@@ -1537,7 +1546,7 @@ namespace TexasHoldem
 
         /// <summary>
         /// Clears seat bet stacks and refreshes the pot HUD after a betting street.
-        /// Called between betting streets (preflop→flop, flop→turn, turn→river).
+        /// Called between betting streets (preflopâ†’flop, flopâ†’turn, turnâ†’river).
         /// </summary>
         public IEnumerator CollectStreetBetsToPot()
         {
@@ -2054,7 +2063,7 @@ namespace TexasHoldem
 
             TMP_FontAsset font = ResolveButtonFont();
             if (!IsUsableButtonFont(font))
-                Debug.LogWarning("[UIManager] Casino3D SDF unavailable — button labels will use scene defaults.");
+                Debug.LogWarning("[UIManager] Casino3D SDF unavailable â€” button labels will use scene defaults.");
 
             _buttonFont = font;
             _raiseInput = ActionPanelLayout.Apply(
@@ -2210,7 +2219,7 @@ namespace TexasHoldem
                 button.gameObject.AddComponent<ButtonHoverFix>();
         }
 
-        /// <summary>Bottom action row uses textured sprite buttons — not seat <see cref="ActionBadge"/> SDF pills.</summary>
+        /// <summary>Bottom action row uses textured sprite buttons â€” not seat <see cref="ActionBadge"/> SDF pills.</summary>
         private void RestoreActionPanelSpriteButtons()
         {
             EnsureBettingButtonsResolved();
@@ -2269,7 +2278,7 @@ namespace TexasHoldem
             Canvas.ForceUpdateCanvases();
         }
 
-        /// <summary>Scene view only — keeps every ButtonRow child active and fully opaque.</summary>
+        /// <summary>Scene view only â€” keeps every ButtonRow child active and fully opaque.</summary>
         private void RestoreSceneModeButtonState()
         {
             if (_actionPanel != null && !_actionPanel.activeSelf)
@@ -2323,6 +2332,8 @@ namespace TexasHoldem
                 ApplyActionAmountBadgeSettings();
                 EnsureWinningHandLabel();
                 ApplyWinningHandLabelLayout();
+                EnsureRakeLabel();
+                ApplyRakeLabelLayout();
                 RefreshVisibleSeatActionBadges();
                 return;
             }
@@ -2386,30 +2397,38 @@ namespace TexasHoldem
             StyleRaiseInput();
         }
 
-        // ── Winner Celebration ─────────────────────────────────────────────
+        // â”€â”€ Winner Celebration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         private void OnWinnerDetermined(PlayerState winner)
         {
             if (_gameManager == null || _playerViews == null) return;
 
-            int index = _gameManager.Players.IndexOf(winner);
-            if (index < 0 || index >= _playerViews.Count) return;
-
-            PlayerView view = _playerViews[index];
-            if (view == null) return;
+            IReadOnlyList<PlayerState> winners = _gameManager.LastRoundWinners;
+            if (winners == null || winners.Count == 0)
+            {
+                if (winner == null) return;
+                winners = new List<PlayerState> { winner };
+            }
 
             _winnerCelebrationActive = true;
             ClearPendingActionBadge();
             HideAllActionBadges();
 
-            int potAmount = _gameManager.LastPotAwarded;
             float duration = _gameManager.RoundEndPauseSecs;
+            int share = winners.Count > 0
+                ? _gameManager.LastPotAwarded / winners.Count
+                : _gameManager.LastPotAwarded;
 
-            ShowWinningHandDisplay(winner, view);
-            view.StartWinnerHighlight(potAmount, duration);
-            ShowPotForWinnerCelebration(potAmount);
+            ShowWinningHandDisplay();
+            ShowRakeDisplay(_gameManager.LastRakeAmount);
+            ShowPotForWinnerCelebration(_gameManager.LastGrossPot);
 
-            StartCoroutine(RunWinnerCelebrationEffects(view, potAmount, duration));
+            PlayerView primaryView = ResolvePlayerView(winners[0]);
+            foreach (PlayerState roundWinner in winners)
+                ResolvePlayerView(roundWinner)?.StartWinnerHighlight(share, duration);
+
+            if (primaryView != null)
+                StartCoroutine(RunWinnerCelebrationEffects(primaryView, share, duration));
         }
 
         private IEnumerator RunWinnerCelebrationEffects(PlayerView view, int potAmount, float duration)
@@ -2562,16 +2581,27 @@ namespace TexasHoldem
             rt.anchoredPosition = WinningHandLabelPosition;
         }
 
-        private void ShowWinningHandDisplay(PlayerState winner, PlayerView winnerView)
+        private void ShowWinningHandDisplay()
         {
             EnsureWinningHandLabel();
             if (_winningHandText == null)
                 return;
 
+            IReadOnlyList<PlayerState> winners = _gameManager?.LastRoundWinners;
+            var names = new List<string>();
+            if (winners != null)
+            {
+                foreach (PlayerState player in winners)
+                {
+                    if (player != null && !string.IsNullOrEmpty(player.Name))
+                        names.Add(player.Name);
+                }
+            }
+
             WinningHandEvaluation evaluation = _gameManager?.LastWinningHand;
             string message = evaluation?.Result != null
-                ? HandDisplayNames.FormatWithWinner(winner?.Name, evaluation.Result)
-                : string.IsNullOrEmpty(winner?.Name) ? string.Empty : $"{winner.Name} wins";
+                ? HandDisplayNames.FormatWithWinners(names, evaluation.Result)
+                : HandDisplayNames.FormatFoldWin(names);
 
             if (string.IsNullOrEmpty(message))
             {
@@ -2583,8 +2613,14 @@ namespace TexasHoldem
             _winningHandText.gameObject.SetActive(true);
             _winningHandText.transform.SetAsLastSibling();
 
-            if (evaluation?.BestCards != null && evaluation.BestCards.Count > 0)
-                ApplyWinningCardHighlights(winner, winnerView, evaluation.BestCards);
+            if (evaluation?.BestCards != null && evaluation.BestCards.Count > 0 && winners != null)
+            {
+                foreach (PlayerState roundWinner in winners)
+                {
+                    PlayerView view = ResolvePlayerView(roundWinner);
+                    ApplyWinningCardHighlights(roundWinner, view, evaluation.BestCards);
+                }
+            }
             else
                 ClearWinningCardHighlights();
         }
@@ -2628,9 +2664,110 @@ namespace TexasHoldem
                 view?.ClearWinningCardHighlights();
         }
 
+
+        private Transform RakeLabelParent =>
+            _potText != null ? _potText.transform.parent : transform;
+
+        private Vector2 RakeLabelPosition
+        {
+            get
+            {
+                if (_potText != null && _potText.transform is RectTransform potRt)
+                    return potRt.anchoredPosition + _rakeOffsetFromPot;
+
+                return WinningHandLabelPosition + _rakeOffsetFromPot;
+            }
+        }
+
+        private void EnsureRakeLabel()
+        {
+            if (_rakeText == null)
+            {
+                Transform parent = RakeLabelParent;
+                Transform existing = parent != null ? parent.Find(RakeLabelName) : null;
+                if (existing != null)
+                    _rakeText = existing.GetComponent<TMP_Text>();
+            }
+
+            if (_rakeText != null)
+            {
+                StyleRakeLabel();
+                return;
+            }
+
+            Transform labelParent = RakeLabelParent;
+            var labelGo = new GameObject(RakeLabelName, typeof(RectTransform));
+            labelGo.transform.SetParent(labelParent, false);
+
+            var rt = (RectTransform)labelGo.transform;
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot     = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(320f, 32f);
+
+            _rakeText = labelGo.AddComponent<TextMeshProUGUI>();
+            StyleRakeLabel();
+        }
+
+        private void StyleRakeLabel()
+        {
+            if (_rakeText == null)
+                return;
+
+            TMP_FontAsset font = _potText != null && _potText.font != null
+                ? _potText.font
+                : ResolveButtonFont();
+
+            if (font != null)
+                _rakeText.font = font;
+
+            _rakeText.alignment          = TextAlignmentOptions.Center;
+            _rakeText.fontSize           = _potText != null ? _potText.fontSize * 0.85f : 24f;
+            _rakeText.color              = UiColors.PotGold;
+            _rakeText.raycastTarget      = false;
+            _rakeText.enableWordWrapping = false;
+
+            ApplyRakeLabelLayout();
+        }
+
+        private void ApplyRakeLabelLayout()
+        {
+            if (_rakeText == null || _rakeText.transform is not RectTransform rt)
+                return;
+
+            rt.anchorMin        = new Vector2(0.5f, 0.5f);
+            rt.anchorMax        = new Vector2(0.5f, 0.5f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = RakeLabelPosition;
+        }
+
+        private void ShowRakeDisplay(int rakeAmount)
+        {
+            if (rakeAmount <= 0)
+            {
+                HideRakeDisplay();
+                return;
+            }
+
+            EnsureRakeLabel();
+            if (_rakeText == null)
+                return;
+
+            _rakeText.text = "Rake: " + rakeAmount.ToString("N0", GermanNFI);
+            _rakeText.gameObject.SetActive(true);
+            ApplyRakeLabelLayout();
+            _rakeText.transform.SetAsLastSibling();
+        }
+
+        private void HideRakeDisplay()
+        {
+            if (_rakeText != null)
+                _rakeText.gameObject.SetActive(false);
+        }
         private void ClearWinningHandDisplay()
         {
             ClearWinningCardHighlights();
+            HideRakeDisplay();
 
             if (_winningHandText != null)
                 _winningHandText.gameObject.SetActive(false);
@@ -2648,3 +2785,4 @@ namespace TexasHoldem
         }
     }
 }
+

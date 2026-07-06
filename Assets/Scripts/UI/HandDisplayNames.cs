@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace TexasHoldem
 {
     /// <summary>Human-readable labels for evaluated poker hands.</summary>
@@ -34,6 +36,29 @@ namespace TexasHoldem
             return string.IsNullOrEmpty(playerName)
                 ? hand
                 : $"{playerName} — {hand}";
+        }
+
+        public static string FormatWithWinners(IReadOnlyList<string> playerNames, HandResult result)
+        {
+            if (playerNames == null || playerNames.Count == 0)
+                return Format(result);
+
+            string names = playerNames.Count == 1
+                ? playerNames[0]
+                : string.Join(" & ", playerNames);
+
+            return FormatWithWinner(names, result);
+        }
+
+        public static string FormatFoldWin(IReadOnlyList<string> playerNames)
+        {
+            if (playerNames == null || playerNames.Count == 0)
+                return string.Empty;
+
+            if (playerNames.Count == 1)
+                return $"{playerNames[0]} wins";
+
+            return $"{string.Join(" & ", playerNames)} win";
         }
 
         public static string RankName(int rankValue)
