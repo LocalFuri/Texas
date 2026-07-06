@@ -374,6 +374,8 @@ namespace TexasHoldem
 
         private IEnumerator EndRound(List<PlayerState> active)
         {
+            yield return CollectStreetBetsBeforeNextStreet(active);
+
             SetPhase(GamePhase.Showdown);
 
             var contenders = GetNonFolded(active);

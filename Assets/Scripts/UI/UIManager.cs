@@ -880,7 +880,7 @@ namespace TexasHoldem
             TryScheduleHumanHoleReveal(humanView, humanState);
 
             UpdatePotLabel();
-            if (anyBetIncreased && !_collectInProgress)
+            if (anyBetIncreased && !_collectInProgress && !_winnerCelebrationActive)
                 HidePotChipStack();
             RefreshDealerButton();
             _playersRefreshCoroutine = null;
@@ -1374,13 +1374,15 @@ namespace TexasHoldem
         }
 
         /// <summary>Shows the pot chip breakdown — after street bets are collected into the pot.</summary>
-        private void ShowPotChipStack()
+        private void ShowPotChipStack(int potAmount = -1)
         {
             if (_potText == null || _gameManager == null)
                 return;
 
-            int pot = _gameManager.PotAmount;
-            if (pot <= 0)
+            if (potAmount < 0)
+                potAmount = _gameManager.PotAmount;
+
+            if (potAmount <= 0)
             {
                 HidePotChipStack();
                 return;
@@ -1392,8 +1394,18 @@ namespace TexasHoldem
                 return;
 
             ApplyPotChipStackSettings();
-            _potChipStack.SetExactAmount(pot);
+            _potChipStack.SetExactAmount(potAmount);
             PositionPotChipStack(showStack: true);
+        }
+
+        /// <summary>Keeps pot label and chip stack visible for the winner celebration.</summary>
+        private void ShowPotForWinnerCelebration(int potAmount)
+        {
+            if (_potText == null || potAmount <= 0)
+                return;
+
+            _potText.text = "Pot: " + potAmount.ToString("N0", GermanNFI);
+            ShowPotChipStack(potAmount);
         }
 
         private void ApplyPotChipStackSettings()
@@ -2395,6 +2407,7 @@ namespace TexasHoldem
 
             ShowWinningHandDisplay(winner, view);
             view.StartWinnerHighlight(potAmount, duration);
+            ShowPotForWinnerCelebration(potAmount);
 
             StartCoroutine(RunWinnerCelebrationEffects(view, potAmount, duration));
         }
