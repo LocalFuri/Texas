@@ -8340,6 +8340,8 @@ MonoBehaviour:
   _raiseColumnOffset: {x: 0, y: 0}
   _allInColumnOffset: {x: 0, y: 0}
   _potText: {fileID: 659163743}
+  _potLabelX: -24
+  _potLabelY: 145
   _potChipStack: {fileID: 0}
   _potChipSprite100: {fileID: 21300000, guid: c3480f68c5eda0742abb385722c05d3b, type: 3}
   _potChipSprite500: {fileID: 21300000, guid: 6767bf3b7bdd5ca41ad3aee56e3c168d, type: 3}

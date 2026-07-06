@@ -55,6 +55,9 @@ namespace TexasHoldem
 
         [Header("HUD")]
         [SerializeField] private TMP_Text       _potText;
+        [Tooltip("Canvas position of PotText (center anchor). Tune in Play mode.")]
+        [SerializeField] private float          _potLabelX = -24f;
+        [SerializeField] private float          _potLabelY = 145f;
         [SerializeField] private ChipStackView  _potChipStack;
         [SerializeField] private Sprite         _potChipSprite100;
         [SerializeField] private Sprite         _potChipSprite500;
@@ -236,6 +239,7 @@ namespace TexasHoldem
             _rootCanvas = ResolveRootCanvas();
             EnsurePotChipStack();
             EnsureBetChipHighDenominations();
+            ApplyPotLabelLayout();
             UpdatePotLabel();
             HidePotChipStack();
             SubscribeToGameEvents();
@@ -1358,6 +1362,17 @@ namespace TexasHoldem
         }
 
         /// <summary>Updates the pot number only â€” used while a betting street is in progress.</summary>
+        private void ApplyPotLabelLayout()
+        {
+            if (_potText == null || _potText.transform is not RectTransform rt)
+                return;
+
+            rt.anchorMin        = new Vector2(0.5f, 0.5f);
+            rt.anchorMax        = new Vector2(0.5f, 0.5f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(_potLabelX, _potLabelY);
+        }
+
         private void UpdatePotLabel()
         {
             if (_potText == null || _gameManager == null)
@@ -2275,6 +2290,7 @@ namespace TexasHoldem
             ApplyActionButtonLabelsInEditor();
             EnsureCheckCallSceneVisibility();
             ApplyPlayerAvatars();
+            ApplyPotLabelLayout();
             Canvas.ForceUpdateCanvases();
         }
 
@@ -2322,6 +2338,7 @@ namespace TexasHoldem
             SyncSeatActionBadgeOffset();
             ApplyActionPanelPosition();
             RebuildActionButtonRowLayout();
+            ApplyPotLabelLayout();
 
             if (Application.isPlaying)
             {
