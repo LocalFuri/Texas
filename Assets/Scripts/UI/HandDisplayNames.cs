@@ -15,13 +15,13 @@ namespace TexasHoldem
             {
                 HandRank.RoyalFlush    => "Royal Flush",
                 HandRank.StraightFlush => $"Straight Flush, {RankName(tb[0])} high",
-                HandRank.FourOfAKind   => $"Four of a Kind, {RankName(tb[0])}s",
+                HandRank.FourOfAKind   => $"Four of a Kind, {RankName(tb[0])}s{TopKickerLabel(tb, 1)}",
                 HandRank.FullHouse     => $"Full House, {RankName(tb[0])}s over {RankName(tb[1])}s",
                 HandRank.Flush         => $"Flush, {RankName(tb[0])} high",
                 HandRank.Straight      => $"Straight, {RankName(tb[0])} high",
-                HandRank.ThreeOfAKind  => $"Three of a Kind, {RankName(tb[0])}s",
-                HandRank.TwoPair       => $"Two Pair, {RankName(tb[0])}s and {RankName(tb[1])}s",
-                HandRank.OnePair       => $"Pair of {RankName(tb[0])}s",
+                HandRank.ThreeOfAKind  => $"Three of a Kind, {RankName(tb[0])}s{TopKickerLabel(tb, 1)}",
+                HandRank.TwoPair       => $"Two Pair, {RankName(tb[0])}s and {RankName(tb[1])}s{TopKickerLabel(tb, 2)}",
+                HandRank.OnePair       => $"Pair of {RankName(tb[0])}s{TopKickerLabel(tb, 1)}",
                 HandRank.HighCard      => $"{RankName(tb[0])} High",
                 _                      => result.Rank.ToString()
             };
@@ -31,11 +31,12 @@ namespace TexasHoldem
         {
             string hand = Format(result);
             if (string.IsNullOrEmpty(hand))
-                return playerName;
+                return playerName ?? string.Empty;
 
-            return string.IsNullOrEmpty(playerName)
-                ? hand
-                : $"{playerName} — {hand}";
+            if (string.IsNullOrEmpty(playerName))
+                return hand;
+
+            return $"{playerName} wins — {hand}";
         }
 
         public static string FormatWithWinners(IReadOnlyList<string> playerNames, HandResult result)
@@ -43,11 +44,16 @@ namespace TexasHoldem
             if (playerNames == null || playerNames.Count == 0)
                 return Format(result);
 
+            string hand = Format(result);
             string names = playerNames.Count == 1
                 ? playerNames[0]
                 : string.Join(" & ", playerNames);
 
-            return FormatWithWinner(names, result);
+            if (string.IsNullOrEmpty(hand))
+                return names;
+
+            string verb = playerNames.Count == 1 ? "wins" : "win";
+            return $"{names} {verb} — {hand}";
         }
 
         public static string FormatFoldWin(IReadOnlyList<string> playerNames)
@@ -75,6 +81,14 @@ namespace TexasHoldem
                 Rank.Ten   => "Ten",
                 _          => rankValue.ToString()
             };
+        }
+
+        private static string TopKickerLabel(IReadOnlyList<int> tiebreakers, int kickerIndex)
+        {
+            if (tiebreakers == null || tiebreakers.Count <= kickerIndex)
+                return string.Empty;
+
+            return $", {RankName(tiebreakers[kickerIndex])} kicker";
         }
     }
 }
