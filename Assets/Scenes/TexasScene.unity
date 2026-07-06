@@ -8365,7 +8365,7 @@ MonoBehaviour:
   _winningHandLabelX: 0
   _winningHandLabelY: 130
   _rakeText: {fileID: 0}
-  _rakeOffsetFromPot: {x: 0, y: -55}
+  _rakeOffsetFromPot: {x: 0, y: 50}
   _seatActionBadgeOffset: {x: 0, y: 0}
   _buttonFont: {fileID: 11400000, guid: 6903839b2f8979c419d5db103af926f7, type: 2}
   _actionAmountBadgeStyle:
