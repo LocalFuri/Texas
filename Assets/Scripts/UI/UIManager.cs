@@ -163,6 +163,7 @@ namespace TexasHoldem
         private Canvas               _rootCanvas;
 
         private bool          _hasPendingActionBadge;
+        private bool          _winnerCelebrationActive;
         private PlayerState   _pendingBadgePlayer;
         private BettingAction _pendingBadgeAction;
         private int           _pendingBadgeAmount;
@@ -630,6 +631,7 @@ namespace TexasHoldem
         private void OnPlayerAction(PlayerState player, BettingAction action, int amount)
         {
             if (_gameManager == null || player == null) return;
+            if (_winnerCelebrationActive) return;
 
             ShowActionBadgeForPlayer(player, action, amount);
 
@@ -659,6 +661,9 @@ namespace TexasHoldem
         /// <summary>Re-shows the badge after seat HUD/bet display refresh (layering).</summary>
         private void ApplyPendingActionBadge()
         {
+            if (_winnerCelebrationActive)
+                return;
+
             if (!_hasPendingActionBadge || _pendingBadgePlayer == null)
                 return;
 
@@ -701,13 +706,19 @@ namespace TexasHoldem
 
         private void HideAllActionBadges()
         {
-            if (_playerViews == null) return;
-            foreach (PlayerView view in _playerViews)
+            foreach (PlayerView view in ResolvePlayerViews())
                 view?.HideActionBadge();
+        }
+
+        private void ClearPendingActionBadge()
+        {
+            _hasPendingActionBadge = false;
+            _pendingBadgePlayer    = null;
         }
 
         private void OnRoundStarting()
         {
+            _winnerCelebrationActive = false;
             _suppressDealerButton = true;
             _tableLayout?.HideDealerButton();
 
@@ -984,6 +995,9 @@ namespace TexasHoldem
 
             UpdateHumanActionButtons(isHumanTurn);
 
+            if (isHumanTurn && CanHumanRaise())
+                yield return RaiseInputBuilder.FocusAndSelectAllWhenReady(_raiseInput);
+
             StopTurnTimer();
             int playerIndex = _gameManager.Players.IndexOf(player);
             if (playerIndex >= 0 && playerIndex < _playerViews.Count && _playerViews[playerIndex] != null)
@@ -1015,8 +1029,9 @@ namespace TexasHoldem
             _humanPlayer          = null;
             _humanSeatView        = null;
             _revealedCommunityCount = 0;
-            _hasPendingActionBadge  = false;
-            _suppressDealerButton   = true;
+            _hasPendingActionBadge    = false;
+            _winnerCelebrationActive  = false;
+            _suppressDealerButton     = true;
 
             _previousBets.Clear();
             StopTurnTimer();
@@ -1762,6 +1777,9 @@ namespace TexasHoldem
         {
             if (!Application.isPlaying) return;
 
+            if (_raiseInput != null && _raiseInput.isFocused)
+                _raiseInput.DeactivateInputField();
+
             SetActionButtonVisible(_foldButton, false);
             SetActionButtonVisible(ResolveCheckCallButton(), false);
             SetActionButtonVisible(_raiseButton, false);
@@ -2368,16 +2386,22 @@ namespace TexasHoldem
             PlayerView view = _playerViews[index];
             if (view == null) return;
 
-            StartCoroutine(ShowWinnerCelebration(view, winner, _gameManager.LastPotAwarded, _gameManager.RoundEndPauseSecs));
-        }
+            _winnerCelebrationActive = true;
+            ClearPendingActionBadge();
+            HideAllActionBadges();
 
-        private IEnumerator ShowWinnerCelebration(PlayerView view, PlayerState winner, int potAmount, float duration)
-        {
-            yield return null;
-            yield return null;
+            int potAmount = _gameManager.LastPotAwarded;
+            float duration = _gameManager.RoundEndPauseSecs;
 
             ShowWinningHandDisplay(winner, view);
             view.StartWinnerHighlight(potAmount, duration);
+
+            StartCoroutine(RunWinnerCelebrationEffects(view, potAmount, duration));
+        }
+
+        private IEnumerator RunWinnerCelebrationEffects(PlayerView view, int potAmount, float duration)
+        {
+            yield return null;
 
             // Fly chips from the pot label position to the winner's avatar.
             RectTransform origin = _potText != null ? (RectTransform)_potText.transform : null;

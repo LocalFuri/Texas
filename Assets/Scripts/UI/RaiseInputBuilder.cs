@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -158,6 +159,53 @@ namespace TexasHoldem
             int length = input.text != null ? input.text.Length : 0;
             input.selectionAnchorPosition = 0;
             input.selectionFocusPosition  = length;
+        }
+
+        public static void FocusAndSelectAll(TMP_InputField input)
+        {
+            if (input == null || !input.interactable)
+                return;
+
+            input.ActivateInputField();
+            SelectAllText(input);
+        }
+
+        /// <summary>Focuses and selects all after layout — use at start of human turn.</summary>
+        public static IEnumerator FocusAndSelectAllWhenReady(TMP_InputField input)
+        {
+            if (input == null || !input.interactable)
+                yield break;
+
+            yield return null;
+            yield return new WaitForEndOfFrame();
+
+            if (input == null || !input.gameObject.activeInHierarchy || !input.interactable)
+                yield break;
+
+            FocusAndSelectAll(input);
+            input.gameObject.GetComponent<RaiseInputSelectAllOnClick>()
+                ?.ResetEntryState(input.text);
+
+            yield return null;
+
+            if (input != null && input.isFocused && !HasFullSelection(input))
+            {
+                input.DeactivateInputField();
+                FocusAndSelectAll(input);
+                input.gameObject.GetComponent<RaiseInputSelectAllOnClick>()
+                    ?.ResetEntryState(input.text);
+            }
+        }
+
+        private static bool HasFullSelection(TMP_InputField input)
+        {
+            if (input == null)
+                return false;
+
+            int length = input.text != null ? input.text.Length : 0;
+            return length > 0
+                   && input.selectionAnchorPosition == 0
+                   && input.selectionFocusPosition == length;
         }
 
         public static void EnableSelectAllOnFocusAndClick(TMP_InputField input)
