@@ -649,6 +649,7 @@ namespace TexasHoldem
         {
             if (_gameManager == null || player == null) return;
             if (_winnerCelebrationActive) return;
+            if (!ShouldShowActionBadge(player, action)) return;
 
             ShowActionBadgeForPlayer(player, action, amount);
 
@@ -658,8 +659,14 @@ namespace TexasHoldem
             _hasPendingActionBadge = true;
         }
 
+        private static bool ShouldShowActionBadge(PlayerState player, BettingAction action)
+            => !player.HasFolded || action == BettingAction.Fold;
+
         private void ShowActionBadgeForPlayer(PlayerState player, BettingAction action, int amount)
         {
+            if (!ShouldShowActionBadge(player, action))
+                return;
+
             PlayerView view = ResolvePlayerView(player);
             if (view == null)
             {
@@ -686,7 +693,8 @@ namespace TexasHoldem
                 return;
 
             PlayerView view = ResolvePlayerView(_pendingBadgePlayer);
-            view?.BringActionBadgeToFrontIfVisible();
+            if (view != null && ShouldShowActionBadge(_pendingBadgePlayer, _pendingBadgeAction))
+                view.BringActionBadgeToFrontIfVisible();
 
             _hasPendingActionBadge = false;
             _pendingBadgePlayer    = null;
@@ -888,7 +896,8 @@ namespace TexasHoldem
                 else
                     view.HideBetDisplay();
 
-                view.BringActionBadgeToFrontIfVisible();
+                if (!player.HasFolded && !player.IsAllIn)
+                    view.BringActionBadgeToFrontIfVisible();
             }
 
             ApplyPendingActionBadge();
@@ -1728,12 +1737,6 @@ namespace TexasHoldem
 
             StopTurnTimer();
             HideBettingControls();
-
-            if (_humanPlayer != null)
-            {
-                PlayerView humanSeat = ResolveHumanSeatView() ?? ResolvePlayerView(_humanPlayer);
-                humanSeat?.ShowAction(action, raiseAmount);
-            }
 
             _gameManager.SubmitPlayerAction(action, raiseAmount);
         }
