@@ -2668,8 +2668,13 @@ namespace TexasHoldem
             }
 
             WinningHandEvaluation evaluation = _gameManager?.LastWinningHand;
+            bool tiebreakerDecisive = evaluation?.Result != null
+                && HandDisplayNames.WasTiebreakerDecisive(
+                    evaluation.Result,
+                    winners,
+                    _gameManager?.LastShowdownHands);
             string message = evaluation?.Result != null
-                ? HandDisplayNames.FormatWithWinners(names, evaluation.Result)
+                ? HandDisplayNames.FormatWithWinners(names, evaluation.Result, tiebreakerDecisive)
                 : HandDisplayNames.FormatFoldWin(names);
 
             if (string.IsNullOrEmpty(message))
