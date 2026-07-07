@@ -17,14 +17,16 @@ namespace TexasHoldem
         [SerializeField] private float flipDuration = 0.35f;
 
         [Header("Winner Highlight")]
-        [Tooltip("Pulse rate in Hz.")]
-        [SerializeField, Min(0.1f)] private float _winnerPulseHz = 3.5f;
+        [Tooltip("How long the intro gold pulse runs before settling to a static tint.")]
+        [SerializeField, Min(0.1f)] private float _winnerPulseDurationSecs = 1f;
+        [Tooltip("Pulse rate in Hz during the intro window (2 Hz = 2 pulses in 1 second).")]
+        [SerializeField, Min(0.1f)] private float _winnerPulseHz = 2f;
         [Tooltip("Minimum gold tint at the trough of each pulse (0 = white, 1 = full peak color).")]
-        [SerializeField, Range(0f, 1f)] private float _winnerPulseMinBlend = 0.25f;
+        [SerializeField, Range(0f, 1f)] private float _winnerPulseMinBlend = 0.5f;
         [Tooltip("Maximum gold tint at the peak of each pulse.")]
-        [SerializeField, Range(0f, 1f)] private float _winnerPulseMaxBlend = 1f;
-        [Tooltip("Scale bump at pulse peak as a fraction of base size (0.05 = 5%).")]
-        [SerializeField, Range(0f, 0.12f)] private float _winnerPulseScale = 0.05f;
+        [SerializeField, Range(0f, 1f)] private float _winnerPulseMaxBlend = 0.85f;
+        [Tooltip("Scale bump at pulse peak as a fraction of base size (0 = color-only pulse).")]
+        [SerializeField, Range(0f, 0.12f)] private float _winnerPulseScale = 0f;
         [Tooltip("Vertical lift in pixels when this card is part of the winning hand.")]
         [SerializeField] private float _winnerLiftPx = 15f;
         [SerializeField] private Color _winnerHighlightPeakColor = new Color(1f, 0.82f, 0.22f, 1f);
@@ -64,9 +66,22 @@ namespace TexasHoldem
         /// <summary>Highlights this card when it is part of the winning five-card hand.</summary>
         public void SetWinnerHighlight(bool highlighted)
         {
+            bool turningOn = highlighted && !_winnerHighlight;
             _winnerHighlight = highlighted;
             ApplyWinnerLift();
-            ApplyFaceColor();
+
+            if (!highlighted)
+            {
+                StopWinnerPulse();
+                if (_cardBackground != null && _isFaceUp)
+                    _cardBackground.color = Color.white;
+                return;
+            }
+
+            if (turningOn)
+                StartWinnerPulse();
+            else if (_winnerPulseCoroutine == null && _cardBackground != null && _isFaceUp)
+                _cardBackground.color = _winnerHighlightPeakColor;
         }
 
         private void ApplyWinnerLift()
@@ -214,17 +229,24 @@ namespace TexasHoldem
                 return;
             }
 
-            StopWinnerPulse();
+            if (_winnerHighlight)
+            {
+                if (_winnerPulseCoroutine == null)
+                    _cardBackground.color = _winnerHighlightPeakColor;
+                return;
+            }
 
-            _cardBackground.color = _winnerHighlight
-                ? _winnerHighlightPeakColor
-                : Color.white;
+            StopWinnerPulse();
+            _cardBackground.color = Color.white;
         }
 
         private void StartWinnerPulse()
         {
             if (_winnerPulseCoroutine != null)
-                return;
+            {
+                StopCoroutine(_winnerPulseCoroutine);
+                _winnerPulseCoroutine = null;
+            }
 
             if (!isActiveAndEnabled)
                 return;
@@ -265,17 +287,22 @@ namespace TexasHoldem
         {
             float angularSpeed = Mathf.PI * 2f * _winnerPulseHz;
             var rt = transform as RectTransform;
+            float elapsed = 0f;
 
-            while (_winnerHighlight && _isFaceUp && _cardBackground != null)
+            while (elapsed < _winnerPulseDurationSecs
+                   && _winnerHighlight
+                   && _isFaceUp
+                   && _cardBackground != null)
             {
-                float wave   = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * angularSpeed);
-                float shaped = wave * wave;
-                float blend  = Mathf.Lerp(_winnerPulseMinBlend, _winnerPulseMaxBlend, shaped);
+                elapsed += Time.unscaledDeltaTime;
+
+                float wave  = 0.5f + 0.5f * Mathf.Sin(elapsed * angularSpeed);
+                float blend = Mathf.Lerp(_winnerPulseMinBlend, _winnerPulseMaxBlend, wave);
                 _cardBackground.color = Color.Lerp(Color.white, _winnerHighlightPeakColor, blend);
 
                 if (rt != null && _winnerPulseScale > 0f)
                 {
-                    float scaleMul = 1f + _winnerPulseScale * shaped;
+                    float scaleMul = 1f + _winnerPulseScale * wave;
                     rt.localScale = new Vector3(
                         _winnerPulseBaseScale.x * scaleMul,
                         _winnerPulseBaseScale.y * scaleMul,
@@ -290,8 +317,8 @@ namespace TexasHoldem
             if (rt != null)
                 rt.localScale = _winnerPulseBaseScale;
 
-            if (_cardBackground != null && _isFaceUp)
-                _cardBackground.color = _winnerHighlight ? _winnerHighlightPeakColor : Color.white;
+            if (_cardBackground != null && _isFaceUp && _winnerHighlight)
+                _cardBackground.color = _winnerHighlightPeakColor;
         }
 
         private void StopFlip()
