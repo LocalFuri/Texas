@@ -25,11 +25,15 @@ namespace TexasHoldem
         [SerializeField, Range(0f, 1f)] private float _winnerPulseMaxBlend = 1f;
         [Tooltip("Scale bump at pulse peak as a fraction of base size (0.05 = 5%).")]
         [SerializeField, Range(0f, 0.12f)] private float _winnerPulseScale = 0.05f;
+        [Tooltip("Vertical lift in pixels when this card is part of the winning hand.")]
+        [SerializeField] private float _winnerLiftPx = 15f;
         [SerializeField] private Color _winnerHighlightPeakColor = new Color(1f, 0.82f, 0.22f, 1f);
 
         private Sprite    _faceSprite;
         private bool      _isFaceUp;
         private bool      _winnerHighlight;
+        private Vector2   _baseAnchoredPosition;
+        private bool      _hasBaseAnchoredPosition;
         private Vector3   _winnerPulseBaseScale = Vector3.one;
         private Coroutine _flipCoroutine;
         private Coroutine _winnerPulseCoroutine;
@@ -44,13 +48,38 @@ namespace TexasHoldem
 
             if (GetComponent<RectMask2D>() == null)
                 gameObject.AddComponent<RectMask2D>();
+
+            CacheBaseAnchoredPosition();
+        }
+
+        private void CacheBaseAnchoredPosition()
+        {
+            if (transform is not RectTransform rt)
+                return;
+
+            _baseAnchoredPosition    = rt.anchoredPosition;
+            _hasBaseAnchoredPosition = true;
         }
 
         /// <summary>Highlights this card when it is part of the winning five-card hand.</summary>
         public void SetWinnerHighlight(bool highlighted)
         {
             _winnerHighlight = highlighted;
+            ApplyWinnerLift();
             ApplyFaceColor();
+        }
+
+        private void ApplyWinnerLift()
+        {
+            if (transform is not RectTransform rt)
+                return;
+
+            if (!_hasBaseAnchoredPosition)
+                CacheBaseAnchoredPosition();
+
+            rt.anchoredPosition = _winnerHighlight
+                ? _baseAnchoredPosition + new Vector2(0f, _winnerLiftPx)
+                : _baseAnchoredPosition;
         }
         /// <summary>Displays the card face-up using the sprite from the library.</summary>
         public void Show(Card card)
