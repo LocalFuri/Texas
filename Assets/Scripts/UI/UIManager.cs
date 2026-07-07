@@ -101,6 +101,25 @@ namespace TexasHoldem
         [SerializeField, Min(1)]  private int   _winChipCount   = 8;
         [SerializeField, Min(0f)] private float _winChipStagger = 0.08f;
 
+        [Header("Winner Card Highlight")]
+        [Tooltip("Gold pulse rate in Hz while waiting for Space (1 = one pulse per second).")]
+        [SerializeField, Min(0.1f)] private float _winnerCardPulseHz = 1f;
+        [Tooltip("Minimum gold tint at the trough of each pulse.")]
+        [SerializeField, Range(0f, 1f)] private float _winnerCardPulseMinBlend = 0.5f;
+        [Tooltip("Maximum gold tint at the peak of each pulse.")]
+        [SerializeField, Range(0f, 1f)] private float _winnerCardPulseMaxBlend = 0.85f;
+        [Tooltip("Vertical lift in pixels for cards that are part of the winning hand.")]
+        [SerializeField] private float _winnerCardLiftPx = 15f;
+        [SerializeField] private Color _winnerCardPeakColor = new Color(1f, 0.82f, 0.22f, 1f);
+
+        public static UIManager Instance { get; private set; }
+
+        public float  WinnerCardPulseHz        => _winnerCardPulseHz;
+        public float  WinnerCardPulseMinBlend  => _winnerCardPulseMinBlend;
+        public float  WinnerCardPulseMaxBlend  => _winnerCardPulseMaxBlend;
+        public float  WinnerCardLiftPx           => _winnerCardLiftPx;
+        public Color  WinnerCardPeakColor        => _winnerCardPeakColor;
+
         [Header("Winning Hand")]
         [SerializeField] private TMP_Text _winningHandText;
         [Tooltip("Canvas position of WinningHandLabel (center anchor). Tune in Play mode.")]
@@ -191,6 +210,8 @@ namespace TexasHoldem
             if (!Application.isPlaying)
                 ApplySceneModePreview();
 #endif
+            if (Application.isPlaying)
+                Instance = this;
         }
 
         private void Start()
@@ -263,6 +284,9 @@ namespace TexasHoldem
 
         private void OnDestroy()
         {
+            if (Instance == this)
+                Instance = null;
+
             if (OptionsMenu.Instance != null)
             {
                 OptionsMenu.Instance.OnOptionsChanged -= OnOptionsMenuChanged;

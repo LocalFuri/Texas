@@ -8361,6 +8361,11 @@ MonoBehaviour:
   _winChipSprite: {fileID: 21300000, guid: 00f42296a2c9b824b9e0d93b73b24738, type: 3}
   _winChipCount: 8
   _winChipStagger: 0.08
+  _winnerCardPulseHz: 1
+  _winnerCardPulseMinBlend: 0.5
+  _winnerCardPulseMaxBlend: 0.85
+  _winnerCardLiftPx: 15
+  _winnerCardPeakColor: {r: 1, g: 0.82, b: 0.22, a: 1}
   _winningHandText: {fileID: 0}
   _winningHandLabelX: 0
   _winningHandLabelY: 130

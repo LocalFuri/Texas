@@ -17,10 +17,8 @@ namespace TexasHoldem
         [SerializeField] private float flipDuration = 0.35f;
 
         [Header("Winner Highlight")]
-        [Tooltip("How long the intro gold pulse runs before settling to a static tint.")]
-        [SerializeField, Min(0.1f)] private float _winnerPulseDurationSecs = 1f;
-        [Tooltip("Pulse rate in Hz during the intro window (2 Hz = 2 pulses in 1 second).")]
-        [SerializeField, Min(0.1f)] private float _winnerPulseHz = 2f;
+        [Tooltip("Used only when no UIManager is present. Otherwise tune Winner Card Highlight on UIManager.")]
+        [SerializeField, Min(0.1f)] private float _winnerPulseHz = 1f;
         [Tooltip("Minimum gold tint at the trough of each pulse (0 = white, 1 = full peak color).")]
         [SerializeField, Range(0f, 1f)] private float _winnerPulseMinBlend = 0.5f;
         [Tooltip("Maximum gold tint at the peak of each pulse.")]
@@ -78,10 +76,8 @@ namespace TexasHoldem
                 return;
             }
 
-            if (turningOn)
+            if (turningOn || _winnerPulseCoroutine == null)
                 StartWinnerPulse();
-            else if (_winnerPulseCoroutine == null && _cardBackground != null && _isFaceUp)
-                _cardBackground.color = _winnerHighlightPeakColor;
         }
 
         private void ApplyWinnerLift()
@@ -93,9 +89,24 @@ namespace TexasHoldem
                 CacheBaseAnchoredPosition();
 
             rt.anchoredPosition = _winnerHighlight
-                ? _baseAnchoredPosition + new Vector2(0f, _winnerLiftPx)
+                ? _baseAnchoredPosition + new Vector2(0f, ResolveWinnerLiftPx())
                 : _baseAnchoredPosition;
         }
+
+        private float ResolveWinnerPulseHz() =>
+            UIManager.Instance != null ? UIManager.Instance.WinnerCardPulseHz : _winnerPulseHz;
+
+        private float ResolveWinnerPulseMinBlend() =>
+            UIManager.Instance != null ? UIManager.Instance.WinnerCardPulseMinBlend : _winnerPulseMinBlend;
+
+        private float ResolveWinnerPulseMaxBlend() =>
+            UIManager.Instance != null ? UIManager.Instance.WinnerCardPulseMaxBlend : _winnerPulseMaxBlend;
+
+        private float ResolveWinnerLiftPx() =>
+            UIManager.Instance != null ? UIManager.Instance.WinnerCardLiftPx : _winnerLiftPx;
+
+        private Color ResolveWinnerPeakColor() =>
+            UIManager.Instance != null ? UIManager.Instance.WinnerCardPeakColor : _winnerHighlightPeakColor;
         /// <summary>Displays the card face-up using the sprite from the library.</summary>
         public void Show(Card card)
         {
@@ -232,7 +243,7 @@ namespace TexasHoldem
             if (_winnerHighlight)
             {
                 if (_winnerPulseCoroutine == null)
-                    _cardBackground.color = _winnerHighlightPeakColor;
+                    StartWinnerPulse();
                 return;
             }
 
@@ -285,20 +296,15 @@ namespace TexasHoldem
 
         private IEnumerator RunWinnerPulse()
         {
-            float angularSpeed = Mathf.PI * 2f * _winnerPulseHz;
+            float angularSpeed = Mathf.PI * 2f * ResolveWinnerPulseHz();
+            Color peakColor    = ResolveWinnerPeakColor();
             var rt = transform as RectTransform;
-            float elapsed = 0f;
 
-            while (elapsed < _winnerPulseDurationSecs
-                   && _winnerHighlight
-                   && _isFaceUp
-                   && _cardBackground != null)
+            while (_winnerHighlight && _isFaceUp && _cardBackground != null)
             {
-                elapsed += Time.unscaledDeltaTime;
-
-                float wave  = 0.5f + 0.5f * Mathf.Sin(elapsed * angularSpeed);
-                float blend = Mathf.Lerp(_winnerPulseMinBlend, _winnerPulseMaxBlend, wave);
-                _cardBackground.color = Color.Lerp(Color.white, _winnerHighlightPeakColor, blend);
+                float wave  = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * angularSpeed);
+                float blend = Mathf.Lerp(ResolveWinnerPulseMinBlend(), ResolveWinnerPulseMaxBlend(), wave);
+                _cardBackground.color = Color.Lerp(Color.white, peakColor, blend);
 
                 if (rt != null && _winnerPulseScale > 0f)
                 {
@@ -316,9 +322,6 @@ namespace TexasHoldem
 
             if (rt != null)
                 rt.localScale = _winnerPulseBaseScale;
-
-            if (_cardBackground != null && _isFaceUp && _winnerHighlight)
-                _cardBackground.color = _winnerHighlightPeakColor;
         }
 
         private void StopFlip()
