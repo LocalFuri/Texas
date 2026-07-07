@@ -17,16 +17,22 @@ namespace TexasHoldem
         [SerializeField] private float flipDuration = 0.35f;
 
         [Header("Winner Highlight")]
-        [Tooltip("Pulse rate in Hz — matches winner avatar ring shimmer.")]
-        [SerializeField, Min(0.1f)] private float _winnerPulseHz = 2.5f;
+        [Tooltip("Pulse rate in Hz.")]
+        [SerializeField, Min(0.1f)] private float _winnerPulseHz = 3.5f;
+        [Tooltip("Minimum gold tint at the trough of each pulse (0 = white, 1 = full peak color).")]
+        [SerializeField, Range(0f, 1f)] private float _winnerPulseMinBlend = 0.25f;
+        [Tooltip("Maximum gold tint at the peak of each pulse.")]
+        [SerializeField, Range(0f, 1f)] private float _winnerPulseMaxBlend = 1f;
+        [Tooltip("Scale bump at pulse peak as a fraction of base size (0.05 = 5%).")]
+        [SerializeField, Range(0f, 0.12f)] private float _winnerPulseScale = 0.05f;
+        [SerializeField] private Color _winnerHighlightPeakColor = new Color(1f, 0.82f, 0.22f, 1f);
 
         private Sprite    _faceSprite;
         private bool      _isFaceUp;
         private bool      _winnerHighlight;
+        private Vector3   _winnerPulseBaseScale = Vector3.one;
         private Coroutine _flipCoroutine;
         private Coroutine _winnerPulseCoroutine;
-
-        private static readonly Color WinnerHighlightColor = new Color(1f, 0.95f, 0.55f, 1f);
 
         private void Awake()
         {
@@ -193,7 +199,21 @@ namespace TexasHoldem
             if (!isActiveAndEnabled)
                 return;
 
+            CacheWinnerPulseBaseScale();
             _winnerPulseCoroutine = StartCoroutine(RunWinnerPulse());
+        }
+
+        private void CacheWinnerPulseBaseScale()
+        {
+            if (transform is not RectTransform rt)
+            {
+                _winnerPulseBaseScale = Vector3.one;
+                return;
+            }
+
+            _winnerPulseBaseScale = rt.localScale;
+            if (_winnerPulseBaseScale.x == 0f)
+                _winnerPulseBaseScale = Vector3.one;
         }
 
         private void StopWinnerPulse()
@@ -204,6 +224,9 @@ namespace TexasHoldem
                 _winnerPulseCoroutine = null;
             }
 
+            if (transform is RectTransform rt)
+                rt.localScale = _winnerPulseBaseScale;
+
             if (_cardBackground != null && _isFaceUp && !_winnerHighlight)
                 _cardBackground.color = Color.white;
         }
@@ -211,18 +234,34 @@ namespace TexasHoldem
         private IEnumerator RunWinnerPulse()
         {
             float angularSpeed = Mathf.PI * 2f * _winnerPulseHz;
+            var rt = transform as RectTransform;
 
             while (_winnerHighlight && _isFaceUp && _cardBackground != null)
             {
-                float blend = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * angularSpeed);
-                _cardBackground.color = Color.Lerp(Color.white, WinnerHighlightColor, blend);
+                float wave   = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * angularSpeed);
+                float shaped = wave * wave;
+                float blend  = Mathf.Lerp(_winnerPulseMinBlend, _winnerPulseMaxBlend, shaped);
+                _cardBackground.color = Color.Lerp(Color.white, _winnerHighlightPeakColor, blend);
+
+                if (rt != null && _winnerPulseScale > 0f)
+                {
+                    float scaleMul = 1f + _winnerPulseScale * shaped;
+                    rt.localScale = new Vector3(
+                        _winnerPulseBaseScale.x * scaleMul,
+                        _winnerPulseBaseScale.y * scaleMul,
+                        _winnerPulseBaseScale.z);
+                }
+
                 yield return null;
             }
 
             _winnerPulseCoroutine = null;
 
+            if (rt != null)
+                rt.localScale = _winnerPulseBaseScale;
+
             if (_cardBackground != null && _isFaceUp)
-                _cardBackground.color = _winnerHighlight ? WinnerHighlightColor : Color.white;
+                _cardBackground.color = _winnerHighlight ? _winnerHighlightPeakColor : Color.white;
         }
 
         private void StopFlip()
@@ -241,6 +280,9 @@ namespace TexasHoldem
             Vector3 scale = rt.localScale;
             if (scale.x == 0f)
                 rt.localScale = Vector3.one;
+
+            if (_winnerPulseCoroutine == null)
+                _winnerPulseBaseScale = rt.localScale;
         }
     }
 }
