@@ -2775,7 +2775,7 @@ namespace TexasHoldem
             if (_rakeText == null)
                 return;
 
-            _rakeText.text = displayText;
+            _rakeText.text = "Rake: " + displayText;
             _rakeText.gameObject.SetActive(true);
             ApplyRakeLabelLayout();
             _rakeText.transform.SetAsLastSibling();
