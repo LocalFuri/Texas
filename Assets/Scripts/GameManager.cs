@@ -290,36 +290,32 @@ namespace TexasHoldem
 
         private IEnumerator BettingRound(List<PlayerState> players, int startIndex)
         {
-            // needsToAct[i] mirrors players[i]; everyone who can act starts needing to act.
-            bool[] needsToAct = new bool[players.Count];
-            for (int i = 0; i < players.Count; i++)
-                needsToAct[i] = !players[i].HasFolded && !players[i].IsAllIn;
+            int playersRemainingToAct = CountPlayersWhoCanAct(players);
+            if (playersRemainingToAct <= 0)
+                yield break;
 
-            int index       = startIndex % players.Count;
+            int seatIndex   = startIndex % players.Count;
             int safetyLimit = players.Count * players.Count * 4;
             int iterations  = 0;
 
-            while (iterations++ < safetyLimit)
+            while (playersRemainingToAct > 0 && iterations++ < safetyLimit)
             {
-                if (GetNonFolded(players).Count <= 1) break;
-                if (!needsToAct.Any(n => n)) break;
+                if (GetNonFolded(players).Count <= 1)
+                    break;
 
-                int currentIndex = index;
-                index = (index + 1) % players.Count;
+                int currentIndex = seatIndex % players.Count;
+                var player       = players[currentIndex];
 
-                if (!needsToAct[currentIndex]) continue;
-
-                yield return WaitWhileOptionsMenuOpen();
-
-                var player = players[currentIndex];
                 if (player.HasFolded || player.IsAllIn)
                 {
-                    needsToAct[currentIndex] = false;
+                    seatIndex++;
                     continue;
                 }
 
-                needsToAct[currentIndex] = false;
-                int betBeforeAction = _bettingManager.CurrentBet;
+                yield return WaitWhileOptionsMenuOpen();
+
+                int  betBeforeAction = _bettingManager.CurrentBet;
+                bool actionApplied   = false;
 
                 _awaitingHumanInput = player.Type == PlayerType.Human;
                 OnPlayerTurn?.Invoke(player);
@@ -332,6 +328,7 @@ namespace TexasHoldem
                     int playerBetBefore = player.CurrentBet;
                     if (_bettingManager.ProcessAction(player, action, raise))
                     {
+                        actionApplied = true;
                         int displayAmount = GetActionDisplayAmount(player, action, raise, playerBetBefore);
                         OnPlayerAction?.Invoke(player, action, displayAmount);
                         string detail = action == BettingAction.Raise ? $" +${raise}" : "";
@@ -351,6 +348,7 @@ namespace TexasHoldem
                     int humanBetBefore = player.CurrentBet;
                     if (_bettingManager.ProcessAction(player, _humanAction, _humanRaiseAmount))
                     {
+                        actionApplied = true;
                         int displayAmount = GetActionDisplayAmount(player, _humanAction, _humanRaiseAmount, humanBetBefore);
                         OnPlayerAction?.Invoke(player, _humanAction, displayAmount);
                         string detail = _humanAction == BettingAction.Raise ? $" +${_humanRaiseAmount}" : "";
@@ -364,19 +362,38 @@ namespace TexasHoldem
                     }
                 }
 
+                if (!actionApplied)
+                    continue;
+
                 NotifyPlayersUpdated();
 
                 if (player.Type == PlayerType.AI && _aiActionDelay <= 0f)
                     yield return null;
 
-                // If someone raised, all other active players must act again.
+                seatIndex++;
+
                 if (_bettingManager.CurrentBet > betBeforeAction)
-                {
-                    for (int i = 0; i < players.Count; i++)
-                        if (i != currentIndex && !players[i].HasFolded && !players[i].IsAllIn)
-                            needsToAct[i] = true;
-                }
+                    playersRemainingToAct = CountOtherPlayersWhoCanAct(players, currentIndex);
+                else
+                    playersRemainingToAct--;
             }
+        }
+
+        private static int CountPlayersWhoCanAct(IReadOnlyList<PlayerState> players)
+            => players.Count(p => !p.HasFolded && !p.IsAllIn);
+
+        private static int CountOtherPlayersWhoCanAct(IReadOnlyList<PlayerState> players, int excludeIndex)
+        {
+            int count = 0;
+            for (int i = 0; i < players.Count; i++)
+            {
+                if (i == excludeIndex)
+                    continue;
+                if (!players[i].HasFolded && !players[i].IsAllIn)
+                    count++;
+            }
+
+            return count;
         }
 
         private IEnumerator EndRound(List<PlayerState> active)
