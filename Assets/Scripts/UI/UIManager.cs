@@ -109,12 +109,12 @@ namespace TexasHoldem
 
         [Header("Showdown Rake")]
         [SerializeField] private TMP_Text _rakeText;
-        [Tooltip("Vertical offset of the rake label from PotText center. X matches Winning Hand Label. Tune in Play mode.")]
-        [SerializeField] private Vector2 _rakeOffsetFromPot = new Vector2(0f, -55f);
+        [Tooltip("Canvas position of the rake label (center anchor, top-right inside the felt). Tune in Play mode.")]
+        [SerializeField] private Vector2 _rakeLabelPosition = new Vector2(320f, 170f);
         [Tooltip("Font size for the rake label. Tune in Play mode.")]
         [SerializeField, Min(1f)] private float _rakeFontSize = 24f;
         [Tooltip("Rect size of the rake label. Tune in Play mode.")]
-        [SerializeField] private Vector2 _rakeLabelSize = new Vector2(320f, 32f);
+        [SerializeField] private Vector2 _rakeLabelSize = new Vector2(180f, 32f);
 
         [Header("Seat Action Badges")]
         [Tooltip("Global nudge for CALL / FOLD / RAISE badges on every player seat. Positive X = right, positive Y = up. Tune in Play mode.")]
@@ -2745,17 +2745,7 @@ namespace TexasHoldem
         private Transform RakeLabelParent =>
             _potText != null ? _potText.transform.parent : transform;
 
-        private Vector2 RakeLabelPosition
-        {
-            get
-            {
-                float x = _winningHandLabelX;
-                if (_potText != null && _potText.transform is RectTransform potRt)
-                    return new Vector2(x, potRt.anchoredPosition.y + _rakeOffsetFromPot.y);
-
-                return new Vector2(x, _winningHandLabelY + _rakeOffsetFromPot.y);
-            }
-        }
+        private Vector2 RakeLabelPosition => _rakeLabelPosition;
 
         private void EnsureRakeLabel()
         {
@@ -2780,7 +2770,7 @@ namespace TexasHoldem
             var rt = (RectTransform)labelGo.transform;
             rt.anchorMin = new Vector2(0.5f, 0.5f);
             rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot     = new Vector2(0.5f, 0.5f);
+            rt.pivot     = new Vector2(1f, 1f);
             rt.sizeDelta = _rakeLabelSize;
 
             _rakeText = labelGo.AddComponent<TextMeshProUGUI>();
@@ -2799,7 +2789,7 @@ namespace TexasHoldem
             if (font != null)
                 _rakeText.font = font;
 
-            _rakeText.alignment          = TextAlignmentOptions.Center;
+            _rakeText.alignment          = TextAlignmentOptions.TopRight;
             _rakeText.fontSize           = _rakeFontSize;
             _rakeText.color              = UiColors.PotGold;
             _rakeText.raycastTarget      = false;
@@ -2815,7 +2805,7 @@ namespace TexasHoldem
 
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
-            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.pivot            = new Vector2(1f, 1f);
             rt.sizeDelta        = _rakeLabelSize;
             rt.anchoredPosition = RakeLabelPosition;
         }
