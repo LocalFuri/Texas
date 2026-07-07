@@ -55,8 +55,8 @@ namespace TexasHoldem
 
         [Header("HUD")]
         [SerializeField] private TMP_Text       _potText;
-        [Tooltip("Canvas position of PotText (center anchor). Tune in Play mode.")]
-        [SerializeField] private float          _potLabelX = -24f;
+        [Tooltip("Horizontal nudge from the 5-card board center. Pot label and chips are centered on the full flop–river row.")]
+        [SerializeField] private float          _potLabelX = 0f;
         [SerializeField] private float          _potLabelY = 145f;
         [SerializeField] private ChipStackView  _potChipStack;
         [SerializeField] private Sprite         _potChipSprite100;
@@ -1367,13 +1367,75 @@ namespace TexasHoldem
         /// <summary>Updates the pot number only â€” used while a betting street is in progress.</summary>
         private void ApplyPotLabelLayout()
         {
-            if (_potText == null || _potText.transform is not RectTransform rt)
+            LayoutPotArea();
+        }
+
+        /// <summary>Center X of the full five community-card row (flop through river), even when turn/river are hidden.</summary>
+        private float ResolveCommunityBoardCenterX()
+        {
+            RectTransform firstRt = CommunityCardSlotRect(_flop1);
+            RectTransform lastRt  = CommunityCardSlotRect(_riverCard);
+            if (firstRt == null || lastRt == null)
+                return 0f;
+
+            RectTransform rowRoot = firstRt.parent as RectTransform;
+            float rowX            = rowRoot != null ? rowRoot.anchoredPosition.x : 0f;
+            return rowX + (firstRt.anchoredPosition.x + lastRt.anchoredPosition.x) * 0.5f;
+        }
+
+        private static RectTransform CommunityCardSlotRect(CardView card)
+            => card != null ? card.transform as RectTransform : null;
+
+        private void LayoutPotArea()
+        {
+            if (_potText == null || _potText.transform is not RectTransform potRt)
                 return;
 
-            rt.anchorMin        = new Vector2(0.5f, 0.5f);
-            rt.anchorMax        = new Vector2(0.5f, 0.5f);
-            rt.pivot            = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(_potLabelX, _potLabelY);
+            potRt.anchorMin = new Vector2(0.5f, 0.5f);
+            potRt.anchorMax = new Vector2(0.5f, 0.5f);
+            potRt.pivot     = new Vector2(0.5f, 0.5f);
+
+            float boardCenterX = ResolveCommunityBoardCenterX() + _potLabelX;
+            _potText.ForceMeshUpdate();
+            float textWidth = _potText.preferredWidth;
+
+            bool showStack = _potChipStack != null
+                             && _potChipStack.StackRoot.gameObject.activeSelf;
+
+            float stackWidth = 0f;
+            if (showStack)
+            {
+                RectTransform stackRt = _potChipStack.StackRoot;
+                stackWidth = stackRt.rect.width > 0f ? stackRt.rect.width : stackRt.sizeDelta.x;
+            }
+
+            float potCenterX;
+            float stackCenterX;
+            if (!showStack || stackWidth <= 0f)
+            {
+                potCenterX   = boardCenterX;
+                stackCenterX = boardCenterX;
+            }
+            else
+            {
+                float groupWidth = textWidth + _potChipPadding + stackWidth;
+                float groupLeft  = boardCenterX - groupWidth * 0.5f;
+                potCenterX   = groupLeft + textWidth * 0.5f;
+                stackCenterX = groupLeft + textWidth + _potChipPadding + stackWidth * 0.5f;
+            }
+
+            potRt.anchoredPosition = new Vector2(potCenterX, _potLabelY);
+
+            if (_potChipStack == null)
+                return;
+
+            RectTransform stackRoot = _potChipStack.StackRoot;
+            stackRoot.anchorMin = new Vector2(0.5f, 0.5f);
+            stackRoot.anchorMax = new Vector2(0.5f, 0.5f);
+            stackRoot.pivot     = new Vector2(0.5f, 0.5f);
+            stackRoot.anchoredPosition = new Vector2(
+                stackCenterX,
+                _potLabelY + _potChipYOffset);
         }
 
         private void UpdatePotLabel()
@@ -1398,6 +1460,7 @@ namespace TexasHoldem
 
             _potChipStack.Clear();
             _potChipStack.StackRoot.gameObject.SetActive(false);
+            LayoutPotArea();
         }
 
         /// <summary>Shows the pot chip breakdown â€” after street bets are collected into the pot.</summary>
@@ -1539,27 +1602,13 @@ namespace TexasHoldem
             if (_potChipStack == null || _potText == null)
                 return;
 
-            var potRt   = (RectTransform)_potText.transform;
-            var stackRt = _potChipStack.StackRoot;
-            bool show   = showStack
-                          && _gameManager != null
-                          && _gameManager.PotAmount > 0;
+            RectTransform stackRt = _potChipStack.StackRoot;
+            bool show = showStack
+                        && _gameManager != null
+                        && _gameManager.PotAmount > 0;
 
             stackRt.gameObject.SetActive(show);
-            if (!show)
-                return;
-
-            _potText.ForceMeshUpdate();
-            float textHalf   = _potText.preferredWidth * 0.5f;
-            float stackHalfW = stackRt.rect.width > 0f
-                ? stackRt.rect.width * 0.5f
-                : stackRt.sizeDelta.x * 0.5f;
-
-            float stackX = potRt.anchoredPosition.x + textHalf + _potChipPadding + stackHalfW;
-
-            stackRt.anchoredPosition = new Vector2(
-                stackX,
-                potRt.anchoredPosition.y + _potChipYOffset);
+            LayoutPotArea();
         }
 
         /// <summary>

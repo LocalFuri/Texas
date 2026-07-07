@@ -88,7 +88,7 @@ namespace TexasHoldem
             if (tiebreakers == null || tiebreakers.Count <= kickerIndex)
                 return string.Empty;
 
-            return $", {RankName(tiebreakers[kickerIndex])} kicker";
+            return $", {RankName(tiebreakers[kickerIndex])} Kicker";
         }
     }
 }
