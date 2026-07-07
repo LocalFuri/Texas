@@ -660,9 +660,6 @@ namespace TexasHoldem
 
         private void ShowActionBadgeForPlayer(PlayerState player, BettingAction action, int amount)
         {
-            // Stop any blinking badge from the previous player before showing the new one.
-            HideAllActionBadges();
-
             PlayerView view = ResolvePlayerView(player);
             if (view == null)
             {
@@ -672,10 +669,14 @@ namespace TexasHoldem
                 return;
             }
 
-            view.ShowAction(action, amount);
+            float duration = player.Type == PlayerType.AI
+                ? ActionBadge.BotDisplayDurationSecs
+                : ActionBadge.DisplayDurationSecs;
+
+            view.ShowAction(action, amount, duration);
         }
 
-        /// <summary>Re-shows the badge after seat HUD/bet display refresh (layering).</summary>
+        /// <summary>Keeps the pending badge above bet chips after HUD refresh without restarting its timer.</summary>
         private void ApplyPendingActionBadge()
         {
             if (_winnerCelebrationActive)
@@ -683,8 +684,6 @@ namespace TexasHoldem
 
             if (!_hasPendingActionBadge || _pendingBadgePlayer == null)
                 return;
-
-            ShowActionBadgeForPlayer(_pendingBadgePlayer, _pendingBadgeAction, _pendingBadgeAmount);
 
             PlayerView view = ResolvePlayerView(_pendingBadgePlayer);
             view?.BringActionBadgeToFrontIfVisible();

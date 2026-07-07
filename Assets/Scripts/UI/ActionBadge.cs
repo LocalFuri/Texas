@@ -6,7 +6,8 @@ namespace TexasHoldem
     /// <summary>PNG action badge above the player name when a player acts or wins.</summary>
     public class ActionBadge : MonoBehaviour
     {
-        public const float DisplayDurationSecs = 3f;
+        public const float DisplayDurationSecs    = 3f;
+        public const float BotDisplayDurationSecs = 1.5f;
 
         [SerializeField] private Image _badgeImage;
 
@@ -46,9 +47,9 @@ namespace TexasHoldem
         internal void WireBadgeImage(Image image) => _badgeImage = image;
 
         /// <summary>Shows the badge for the given betting action.</summary>
-        public void Show(BettingAction action, int amount = 0)
+        public void Show(BettingAction action, int amount = 0, float durationSecs = DisplayDurationSecs)
         {
-            PresentSprite(ActionBadgeSprites.For(action), DisplayDurationSecs);
+            PresentSprite(ActionBadgeSprites.For(action), durationSecs);
         }
 
         /// <summary>Hides the badge immediately.</summary>

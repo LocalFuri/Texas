@@ -509,7 +509,7 @@ namespace TexasHoldem
         }
 
         /// <summary>Shows a neon action badge (Check, Fold, Raise, Call, All-In).</summary>
-        public void ShowAction(BettingAction action, int amount = 0)
+        public void ShowAction(BettingAction action, int amount = 0, float durationSecs = ActionBadge.DisplayDurationSecs)
         {
             ActionBadge badge = ResolveActionBadge();
             if (badge == null)
@@ -518,7 +518,7 @@ namespace TexasHoldem
                 return;
             }
 
-            badge.Show(action, amount);
+            badge.Show(action, amount, durationSecs);
         }
 
         /// <summary>Hides the action badge.</summary>
