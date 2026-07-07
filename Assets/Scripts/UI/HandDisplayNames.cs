@@ -6,7 +6,8 @@ namespace TexasHoldem
     public static class HandDisplayNames
     {
         /// <summary>
-        /// True when a non-winning showdown player had the same hand rank, so kickers or high-card detail decided the pot.
+        /// True when a non-winning showdown player tied the winner on the named part of the hand
+        /// (e.g. same pair rank), so kicker or high-card detail actually decided the pot.
         /// </summary>
         public static bool WasTiebreakerDecisive(
             HandResult winner,
@@ -14,6 +15,10 @@ namespace TexasHoldem
             IReadOnlyList<(PlayerState Player, HandResult Result)> showdownHands)
         {
             if (winner == null || showdownHands == null || showdownHands.Count == 0)
+                return false;
+
+            int decisivePrefix = DecisiveTiebreakerPrefixLength(winner.Rank);
+            if (decisivePrefix <= 0)
                 return false;
 
             var winnerSet = new HashSet<PlayerState>();
@@ -32,11 +37,42 @@ namespace TexasHoldem
                     continue;
                 if (winnerSet.Contains(player))
                     continue;
-                if (result.Rank == winner.Rank)
+                if (result.Rank != winner.Rank)
+                    continue;
+                if (TiebreakersMatchPrefix(winner.Tiebreakers, result.Tiebreakers, decisivePrefix))
                     return true;
             }
 
             return false;
+        }
+
+        /// <summary>Tiebreaker slots compared before kicker/high detail is shown.</summary>
+        private static int DecisiveTiebreakerPrefixLength(HandRank rank) => rank switch
+        {
+            HandRank.OnePair       => 1,
+            HandRank.TwoPair       => 2,
+            HandRank.ThreeOfAKind  => 1,
+            HandRank.FourOfAKind   => 1,
+            HandRank.Straight      => 1,
+            HandRank.StraightFlush => 1,
+            HandRank.Flush         => 1,
+            HandRank.HighCard      => 1,
+            _                      => 0,
+        };
+
+        private static bool TiebreakersMatchPrefix(
+            IReadOnlyList<int> a, IReadOnlyList<int> b, int length)
+        {
+            if (a == null || b == null)
+                return false;
+
+            for (int i = 0; i < length; i++)
+            {
+                if (i >= a.Count || i >= b.Count || a[i] != b[i])
+                    return false;
+            }
+
+            return true;
         }
 
         public static string Format(HandResult result, bool tiebreakerDecisive = true)
