@@ -177,6 +177,7 @@ namespace TexasHoldem
 
         private bool          _hasPendingActionBadge;
         private bool          _winnerCelebrationActive;
+        private Coroutine     _winnerCelebrationCoroutine;
         private PlayerState   _pendingBadgePlayer;
         private BettingAction _pendingBadgeAction;
         private int           _pendingBadgeAmount;
@@ -267,6 +268,18 @@ namespace TexasHoldem
                 OptionsMenu.Instance.OnOptionsChanged -= OnOptionsMenuChanged;
                 OptionsMenu.Instance.OnMenuClosed     -= OnOptionsMenuClosed;
             }
+        }
+
+        private void Update()
+        {
+            if (_gameManager == null || !_gameManager.AwaitingWinnerDismiss)
+                return;
+
+            if (OptionsMenu.Instance != null && OptionsMenu.Instance.IsOpen)
+                return;
+
+            if (Input.GetKeyDown(KeyCode.Space))
+                _gameManager.AcknowledgeWinnerDismiss();
         }
 
         private IEnumerator BindOptionsMenuWhenReady()
@@ -1092,8 +1105,7 @@ namespace TexasHoldem
         {
             StopTurnTimer();
             HideBettingControls();
-            for (int i = 0; i < _playerViews.Count; i++)
-                _playerViews[i].SetActiveTurn(false);
+            ClearWinnerCelebration();
 
             foreach (PlayerView view in _playerViews)
                 view?.HideBetDisplay();
@@ -2500,7 +2512,41 @@ namespace TexasHoldem
                 ResolvePlayerView(roundWinner)?.StartWinnerHighlight(share, duration);
 
             if (primaryView != null)
-                StartCoroutine(RunWinnerCelebrationEffects(primaryView, share, duration));
+                _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationEffects(primaryView, share, duration));
+        }
+
+        private void ClearWinnerCelebration()
+        {
+            if (_winnerCelebrationCoroutine != null)
+            {
+                StopCoroutine(_winnerCelebrationCoroutine);
+                _winnerCelebrationCoroutine = null;
+            }
+
+            _winnerCelebrationActive = false;
+            ClearWinningHandDisplay();
+            HidePotChipStack();
+            DestroyFlyingWinChips();
+
+            foreach (PlayerView view in ResolvePlayerViews())
+            {
+                view?.SetActiveTurn(false);
+                view?.HideActionBadge();
+            }
+        }
+
+        private void DestroyFlyingWinChips()
+        {
+            if (_rootCanvas == null)
+                return;
+
+            Transform root = _rootCanvas.transform;
+            for (int i = root.childCount - 1; i >= 0; i--)
+            {
+                Transform child = root.GetChild(i);
+                if (child != null && child.name == "_WinChip")
+                    Destroy(child.gameObject);
+            }
         }
 
         private IEnumerator RunWinnerCelebrationEffects(PlayerView view, int potAmount, float duration)
@@ -2522,6 +2568,8 @@ namespace TexasHoldem
 
             if (duration > 0f)
                 yield return new WaitForSecondsRealtime(duration);
+
+            _winnerCelebrationCoroutine = null;
         }
 
         private IEnumerator SpawnFlyingChip(RectTransform origin, RectTransform target, float delay)

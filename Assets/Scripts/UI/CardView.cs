@@ -185,10 +185,11 @@ namespace TexasHoldem
                 return;
             }
 
-            if (_winnerHighlight)
-                StartWinnerPulse();
-            else
-                StopWinnerPulse();
+            StopWinnerPulse();
+
+            _cardBackground.color = _winnerHighlight
+                ? _winnerHighlightPeakColor
+                : Color.white;
         }
 
         private void StartWinnerPulse()

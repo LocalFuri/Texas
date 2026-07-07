@@ -81,6 +81,13 @@ namespace TexasHoldem
         public float             CommunityFlipDuration   => _communityFlipDuration;
         public float             CommunityFlipGap        => _communityFlipGap;
         public float             RoundEndPauseSecs       => _roundEndPauseSecs;
+        public bool              AwaitingWinnerDismiss   => _awaitingWinnerDismiss;
+
+        /// <summary>Continues past the showdown result after the human presses Space.</summary>
+        public void AcknowledgeWinnerDismiss()
+        {
+            _awaitingWinnerDismiss = false;
+        }
         public float             DealerButtonDelay       => _dealerButtonDelay;
         public float             BlindPostDelay          => _blindPostDelay;
         public int               LastPotAwarded          { get; private set; }
@@ -120,6 +127,7 @@ namespace TexasHoldem
         private AIController   _aiController;
 
         private bool          _awaitingHumanInput;
+        private bool          _awaitingWinnerDismiss;
         private BettingAction _humanAction;
         private int           _humanRaiseAmount;
 
@@ -160,7 +168,8 @@ namespace TexasHoldem
         public void ResetToStartScreen()
         {
             StopAllCoroutines();
-            _awaitingHumanInput = false;
+            _awaitingHumanInput   = false;
+            _awaitingWinnerDismiss = false;
             _humanAction        = default;
             _humanRaiseAmount   = 0;
             DealerIndex         = 0;
@@ -427,7 +436,8 @@ namespace TexasHoldem
             OnWinnerDetermined?.Invoke(roundWinners.Players[0]);
             NotifyPlayersUpdated();
 
-            yield return DelaySeconds(_roundEndPauseSecs);
+            _awaitingWinnerDismiss = true;
+            yield return new WaitUntil(() => !_awaitingWinnerDismiss);
 
             OnRoundEnded?.Invoke();
             yield return new WaitUntil(() => !IsOptionsMenuOpen);
