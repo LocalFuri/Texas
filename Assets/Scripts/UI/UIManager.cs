@@ -109,7 +109,7 @@ namespace TexasHoldem
 
         [Header("Showdown Rake")]
         [SerializeField] private TMP_Text _rakeText;
-        [Tooltip("Rake label offset from PotText center. Negative Y = below pot. Tune in Play mode.")]
+        [Tooltip("Vertical offset of the rake label from PotText center. X matches Winning Hand Label. Tune in Play mode.")]
         [SerializeField] private Vector2 _rakeOffsetFromPot = new Vector2(0f, -55f);
         [Tooltip("Font size for the rake label. Tune in Play mode.")]
         [SerializeField, Min(1f)] private float _rakeFontSize = 24f;
@@ -2693,10 +2693,11 @@ namespace TexasHoldem
         {
             get
             {
+                float x = _winningHandLabelX;
                 if (_potText != null && _potText.transform is RectTransform potRt)
-                    return potRt.anchoredPosition + _rakeOffsetFromPot;
+                    return new Vector2(x, potRt.anchoredPosition.y + _rakeOffsetFromPot.y);
 
-                return WinningHandLabelPosition + _rakeOffsetFromPot;
+                return new Vector2(x, _winningHandLabelY + _rakeOffsetFromPot.y);
             }
         }
 
