@@ -8349,7 +8349,7 @@ MonoBehaviour:
   _potChipPadding: 12
   _potChipColumnGapX: 0
   _potStackOverlapY: 6
-  _copyrightLabel: CodeRed Soft \xAE 2026-07-05
+  _copyrightLabel: CodeRed Soft 2026-07-06
   _copyrightLabelText: {fileID: 881100003}
   _openMenuBetweenHands: 1
   _animateBetPlace: 0
@@ -8366,6 +8366,8 @@ MonoBehaviour:
   _winningHandLabelY: 130
   _rakeText: {fileID: 0}
   _rakeOffsetFromPot: {x: 0, y: 50}
+  _rakeFontSize: 24
+  _rakeLabelSize: {x: 320, y: 32}
   _seatActionBadgeOffset: {x: 0, y: 0}
   _buttonFont: {fileID: 11400000, guid: 6903839b2f8979c419d5db103af926f7, type: 2}
   _actionAmountBadgeStyle:

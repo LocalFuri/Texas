@@ -21,18 +21,43 @@ namespace TexasHoldem
         [Tooltip("When on, hands that end before the flop (3 board cards) are not raked.")]
         public bool noFlopNoRake = true;
 
-        public int Calculate(int grossPot, int bigBlind, bool flopWasDealt)
+        public RakeResult Evaluate(int grossPot, int bigBlind, bool flopWasDealt)
         {
             if (!enabled || grossPot <= 0)
-                return 0;
+                return default;
 
             if (noFlopNoRake && !flopWasDealt)
-                return 0;
+                return default;
 
             int uncapped = Mathf.FloorToInt(grossPot * (percent / 100f));
             int cap      = capBigBlinds * bigBlind;
-            return Mathf.Clamp(uncapped, 0, cap);
+            int amount   = Mathf.Clamp(uncapped, 0, cap);
+
+            return new RakeResult
+            {
+                Amount    = amount,
+                WasCapped = amount > 0 && uncapped > cap,
+            };
         }
+
+        public int Calculate(int grossPot, int bigBlind, bool flopWasDealt) =>
+            Evaluate(grossPot, bigBlind, flopWasDealt).Amount;
+
+        public string FormatDisplay(in RakeResult result)
+        {
+            if (result.Amount <= 0)
+                return string.Empty;
+
+            return result.WasCapped
+                ? $"{result.Amount} (cap)"
+                : $"{result.Amount} ({percent:g}%)";
+        }
+    }
+
+    public struct RakeResult
+    {
+        public int  Amount;
+        public bool WasCapped;
     }
 
     /// <summary>Splits a net pot evenly among winners (remainder chips go to earliest seats in list).</summary>

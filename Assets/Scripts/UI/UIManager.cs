@@ -111,6 +111,10 @@ namespace TexasHoldem
         [SerializeField] private TMP_Text _rakeText;
         [Tooltip("Rake label offset from PotText center. Negative Y = below pot. Tune in Play mode.")]
         [SerializeField] private Vector2 _rakeOffsetFromPot = new Vector2(0f, -55f);
+        [Tooltip("Font size for the rake label. Tune in Play mode.")]
+        [SerializeField, Min(1f)] private float _rakeFontSize = 24f;
+        [Tooltip("Rect size of the rake label. Tune in Play mode.")]
+        [SerializeField] private Vector2 _rakeLabelSize = new Vector2(320f, 32f);
 
         [Header("Seat Action Badges")]
         [Tooltip("Global nudge for CALL / FOLD / RAISE badges on every player seat. Positive X = right, positive Y = up. Tune in Play mode.")]
@@ -2350,7 +2354,7 @@ namespace TexasHoldem
                 EnsureWinningHandLabel();
                 ApplyWinningHandLabelLayout();
                 EnsureRakeLabel();
-                ApplyRakeLabelLayout();
+                StyleRakeLabel();
                 RefreshVisibleSeatActionBadges();
                 return;
             }
@@ -2437,7 +2441,7 @@ namespace TexasHoldem
                 : _gameManager.LastPotAwarded;
 
             ShowWinningHandDisplay();
-            ShowRakeDisplay(_gameManager.LastRakeAmount);
+            ShowRakeDisplay(_gameManager.LastRakeDisplayText);
             ShowPotForWinnerCelebration(_gameManager.LastGrossPot);
 
             PlayerView primaryView = ResolvePlayerView(winners[0]);
@@ -2720,7 +2724,7 @@ namespace TexasHoldem
             rt.anchorMin = new Vector2(0.5f, 0.5f);
             rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot     = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(320f, 32f);
+            rt.sizeDelta = _rakeLabelSize;
 
             _rakeText = labelGo.AddComponent<TextMeshProUGUI>();
             StyleRakeLabel();
@@ -2739,7 +2743,7 @@ namespace TexasHoldem
                 _rakeText.font = font;
 
             _rakeText.alignment          = TextAlignmentOptions.Center;
-            _rakeText.fontSize           = _potText != null ? _potText.fontSize * 0.85f : 24f;
+            _rakeText.fontSize           = _rakeFontSize;
             _rakeText.color              = UiColors.PotGold;
             _rakeText.raycastTarget      = false;
             _rakeText.enableWordWrapping = false;
@@ -2755,12 +2759,13 @@ namespace TexasHoldem
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta        = _rakeLabelSize;
             rt.anchoredPosition = RakeLabelPosition;
         }
 
-        private void ShowRakeDisplay(int rakeAmount)
+        private void ShowRakeDisplay(string displayText)
         {
-            if (rakeAmount <= 0)
+            if (string.IsNullOrEmpty(displayText))
             {
                 HideRakeDisplay();
                 return;
@@ -2770,7 +2775,7 @@ namespace TexasHoldem
             if (_rakeText == null)
                 return;
 
-            _rakeText.text = "Rake: " + rakeAmount.ToString("N0", GermanNFI);
+            _rakeText.text = displayText;
             _rakeText.gameObject.SetActive(true);
             ApplyRakeLabelLayout();
             _rakeText.transform.SetAsLastSibling();

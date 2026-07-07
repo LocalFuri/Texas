@@ -86,6 +86,7 @@ namespace TexasHoldem
         public int               LastPotAwarded          { get; private set; }
         public int               LastGrossPot            { get; private set; }
         public int               LastRakeAmount          { get; private set; }
+        public string            LastRakeDisplayText     { get; private set; }
         public IReadOnlyList<PlayerState> LastRoundWinners { get; private set; }
         public WinningHandEvaluation LastWinningHand     { get; private set; }
         public IReadOnlyList<Card> CommunityCards        => _boardManager?.CommunityCards;
@@ -394,12 +395,14 @@ namespace TexasHoldem
 
             LastGrossPot   = _bettingManager.Pot;
             bool flopDealt = _boardManager.CommunityCards.Count >= 3;
-            LastRakeAmount = _rake.Calculate(LastGrossPot, _bigBlind, flopDealt);
+            RakeResult rakeResult = _rake.Evaluate(LastGrossPot, _bigBlind, flopDealt);
+            LastRakeAmount      = rakeResult.Amount;
+            LastRakeDisplayText = _rake.FormatDisplay(rakeResult);
             LastPotAwarded = LastGrossPot - LastRakeAmount;
 
             PotAward.Split(LastPotAwarded, roundWinners.Players);
 
-            OnGameMessage?.Invoke(BuildRoundEndMessage(roundWinners.Players, LastPotAwarded, LastRakeAmount));
+            OnGameMessage?.Invoke(BuildRoundEndMessage(roundWinners.Players, LastPotAwarded, LastRakeDisplayText));
             OnWinnerDetermined?.Invoke(roundWinners.Players[0]);
             NotifyPlayersUpdated();
 
@@ -460,7 +463,7 @@ namespace TexasHoldem
         }
 
         private static string BuildRoundEndMessage(
-            IReadOnlyList<PlayerState> winners, int netPot, int rake)
+            IReadOnlyList<PlayerState> winners, int netPot, string rakeDisplay)
         {
             if (winners == null || winners.Count == 0)
                 return string.Empty;
@@ -469,7 +472,7 @@ namespace TexasHoldem
                 ? winners[0].Name
                 : string.Join(" & ", winners.Select(p => p.Name));
 
-            string rakeNote = rake > 0 ? $" (rake ${rake})" : string.Empty;
+            string rakeNote = !string.IsNullOrEmpty(rakeDisplay) ? $" (rake {rakeDisplay})" : string.Empty;
 
             if (winners.Count == 1)
                 return $"{names} wins the pot of ${netPot}{rakeNote}!";
