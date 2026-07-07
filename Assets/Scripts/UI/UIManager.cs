@@ -2691,12 +2691,13 @@ namespace TexasHoldem
             _winningHandText.transform.SetAsLastSibling();
 
             if (winners != null && winners.Count > 0 && evaluation?.BestCards != null && evaluation.BestCards.Count > 0)
-                ApplyWinningCardHighlightsForRound(winners);
+                ApplyWinningCardHighlightsForRound(winners, tiebreakerDecisive);
             else
                 ClearWinningCardHighlights();
         }
 
-        private void ApplyWinningCardHighlightsForRound(IReadOnlyList<PlayerState> winners)
+        private void ApplyWinningCardHighlightsForRound(
+            IReadOnlyList<PlayerState> winners, bool kickerDecisive)
         {
             ClearWinningCardHighlights();
 
@@ -2705,14 +2706,15 @@ namespace TexasHoldem
             if (winnerEvaluations.Count == 0)
                 return;
 
-            ApplyCommunityWinningCardHighlights(winnerEvaluations);
+            ApplyCommunityWinningCardHighlights(winnerEvaluations, kickerDecisive);
 
             foreach ((PlayerState winner, WinningHandEvaluation evaluation) in winnerEvaluations)
             {
-                if (evaluation?.BestCards == null || evaluation.BestCards.Count == 0)
+                IReadOnlyList<Card> glowCards = WinningHandEvaluation.GetGlowCards(evaluation, kickerDecisive);
+                if (glowCards == null || glowCards.Count == 0)
                     continue;
 
-                ResolvePlayerView(winner)?.ApplyWinningCardHighlights(winner, evaluation.BestCards);
+                ResolvePlayerView(winner)?.ApplyWinningCardHighlights(winner, glowCards);
             }
         }
 
@@ -2754,7 +2756,8 @@ namespace TexasHoldem
         }
 
         private void ApplyCommunityWinningCardHighlights(
-            IReadOnlyList<(PlayerState Player, WinningHandEvaluation Evaluation)> winnerEvaluations)
+            IReadOnlyList<(PlayerState Player, WinningHandEvaluation Evaluation)> winnerEvaluations,
+            bool kickerDecisive)
         {
             if (_communityCardSlots == null || _gameManager?.CommunityCards == null)
                 return;
@@ -2770,8 +2773,8 @@ namespace TexasHoldem
                 bool highlight = false;
                 foreach ((PlayerState _, WinningHandEvaluation evaluation) in winnerEvaluations)
                 {
-                    if (evaluation?.BestCards != null
-                        && WinningHandEvaluation.ContainsCard(evaluation.BestCards, boardCard))
+                    IReadOnlyList<Card> glowCards = WinningHandEvaluation.GetGlowCards(evaluation, kickerDecisive);
+                    if (glowCards != null && WinningHandEvaluation.ContainsCard(glowCards, boardCard))
                     {
                         highlight = true;
                         break;
