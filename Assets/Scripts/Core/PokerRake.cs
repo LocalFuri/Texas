@@ -46,7 +46,7 @@ namespace TexasHoldem
         public string FormatDisplay(in RakeResult result)
         {
             if (result.Amount <= 0)
-                return string.Empty;
+                return "No Rake";
 
             return result.WasCapped
                 ? $"{result.Amount} (cap)"

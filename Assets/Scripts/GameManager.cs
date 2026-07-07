@@ -432,7 +432,8 @@ namespace TexasHoldem
 
             PotAward.Split(LastPotAwarded, roundWinners.Players);
 
-            OnGameMessage?.Invoke(BuildRoundEndMessage(roundWinners.Players, LastPotAwarded, LastRakeDisplayText));
+            OnGameMessage?.Invoke(BuildRoundEndMessage(
+                roundWinners.Players, LastPotAwarded, LastRakeAmount, LastRakeDisplayText));
             OnWinnerDetermined?.Invoke(roundWinners.Players[0]);
             NotifyPlayersUpdated();
 
@@ -510,7 +511,7 @@ namespace TexasHoldem
         }
 
         private static string BuildRoundEndMessage(
-            IReadOnlyList<PlayerState> winners, int netPot, string rakeDisplay)
+            IReadOnlyList<PlayerState> winners, int netPot, int rakeAmount, string rakeDisplay)
         {
             if (winners == null || winners.Count == 0)
                 return string.Empty;
@@ -519,7 +520,9 @@ namespace TexasHoldem
                 ? winners[0].Name
                 : string.Join(" & ", winners.Select(p => p.Name));
 
-            string rakeNote = !string.IsNullOrEmpty(rakeDisplay) ? $" (rake {rakeDisplay})" : string.Empty;
+            string rakeNote = rakeAmount > 0 && !string.IsNullOrEmpty(rakeDisplay)
+                ? $" (rake {rakeDisplay})"
+                : string.Empty;
 
             if (winners.Count == 1)
                 return $"{names} wins the pot of ${netPot}{rakeNote}!";
