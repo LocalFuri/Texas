@@ -90,6 +90,7 @@ namespace TexasHoldem
         public IReadOnlyList<PlayerState> LastRoundWinners { get; private set; }
         public WinningHandEvaluation LastWinningHand     { get; private set; }
         public IReadOnlyList<(PlayerState Player, HandResult Result)> LastShowdownHands { get; private set; }
+        public IReadOnlyList<(PlayerState Player, WinningHandEvaluation Evaluation)> LastShowdownEvaluations { get; private set; }
         public IReadOnlyList<Card> CommunityCards        => _boardManager?.CommunityCards;
 
         /// <summary>Seat index (0-based) of the current dealer among <see cref="Players"/>.</summary>
@@ -410,7 +411,8 @@ namespace TexasHoldem
             RoundWinners roundWinners = ResolveRoundWinners(contenders);
             LastWinningHand   = roundWinners.BestEvaluation;
             LastRoundWinners  = roundWinners.Players;
-            LastShowdownHands = roundWinners.ShowdownHands;
+            LastShowdownHands       = roundWinners.ShowdownHands;
+            LastShowdownEvaluations = roundWinners.ShowdownEvaluations;
 
             LastGrossPot   = _bettingManager.Pot;
             bool flopDealt = _boardManager.CommunityCards.Count >= 3;
@@ -438,15 +440,18 @@ namespace TexasHoldem
             public List<PlayerState> Players;
             public WinningHandEvaluation BestEvaluation;
             public List<(PlayerState Player, HandResult Result)> ShowdownHands;
+            public List<(PlayerState Player, WinningHandEvaluation Evaluation)> ShowdownEvaluations;
 
             public RoundWinners(
                 List<PlayerState> players,
                 WinningHandEvaluation bestEvaluation,
-                List<(PlayerState Player, HandResult Result)> showdownHands)
+                List<(PlayerState Player, HandResult Result)> showdownHands,
+                List<(PlayerState Player, WinningHandEvaluation Evaluation)> showdownEvaluations)
             {
-                Players         = players;
-                BestEvaluation  = bestEvaluation;
-                ShowdownHands   = showdownHands;
+                Players              = players;
+                BestEvaluation       = bestEvaluation;
+                ShowdownHands        = showdownHands;
+                ShowdownEvaluations  = showdownEvaluations;
             }
         }
 
@@ -470,8 +475,12 @@ namespace TexasHoldem
             }
 
             var showdownHands = new List<(PlayerState Player, HandResult Result)>(evaluated.Count);
+            var showdownEvaluations = new List<(PlayerState Player, WinningHandEvaluation Evaluation)>(evaluated.Count);
             foreach ((PlayerState player, WinningHandEvaluation evaluation) in evaluated)
+            {
                 showdownHands.Add((player, evaluation.Result));
+                showdownEvaluations.Add((player, evaluation));
+            }
 
             var winners = new List<PlayerState>();
             if (bestEval != null)
@@ -487,7 +496,7 @@ namespace TexasHoldem
                 winners.Add(contenders[0]);
             }
 
-            return new RoundWinners(winners, bestEval, showdownHands);
+            return new RoundWinners(winners, bestEval, showdownHands, showdownEvaluations);
         }
 
         private static string BuildRoundEndMessage(

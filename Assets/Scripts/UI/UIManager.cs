@@ -2690,40 +2690,96 @@ namespace TexasHoldem
             _winningHandText.gameObject.SetActive(true);
             _winningHandText.transform.SetAsLastSibling();
 
-            if (evaluation?.BestCards != null && evaluation.BestCards.Count > 0 && winners != null)
-            {
-                foreach (PlayerState roundWinner in winners)
-                {
-                    PlayerView view = ResolvePlayerView(roundWinner);
-                    ApplyWinningCardHighlights(roundWinner, view, evaluation.BestCards);
-                }
-            }
+            if (winners != null && winners.Count > 0 && evaluation?.BestCards != null && evaluation.BestCards.Count > 0)
+                ApplyWinningCardHighlightsForRound(winners);
             else
                 ClearWinningCardHighlights();
         }
 
-        private void ApplyWinningCardHighlights(
-            PlayerState winner, PlayerView winnerView, IReadOnlyList<Card> winningCards)
+        private void ApplyWinningCardHighlightsForRound(IReadOnlyList<PlayerState> winners)
         {
             ClearWinningCardHighlights();
 
-            if (winningCards == null || winningCards.Count == 0)
+            List<(PlayerState Player, WinningHandEvaluation Evaluation)> winnerEvaluations =
+                ResolveWinnerEvaluations(winners);
+            if (winnerEvaluations.Count == 0)
                 return;
 
-            if (_communityCardSlots != null && _gameManager?.CommunityCards != null)
-            {
-                IReadOnlyList<Card> board = _gameManager.CommunityCards;
-                for (int i = 0; i < _communityCardSlots.Length && i < board.Count; i++)
-                {
-                    CardView slot = _communityCardSlots[i];
-                    if (slot == null)
-                        continue;
+            ApplyCommunityWinningCardHighlights(winnerEvaluations);
 
-                    slot.SetWinnerHighlight(WinningHandEvaluation.ContainsCard(winningCards, board[i]));
+            foreach ((PlayerState winner, WinningHandEvaluation evaluation) in winnerEvaluations)
+            {
+                if (evaluation?.BestCards == null || evaluation.BestCards.Count == 0)
+                    continue;
+
+                ResolvePlayerView(winner)?.ApplyWinningCardHighlights(winner, evaluation.BestCards);
+            }
+        }
+
+        private List<(PlayerState Player, WinningHandEvaluation Evaluation)> ResolveWinnerEvaluations(
+            IReadOnlyList<PlayerState> winners)
+        {
+            var resolved = new List<(PlayerState Player, WinningHandEvaluation Evaluation)>();
+            if (winners == null || winners.Count == 0)
+                return resolved;
+
+            var winnerSet = new HashSet<PlayerState>();
+            foreach (PlayerState winner in winners)
+            {
+                if (winner != null)
+                    winnerSet.Add(winner);
+            }
+
+            IReadOnlyList<(PlayerState Player, WinningHandEvaluation Evaluation)> showdownEvaluations =
+                _gameManager?.LastShowdownEvaluations;
+            if (showdownEvaluations != null)
+            {
+                foreach ((PlayerState player, WinningHandEvaluation evaluation) in showdownEvaluations)
+                {
+                    if (player != null && winnerSet.Contains(player) && evaluation != null)
+                        resolved.Add((player, evaluation));
                 }
             }
 
-            winnerView?.ApplyWinningCardHighlights(winner, winningCards);
+            if (resolved.Count == 0 && _gameManager?.LastWinningHand != null)
+            {
+                foreach (PlayerState winner in winners)
+                {
+                    if (winner != null)
+                        resolved.Add((winner, _gameManager.LastWinningHand));
+                }
+            }
+
+            return resolved;
+        }
+
+        private void ApplyCommunityWinningCardHighlights(
+            IReadOnlyList<(PlayerState Player, WinningHandEvaluation Evaluation)> winnerEvaluations)
+        {
+            if (_communityCardSlots == null || _gameManager?.CommunityCards == null)
+                return;
+
+            IReadOnlyList<Card> board = _gameManager.CommunityCards;
+            for (int i = 0; i < _communityCardSlots.Length && i < board.Count; i++)
+            {
+                CardView slot = _communityCardSlots[i];
+                if (slot == null)
+                    continue;
+
+                Card boardCard = board[i];
+                bool highlight = false;
+                foreach ((PlayerState _, WinningHandEvaluation evaluation) in winnerEvaluations)
+                {
+                    if (evaluation?.BestCards != null
+                        && WinningHandEvaluation.ContainsCard(evaluation.BestCards, boardCard))
+                    {
+                        highlight = true;
+                        break;
+                    }
+                }
+
+                slot.SetWinnerHighlight(highlight);
+            }
         }
 
         private void ClearWinningCardHighlights()
