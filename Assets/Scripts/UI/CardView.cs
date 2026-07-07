@@ -16,10 +16,15 @@ namespace TexasHoldem
         [Header("Flip Animation")]
         [SerializeField] private float flipDuration = 0.35f;
 
+        [Header("Winner Highlight")]
+        [Tooltip("Pulse rate in Hz — matches winner avatar ring shimmer.")]
+        [SerializeField, Min(0.1f)] private float _winnerPulseHz = 2.5f;
+
         private Sprite    _faceSprite;
         private bool      _isFaceUp;
         private bool      _winnerHighlight;
         private Coroutine _flipCoroutine;
+        private Coroutine _winnerPulseCoroutine;
 
         private static readonly Color WinnerHighlightColor = new Color(1f, 0.95f, 0.55f, 1f);
 
@@ -41,7 +46,6 @@ namespace TexasHoldem
             _winnerHighlight = highlighted;
             ApplyFaceColor();
         }
-
         /// <summary>Displays the card face-up using the sprite from the library.</summary>
         public void Show(Card card)
         {
@@ -65,6 +69,7 @@ namespace TexasHoldem
         /// <summary>Displays the real card back sprite from the library (face-down).</summary>
         public void ShowFaceDown()
         {
+            StopWinnerPulse();
             StopFlip();
             gameObject.SetActive(true);
             if (_faceDownOverlay != null) _faceDownOverlay.SetActive(false);
@@ -103,6 +108,7 @@ namespace TexasHoldem
         /// <summary>Shows the slot as a dark empty placeholder — visible but no card assigned.</summary>
         public void ShowEmpty()
         {
+            StopWinnerPulse();
             StopFlip();
             gameObject.SetActive(true);
             if (_faceDownOverlay != null) _faceDownOverlay.SetActive(false);
@@ -120,6 +126,7 @@ namespace TexasHoldem
         /// <summary>Hides the card slot entirely (use for hole cards, not community slots).</summary>
         public void Hide()
         {
+            StopWinnerPulse();
             StopFlip();
             gameObject.SetActive(false);
         }
@@ -167,9 +174,55 @@ namespace TexasHoldem
         private void ApplyFaceColor()
         {
             if (_cardBackground == null || !_isFaceUp)
+            {
+                StopWinnerPulse();
+                return;
+            }
+
+            if (_winnerHighlight)
+                StartWinnerPulse();
+            else
+                StopWinnerPulse();
+        }
+
+        private void StartWinnerPulse()
+        {
+            if (_winnerPulseCoroutine != null)
                 return;
 
-            _cardBackground.color = _winnerHighlight ? WinnerHighlightColor : Color.white;
+            if (!isActiveAndEnabled)
+                return;
+
+            _winnerPulseCoroutine = StartCoroutine(RunWinnerPulse());
+        }
+
+        private void StopWinnerPulse()
+        {
+            if (_winnerPulseCoroutine != null)
+            {
+                StopCoroutine(_winnerPulseCoroutine);
+                _winnerPulseCoroutine = null;
+            }
+
+            if (_cardBackground != null && _isFaceUp && !_winnerHighlight)
+                _cardBackground.color = Color.white;
+        }
+
+        private IEnumerator RunWinnerPulse()
+        {
+            float angularSpeed = Mathf.PI * 2f * _winnerPulseHz;
+
+            while (_winnerHighlight && _isFaceUp && _cardBackground != null)
+            {
+                float blend = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * angularSpeed);
+                _cardBackground.color = Color.Lerp(Color.white, WinnerHighlightColor, blend);
+                yield return null;
+            }
+
+            _winnerPulseCoroutine = null;
+
+            if (_cardBackground != null && _isFaceUp)
+                _cardBackground.color = _winnerHighlight ? WinnerHighlightColor : Color.white;
         }
 
         private void StopFlip()
