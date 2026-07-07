@@ -786,10 +786,38 @@ namespace TexasHoldem
             StopHumanHoleReveal();
             HideAllActionBadges();
 
-            foreach (PlayerView view in ResolvePlayerViews())
+            IReadOnlyList<PlayerView> views = ResolvePlayerViews();
+            IReadOnlyList<PlayerState> players = _gameManager?.Players;
+            if (views != null && players != null)
             {
-                view?.HideBetDisplay();
-                view?.ResetHoleCardReveal();
+                for (int i = 0; i < views.Count && i < players.Count; i++)
+                {
+                    PlayerView  view   = views[i];
+                    PlayerState player = players[i];
+                    if (view == null || player == null)
+                        continue;
+
+                    view.HideBetDisplay();
+                    view.ResetHoleCardReveal();
+                    view.SetActiveTurn(false);
+                    view.HideActionBadge();
+                    view.RefreshHud(player);
+
+                    if (player.Type == PlayerType.Human)
+                        view.SyncHumanHoleCardDisplay(player);
+                    else
+                        view.RefreshOpponentCards(player);
+                }
+            }
+            else
+            {
+                foreach (PlayerView view in ResolvePlayerViews())
+                {
+                    view?.HideBetDisplay();
+                    view?.ResetHoleCardReveal();
+                    view?.SetActiveTurn(false);
+                    view?.HideActionBadge();
+                }
             }
 
             _previousBets.Clear();
