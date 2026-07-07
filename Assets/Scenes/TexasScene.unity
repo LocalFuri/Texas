@@ -8352,7 +8352,7 @@ MonoBehaviour:
   _potStackOverlapY: 6
   _copyrightLabel: CodeRed Soft 2026-07-06
   _copyrightLabelText: {fileID: 881100003}
-  _openMenuBetweenHands: 1
+  _openMenuBetweenHands: 0
   _animateBetPlace: 0
   _animateStreetCollect: 0
   _collectFlyDuration: 0.5

@@ -441,7 +441,6 @@ namespace TexasHoldem
             yield return new WaitUntil(() => !_awaitingWinnerDismiss);
 
             OnRoundEnded?.Invoke();
-            yield return new WaitUntil(() => !IsOptionsMenuOpen);
             DealerIndex = (DealerIndex + 1) % active.Count;
             SetPhase(GamePhase.RoundOver);
         }

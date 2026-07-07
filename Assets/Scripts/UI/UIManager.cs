@@ -77,8 +77,8 @@ namespace TexasHoldem
         [SerializeField] private TMP_Text _copyrightLabelText;
 
         [Header("Between Hands")]
-        [Tooltip("After each hand, opens the options menu; the next deal waits until the menu is closed.")]
-        [SerializeField] private bool _openMenuBetweenHands = true;
+        [Tooltip("When on, opens the options menu after each hand. The next deal still starts immediately after Space.")]
+        [SerializeField] private bool _openMenuBetweenHands;
 
         [Header("Seat Bet Place")]
         [Tooltip("When off, bet chips appear instantly under the seat (GGPoker / PokerStars style).")]
