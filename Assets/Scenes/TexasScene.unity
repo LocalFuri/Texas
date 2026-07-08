@@ -15900,7 +15900,6 @@ MonoBehaviour:
     playerName: Alex Hunter
   _cardWidth: 120
   _cardGap: 9
-  _holeCardOutwardOffsetPx: -28
   _avatarDiameter: 130
   _betGapBelowAvatar: 24
   _betChipBadgeGap: -30
