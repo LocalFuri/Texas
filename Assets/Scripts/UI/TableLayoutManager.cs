@@ -89,6 +89,9 @@ namespace TexasHoldem
         [Tooltip("Gap between avatar bottom edge and chip stack top; same for every seat.")]
         [SerializeField] private float _betGapBelowAvatar = 3f;
 
+        [Tooltip("Vertical gap between the bet chip stack and the amount badge below (canvas px).")]
+        [SerializeField, Min(0f)] private float _betChipBadgeGap = 3f;
+
         [Tooltip("Vertical step between identical chips (2–4 px). One slider for all seats.")]
         [SerializeField, Range(2f, 4f)] private float _stackOverlapY = 2f;
 
@@ -106,6 +109,9 @@ namespace TexasHoldem
 
         /// <summary>Horizontal gap between denomination columns in bet and pot chip stacks.</summary>
         public float ChipColumnGapX => _chipColumnGapX;
+
+        /// <summary>Vertical gap between bet chips and the amount label beneath.</summary>
+        public float BetChipBadgeGap => Mathf.Max(0f, _betChipBadgeGap);
 
         [SerializeField, HideInInspector] private float _cardHeight = 120f * (95f / 65f);
 
@@ -442,13 +448,12 @@ namespace TexasHoldem
 
         private static float BetChipStackWidth      => ChipStackView.MaxLayoutWidth;
         private static float BetChipStackHeight     => ChipStackView.MaxLayoutHeight;
-        private const float BetChipBadgeGap        = 6f;
         private const float BetAmountBadgeWidth    = 90f;
         private const float BetAmountBadgeHeight   = 30f;
         private static float BetDisplayWidth       => Mathf.Max(BetAmountBadgeWidth, BetChipStackWidth);
-        private static float BetDisplayHeight      => BetChipStackHeight + BetChipBadgeGap + BetAmountBadgeHeight;
-        private static float BetChipStackCenterY   => (BetAmountBadgeHeight + BetChipBadgeGap) * 0.5f;
-        private static float BetAmountBadgeCenterY   => -(BetChipStackHeight + BetChipBadgeGap) * 0.5f;
+        private float BetDisplayHeight      => BetChipStackHeight + BetChipBadgeGap + BetAmountBadgeHeight;
+        private float BetChipStackCenterY   => (BetAmountBadgeHeight + BetChipBadgeGap) * 0.5f;
+        private float BetAmountBadgeCenterY => -(BetChipStackHeight + BetChipBadgeGap) * 0.5f;
 
         private float ComputeBetAnchorCenterY()
         {
@@ -499,7 +504,7 @@ namespace TexasHoldem
             return nested != null ? nested : betAnchor;
         }
 
-        private static void ApplyBetAnchorContentLayout(RectTransform layoutRoot)
+        private void ApplyBetAnchorContentLayout(RectTransform layoutRoot)
         {
             if (layoutRoot == null)
                 return;

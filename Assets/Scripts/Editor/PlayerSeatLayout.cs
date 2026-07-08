@@ -361,6 +361,17 @@ namespace TexasHoldem
                 DestroyObj(go);
         }
 
+        private static float ResolveBetChipBadgeGap()
+        {
+#if UNITY_2022_2_OR_NEWER
+            TableLayoutManager layout = Object.FindFirstObjectByType<TableLayoutManager>(
+                FindObjectsInactive.Include);
+#else
+            TableLayoutManager layout = Object.FindObjectOfType<TableLayoutManager>(true);
+#endif
+            return layout != null ? layout.BetChipBadgeGap : 3f;
+        }
+
         private static void SyncHudMirrorFromTableLayout()
         {
 #if UNITY_2022_2_OR_NEWER
@@ -882,10 +893,12 @@ namespace TexasHoldem
             RecordObj(betDisplayComp);
             var betDisplayImg = betDisplayGo.GetComponent<Image>();
             if (betDisplayImg != null) DestroyObj(betDisplayImg);
+            const float betAmountBadgeHeight = 30f;
+            float betChipBadgeGap = ResolveBetChipBadgeGap();
             const float betDisplayW = 90f;
-            float betDisplayH = ChipStackView.MaxLayoutHeight + 6f + 30f;
-            const float chipStackCenterY = 18f;
-            float badgeCenterY = -(ChipStackView.MaxLayoutHeight + 6f) * 0.5f;
+            float betDisplayH = ChipStackView.MaxLayoutHeight + betChipBadgeGap + betAmountBadgeHeight;
+            float chipStackCenterY = (betAmountBadgeHeight + betChipBadgeGap) * 0.5f;
+            float badgeCenterY = -(ChipStackView.MaxLayoutHeight + betChipBadgeGap) * 0.5f;
             SetRect(betDisplayGo, 0f, 0f, betDisplayW, betDisplayH);
 
             DestroyIfExists(betDisplayGo.transform, "ChipIcon");
