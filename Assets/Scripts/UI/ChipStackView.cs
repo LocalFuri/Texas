@@ -6,7 +6,7 @@ namespace TexasHoldem
 {
     /// <summary>
     /// Chip graphics — identical denominations stack vertically with slight overlap;
-    /// different denominations sit in horizontal columns.
+    /// different denominations sit in horizontal columns, bottom-aligned on a shared baseline.
     /// Bet stacks use exact chip breakdown ({500,100,25,5,1}); pot stacks use the same via SetExactAmount.
     /// </summary>
     public class ChipStackView : MonoBehaviour
@@ -63,6 +63,14 @@ namespace TexasHoldem
         [Tooltip("When set, uses Custom Column Gap X instead of TableLayoutManager Chip Column Gap X.")]
         [SerializeField] private bool _useCustomColumnGap;
         [SerializeField, Range(0f, 48f)] private float _customColumnGapX = DefaultColumnGapX;
+
+        [Header("Denomination Bottom Align")]
+        [Tooltip("Per-denom vertical nudge (canvas px) so painted chip edges share one baseline. Positive = move chip up.")]
+        [SerializeField] private float _bottomAlignOffset1;
+        [SerializeField] private float _bottomAlignOffset5   = 3f;
+        [SerializeField] private float _bottomAlignOffset25;
+        [SerializeField] private float _bottomAlignOffset100;
+        [SerializeField] private float _bottomAlignOffset500;
 
         private readonly List<Image> _slots = new List<Image>();
         private int    _lastAmount;
@@ -293,7 +301,10 @@ namespace TexasHoldem
                     chipRt.sizeDelta = new Vector2(displaySize, displaySize);
 
                     if (j == 0)
-                        colCenterY = SolveCenterYForVisualBottom(chipRt, img, colCenterX, baselineY);
+                    {
+                        float columnBaseline = baselineY + ResolveDenomBottomAlignOffset(group.Denomination);
+                        colCenterY = SolveCenterYForVisualBottom(chipRt, img, colCenterX, columnBaseline);
+                    }
                     else
                         colCenterY += overlapY;
 
@@ -318,8 +329,8 @@ namespace TexasHoldem
 
             if (minBottom <= maxTop)
             {
-                float contentCenterY = (minBottom + maxTop) * 0.5f;
-                float layoutHeight   = maxTop - minBottom;
+                float layoutHeight = maxTop - minBottom;
+                float bottomAlignY = -minBottom;
 
                 stackRt.sizeDelta = new Vector2(layoutWidth, layoutHeight);
 
@@ -329,7 +340,7 @@ namespace TexasHoldem
                         continue;
 
                     var chipRt = (RectTransform)img.transform;
-                    chipRt.anchoredPosition -= new Vector2(0f, contentCenterY);
+                    chipRt.anchoredPosition += new Vector2(0f, bottomAlignY);
                 }
             }
 
@@ -407,6 +418,16 @@ namespace TexasHoldem
 
             return renderedH * 0.5f;
         }
+
+        private float ResolveDenomBottomAlignOffset(int denomination) => denomination switch
+        {
+            500 => _bottomAlignOffset500,
+            100 => _bottomAlignOffset100,
+            25  => _bottomAlignOffset25,
+            5   => _bottomAlignOffset5,
+            1   => _bottomAlignOffset1,
+            _   => 0f
+        };
 
         private float ResolveStackOverlapY()
         {
