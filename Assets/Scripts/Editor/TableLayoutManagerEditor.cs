@@ -32,14 +32,15 @@ namespace TexasHoldem
                 }
             }
 
-            serializedObject.ApplyModifiedProperties();
+            if (serializedObject.ApplyModifiedProperties())
+                EditorUtility.SetDirty(target);
 
             EditorGUILayout.Space(10);
 
             EditorGUILayout.HelpBox(
                 "HudPanel width/X come from Card_1. Per-seat HudGlow → Panel Right/Bottom Border Px (default 14) " +
                 "extend the dark fill past card edges. Bet column: avatar → chips → amount, centred on avatar X. " +
-                "Bet Gap Below Avatar, Bet Chip Badge Gap, Chip Size, and Stack Overlap Y (2–4 px) tune the bet column. " +
+                "Bet Gap Below Avatar, Bet Chip Badge Gap (negative pulls amount pill up), Chip Size, and Stack Overlap Y (2–4 px) tune the bet column. " +
                 "Dealer Outside Gap keeps the token clear of the avatar edge (left for most seats, " +
                 "right for mirrorHud seats). Avatar Diameter sizes " +
                 "the frame and rings on every seat. Community Card Gap " +

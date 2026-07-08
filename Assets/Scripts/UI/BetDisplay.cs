@@ -146,6 +146,7 @@ namespace TexasHoldem
 
             _chipStackView?.SetExactAmount(amount);
             gameObject.SetActive(true);
+            TableLayoutManager.SyncBetDisplayLayout(transform);
 
             if (fromRect != null && _rootCanvas != null)
             {

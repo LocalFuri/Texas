@@ -89,8 +89,9 @@ namespace TexasHoldem
         [Tooltip("Gap between avatar bottom edge and chip stack top; same for every seat.")]
         [SerializeField] private float _betGapBelowAvatar = 3f;
 
-        [Tooltip("Vertical gap between the bet chip stack and the amount badge below (canvas px).")]
-        [SerializeField, Min(0f)] private float _betChipBadgeGap = 3f;
+        [Tooltip("Vertical gap between the bet chip stack and the amount badge (canvas px). " +
+                 "Positive = space below chips; negative pulls the badge up toward the stack.")]
+        [SerializeField] private float _betChipBadgeGap = 3f;
 
         [Tooltip("Vertical step between identical chips (2–4 px). One slider for all seats.")]
         [SerializeField, Range(2f, 4f)] private float _stackOverlapY = 2f;
@@ -110,8 +111,8 @@ namespace TexasHoldem
         /// <summary>Horizontal gap between denomination columns in bet and pot chip stacks.</summary>
         public float ChipColumnGapX => _chipColumnGapX;
 
-        /// <summary>Vertical gap between bet chips and the amount label beneath.</summary>
-        public float BetChipBadgeGap => Mathf.Max(0f, _betChipBadgeGap);
+        /// <summary>Vertical gap between bet chips and the amount label (negative = overlap).</summary>
+        public float BetChipBadgeGap => _betChipBadgeGap;
 
         [SerializeField, HideInInspector] private float _cardHeight = 120f * (95f / 65f);
 
@@ -447,19 +448,27 @@ namespace TexasHoldem
         }
 
         private static float BetChipStackWidth      => ChipStackView.MaxLayoutWidth;
-        private static float BetChipStackHeight     => ChipStackView.MaxLayoutHeight;
+        /// <summary>Single-chip preview height when no bet is visible (avoids prefab MaxLayoutHeight).</summary>
+        private static float BetChipStackPreviewHeight => ChipStackView.ResolveChipDisplaySize();
         private const float BetAmountBadgeWidth    = 90f;
         private const float BetAmountBadgeHeight   = 30f;
         private static float BetDisplayWidth       => Mathf.Max(BetAmountBadgeWidth, BetChipStackWidth);
-        private float BetDisplayHeight      => BetChipStackHeight + BetChipBadgeGap + BetAmountBadgeHeight;
-        private float BetChipStackCenterY   => (BetAmountBadgeHeight + BetChipBadgeGap) * 0.5f;
-        private float BetAmountBadgeCenterY => -(BetChipStackHeight + BetChipBadgeGap) * 0.5f;
+
+        private float ComputeBetDisplayHeight(float chipStackHeight)
+            => chipStackHeight + BetChipBadgeGap + BetAmountBadgeHeight;
+
+        private static float ComputeChipStackCenterY(float badgeGap)
+            => (BetAmountBadgeHeight + badgeGap) * 0.5f;
+
+        private static float ComputeAmountBadgeCenterY(float chipStackHeight, float badgeGap)
+            => -(chipStackHeight + badgeGap) * 0.5f;
 
         private float ComputeBetAnchorCenterY()
         {
             float avatarBottom = PlayerHudLayout.PillY - PlayerHudLayout.AvatarD * 0.5f;
             float chipStackTop = avatarBottom - _betGapBelowAvatar;
-            return chipStackTop - BetChipStackCenterY - BetChipStackHeight * 0.5f;
+            float stackHeight  = BetChipStackPreviewHeight;
+            return chipStackTop - ComputeChipStackCenterY(BetChipBadgeGap) - stackHeight * 0.5f;
         }
 
         private Vector2 ComputeBetAnchorPosition(PlayerView view, SeatConfig cfg)
@@ -504,19 +513,68 @@ namespace TexasHoldem
             return nested != null ? nested : betAnchor;
         }
 
-        private void ApplyBetAnchorContentLayout(RectTransform layoutRoot)
+        /// <summary>Re-syncs chip stack + amount badge spacing after chips are shown (uses live stack height).</summary>
+        public static void SyncBetDisplayLayout(Transform betDisplay)
         {
-            if (layoutRoot == null)
+            if (betDisplay == null)
                 return;
 
-            Transform contentRoot = FindBetDisplayRoot(layoutRoot);
+#if UNITY_2023_1_OR_NEWER
+            TableLayoutManager layout = UnityEngine.Object.FindFirstObjectByType<TableLayoutManager>(
+                FindObjectsInactive.Include);
+#else
+            TableLayoutManager layout = UnityEngine.Object.FindObjectOfType<TableLayoutManager>();
+#endif
+            layout?.SyncBetDisplayLayoutInternal(betDisplay);
+        }
+
+        private void SyncBetDisplayLayoutInternal(Transform betDisplay)
+        {
+            Transform layoutRoot = betDisplay.parent != null && betDisplay.parent.name == "BetAnchor"
+                ? betDisplay.parent
+                : betDisplay;
+
+            float stackHeight = ApplyBetAnchorContentLayout((RectTransform)layoutRoot);
+
+            if (betDisplay is RectTransform betRt)
+            {
+                betRt.sizeDelta = new Vector2(
+                    BetDisplayWidth,
+                    ComputeBetDisplayHeight(stackHeight));
+            }
+        }
+
+        private static float ResolveChipStackLayoutHeight(ChipStackView stackView)
+        {
+            if (stackView != null && stackView.HasVisibleStack)
+            {
+                float height = stackView.StackRoot.sizeDelta.y;
+                if (height > 0f)
+                    return height;
+            }
+
+            // Prefab/scene ChipStack rects are baked at MaxLayoutHeight — ignore when empty.
+            return BetChipStackPreviewHeight;
+        }
+
+        private void LayoutBetDisplayContent(Transform contentRoot, float chipStackHeight)
+        {
+            if (contentRoot == null)
+                return;
+
+            float badgeGap         = BetChipBadgeGap;
+            float chipStackCenterY = ComputeChipStackCenterY(badgeGap);
+            float badgeCenterY     = ComputeAmountBadgeCenterY(chipStackHeight, badgeGap);
+            float chipStackWidth   = BetChipStackWidth;
 
             Transform chipStack = contentRoot.Find("ChipStack");
-            if (chipStack != null)
+            if (chipStack is RectTransform chipStackRt)
             {
-                SetBetDisplayChildRect(
-                    (RectTransform)chipStack,
-                    0f, BetChipStackCenterY, BetChipStackWidth, BetChipStackHeight);
+                var stackView = chipStack.GetComponent<ChipStackView>();
+                if (stackView != null && stackView.HasVisibleStack && stackView.StackRoot.sizeDelta.x > 0f)
+                    chipStackWidth = stackView.StackRoot.sizeDelta.x;
+
+                SetBetDisplayChildRect(chipStackRt, 0f, chipStackCenterY, chipStackWidth, chipStackHeight);
             }
 
             Transform amountBadge = contentRoot.Find("AmountBadge");
@@ -524,16 +582,26 @@ namespace TexasHoldem
             {
                 SetBetDisplayChildRect(
                     (RectTransform)amountBadge,
-                    0f, BetAmountBadgeCenterY, BetAmountBadgeWidth, BetAmountBadgeHeight);
+                    0f, badgeCenterY, BetAmountBadgeWidth, BetAmountBadgeHeight);
             }
 
             HideLegacyBetDisplayChildren(contentRoot);
+        }
 
-            if (chipStack != null)
-            {
-                var stackView = chipStack.GetComponent<ChipStackView>();
-                stackView?.RefreshLayout();
-            }
+        private float ApplyBetAnchorContentLayout(RectTransform layoutRoot)
+        {
+            if (layoutRoot == null)
+                return BetChipStackPreviewHeight;
+
+            Transform contentRoot = FindBetDisplayRoot(layoutRoot);
+            Transform chipStack   = contentRoot != null ? contentRoot.Find("ChipStack") : null;
+            var stackView         = chipStack != null ? chipStack.GetComponent<ChipStackView>() : null;
+
+            stackView?.RefreshLayout();
+
+            float stackHeight = ResolveChipStackLayoutHeight(stackView);
+            LayoutBetDisplayContent(contentRoot, stackHeight);
+            return stackHeight;
         }
 
         private static void HideLegacyBetDisplayChildren(Transform contentRoot)
@@ -564,13 +632,13 @@ namespace TexasHoldem
             bool nestedUnderAnchor = anchor != null && betDisplayT.IsChildOf(anchor);
             RectTransform layoutRoot = nestedUnderAnchor ? anchor : (RectTransform)betDisplayT;
 
-            ApplyBetAnchorContentLayout(layoutRoot);
+            float stackHeight = ApplyBetAnchorContentLayout(layoutRoot);
 
             var betRt = (RectTransform)betDisplayT;
             betRt.anchorMin        = new Vector2(0.5f, 0.5f);
             betRt.anchorMax        = new Vector2(0.5f, 0.5f);
             betRt.pivot            = new Vector2(0.5f, 0.5f);
-            betRt.sizeDelta        = new Vector2(BetDisplayWidth, BetDisplayHeight);
+            betRt.sizeDelta        = new Vector2(BetDisplayWidth, ComputeBetDisplayHeight(stackHeight));
 
             RectTransform posTarget = nestedUnderAnchor ? anchor : betRt;
             if (nestedUnderAnchor)
@@ -673,7 +741,7 @@ namespace TexasHoldem
             {
                 ChipStackView[] stacks = _canvasRect.GetComponentsInChildren<ChipStackView>(true);
                 foreach (ChipStackView stack in stacks)
-                    stack?.RefreshLayout();
+                    RefreshChipStackLayout(stack);
                 return;
             }
 
@@ -683,8 +751,20 @@ namespace TexasHoldem
                     continue;
 
                 ChipStackView stack = _playerViews[i].GetComponentInChildren<ChipStackView>(true);
-                stack?.RefreshLayout();
+                RefreshChipStackLayout(stack);
             }
+        }
+
+        private void RefreshChipStackLayout(ChipStackView stack)
+        {
+            if (stack == null)
+                return;
+
+            Transform parent = stack.transform.parent;
+            if (parent != null && parent.GetComponent<BetDisplay>() != null)
+                SyncBetDisplayLayoutInternal(parent);
+            else
+                stack.RefreshLayout();
         }
 
         private void ApplyHudPanel(PlayerView view, SeatConfig cfg)

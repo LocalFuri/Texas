@@ -79,6 +79,9 @@ namespace TexasHoldem
 
         public RectTransform StackRoot => (RectTransform)transform;
 
+        /// <summary>True when chips are laid out for a non-zero amount.</summary>
+        public bool HasVisibleStack => _lastAmount > 0;
+
         /// <summary>Bottom edge Y in stack-local space (centre-anchored root).</summary>
         public float GetBottomLocalY() => _bottomLocalY;
 

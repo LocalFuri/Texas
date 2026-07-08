@@ -1209,7 +1209,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 90, y: 82}
+  m_SizeDelta: {x: 90, y: 76}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &4184800307200776215
 MonoBehaviour:
@@ -1892,7 +1892,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -26}
+  m_AnchoredPosition: {x: 0, y: -23}
   m_SizeDelta: {x: 90, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &9097858887708542337
@@ -2524,7 +2524,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 18}
+  m_AnchoredPosition: {x: 0, y: 15}
   m_SizeDelta: {x: 146, y: 46}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &8261188897917881601
@@ -2551,6 +2551,11 @@ MonoBehaviour:
   _customStackOverlapY: 2
   _useCustomColumnGap: 0
   _customColumnGapX: 28
+  _bottomAlignOffset1: 0
+  _bottomAlignOffset5: 3
+  _bottomAlignOffset25: 0
+  _bottomAlignOffset100: 0
+  _bottomAlignOffset500: 0
 --- !u!1 &6963176066214608332
 GameObject:
   m_ObjectHideFlags: 0
