@@ -45,7 +45,7 @@ namespace TexasHoldem
                 "right for mirrorHud seats). Avatar Diameter sizes " +
                 "the frame and rings on every seat. Community Card Gap " +
                 "spaces the flop/turn/river row; Community Card Scale sizes board cards only (Hole Cards → Card Width). " +
-                "Community Card Y moves the whole row up/down. " +
+                "Community Card Y moves the whole row up/down (face-down preview in Scene view). " +
                 "Pot label position: move PotText " +
                 "in the Scene view or its Rect Transform. Apply Layout to refresh seats.",
                 MessageType.Info);

@@ -2410,7 +2410,18 @@ namespace TexasHoldem
             EnsureCheckCallSceneVisibility();
             ApplyPlayerAvatars();
             ApplyPotLabelLayout();
+            ApplyCommunityCardsEditorLayout();
             Canvas.ForceUpdateCanvases();
+        }
+
+        private void ApplyCommunityCardsEditorLayout()
+        {
+#if UNITY_2022_2_OR_NEWER
+            TableLayoutManager layout = FindFirstObjectByType<TableLayoutManager>(FindObjectsInactive.Include);
+#else
+            TableLayoutManager layout = FindObjectOfType<TableLayoutManager>(true);
+#endif
+            layout?.ApplyLayout();
         }
 
         /// <summary>Scene view only â€” keeps every ButtonRow child active and fully opaque.</summary>

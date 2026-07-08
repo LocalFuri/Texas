@@ -828,7 +828,37 @@ namespace TexasHoldem
                 slot.pivot            = new Vector2(0.5f, 0.5f);
                 slot.anchoredPosition = new Vector2(startX + i * step, 0f);
             }
+
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                ApplyCommunityCardsEditorPreview();
+#endif
         }
+
+#if UNITY_EDITOR
+        private void ApplyCommunityCardsEditorPreview()
+        {
+            if (_communityCardSlots == null)
+                return;
+
+            RectTransform rowRoot = ResolveCommunityCardsRoot();
+            if (rowRoot != null)
+                rowRoot.gameObject.SetActive(true);
+
+            for (int i = 0; i < _communityCardSlots.Length; i++)
+            {
+                RectTransform slot = _communityCardSlots[i];
+                if (slot == null)
+                    continue;
+
+                CardView cardView = slot.GetComponent<CardView>();
+                if (cardView != null)
+                    cardView.ShowFaceDown();
+                else
+                    slot.gameObject.SetActive(true);
+            }
+        }
+#endif
 
         private RectTransform ResolveCommunityCardsRoot()
         {
