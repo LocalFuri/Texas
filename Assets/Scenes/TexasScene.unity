@@ -11879,7 +11879,7 @@ MonoBehaviour:
   _buttonHeight: 50
   _buttonFontSize: 30
   _cardGap: 9
-  _communityFlipDuration: 0.35
+  _communityFlipDuration: 0.1
   _communityFlipGap: 0.1
   _roundEndPauseSecs: 2.5
   _dealerButtonDelay: 0
