@@ -57,12 +57,13 @@ namespace TexasHoldem
         [SerializeField] private TMP_Text       _potText;
         [Tooltip("Horizontal nudge from the 5-card board center. Pot label and chips are centered on the full flop–river row.")]
         [SerializeField] private float          _potLabelX = 0f;
-        [SerializeField] private float          _potLabelY = 145f;
+        [Tooltip("Visual bottom edge (parent local Y) of the pot label glyphs.")]
+        [SerializeField] private float          _potBottomY = 131f;
+        [Tooltip("Visual bottom edge (parent local Y) of the lowest pot chip. Independent from Pot Bottom Y.")]
+        [SerializeField] private float          _potChipBottomY = 131f;
         [SerializeField] private ChipStackView  _potChipStack;
         [SerializeField] private Sprite         _potChipSprite100;
         [SerializeField] private Sprite         _potChipSprite500;
-        [Tooltip("Vertical offset for the pot chip stack relative to PotText anchoredPosition.y (tune in Play mode).")]
-        [SerializeField] private float          _potChipYOffset;
         [Tooltip("Horizontal gap between PotText right edge and the first pot chip column.")]
         [SerializeField, Min(0f)] private float _potChipPadding = 12f;
         [Tooltip("Horizontal gap between chip denominations in the pot stack (25 | 5 | 1). 0 = use TableLayoutManager Chip Column Gap X.")]
@@ -1440,8 +1441,31 @@ namespace TexasHoldem
         /// <summary>Updates the pot number only â€” used while a betting street is in progress.</summary>
         private void ApplyPotLabelLayout()
         {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                ApplyPotAreaEditorPreview();
+#endif
             LayoutPotArea();
         }
+
+#if UNITY_EDITOR
+        private void ApplyPotAreaEditorPreview()
+        {
+            if (_potText == null)
+                return;
+
+            EnsurePotChipStack();
+            if (_potChipStack == null)
+                return;
+
+            ApplyPotChipStackSettings();
+            if (string.IsNullOrWhiteSpace(_potText.text))
+                _potText.text = "Pot: 1.250";
+
+            _potChipStack.SetExactAmount(1250);
+            _potChipStack.StackRoot.gameObject.SetActive(true);
+        }
+#endif
 
         /// <summary>Center X of the full five community-card row (flop through river), even when turn/river are hidden.</summary>
         private float ResolveCommunityBoardCenterX()
@@ -1458,6 +1482,15 @@ namespace TexasHoldem
 
         private static RectTransform CommunityCardSlotRect(CardView card)
             => card != null ? card.transform as RectTransform : null;
+
+        private float ResolvePotLabelCenterY(RectTransform potRt, float targetBottomY)
+        {
+            Bounds textBounds = _potText.textBounds;
+            if (textBounds.size.y > 0f)
+                return targetBottomY - textBounds.min.y;
+
+            return targetBottomY + _potText.preferredHeight * 0.5f;
+        }
 
         private void LayoutPotArea()
         {
@@ -1497,7 +1530,8 @@ namespace TexasHoldem
                 stackCenterX = groupLeft + textWidth + _potChipPadding + stackWidth * 0.5f;
             }
 
-            potRt.anchoredPosition = new Vector2(potCenterX, _potLabelY);
+            float labelCenterY = ResolvePotLabelCenterY(potRt, _potBottomY);
+            potRt.anchoredPosition = new Vector2(potCenterX, labelCenterY);
 
             if (_potChipStack == null)
                 return;
@@ -1506,9 +1540,10 @@ namespace TexasHoldem
             stackRoot.anchorMin = new Vector2(0.5f, 0.5f);
             stackRoot.anchorMax = new Vector2(0.5f, 0.5f);
             stackRoot.pivot     = new Vector2(0.5f, 0.5f);
+            float chipBottomLocal = showStack ? _potChipStack.GetBottomLocalY() : 0f;
             stackRoot.anchoredPosition = new Vector2(
                 stackCenterX,
-                _potLabelY + _potChipYOffset);
+                _potChipBottomY - chipBottomLocal);
         }
 
         private void UpdatePotLabel()
