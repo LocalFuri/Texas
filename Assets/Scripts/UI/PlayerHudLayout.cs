@@ -24,7 +24,7 @@ namespace TexasHoldem
         public static float AvatarD { get; set; } = DefaultAvatarD;
         public const float AvatarX   = -133f;
         public const float TextX     = 25f;
-        public const float TextW     = 155f;
+        public const float TextW     = 200f;
         /// <summary>Wider name row; inner edge lines up with the chips row beside the avatar.</summary>
         public const float NameTextW = TextW;
         public const float NameTextH = 36f;

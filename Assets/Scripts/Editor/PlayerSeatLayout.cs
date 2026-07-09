@@ -177,31 +177,26 @@ namespace TexasHoldem
         }
 
         /// <summary>
-        /// Sets ChipsText on every seat to the starting-chip count formatted with German
-        /// number style (period as thousand separator). Run this to keep scene mode in sync
-        /// with the runtime formatting in PlayerView.RefreshHud.
+        /// Sets ChipsText on every seat to the starting-chip count and BB count,
+        /// matching runtime formatting in PlayerView.FormatChipsHud.
         /// </summary>
         [MenuItem("Texas Holdem/Apply Chips Format")]
         public static void ApplyChipsFormat()
         {
             // Read _startingChips from GameManager via SerializedObject.
             int chips = 1000;
+            int bigBlind = 20;
             GameManager gm = Object.FindObjectOfType<GameManager>();
             if (gm != null)
             {
-                SerializedProperty chipsProp = new SerializedObject(gm).FindProperty("_startingChips");
+                SerializedObject gmSo = new SerializedObject(gm);
+                SerializedProperty chipsProp = gmSo.FindProperty("_startingChips");
                 if (chipsProp != null) chips = chipsProp.intValue;
+                SerializedProperty bbProp = gmSo.FindProperty("_bigBlind");
+                if (bbProp != null) bigBlind = bbProp.intValue;
             }
 
-            // Platform-independent German NFI: period as thousand separator.
-            var nfi = new System.Globalization.NumberFormatInfo
-            {
-                NumberGroupSeparator   = ".",
-                NumberDecimalSeparator = ",",
-                NumberDecimalDigits    = 0,
-                NumberGroupSizes       = new[] { 3 }
-            };
-            string formatted = chips.ToString("N0", nfi);
+            string formatted = PlayerView.FormatChipsHud(chips, bigBlind);
 
             int count = 0;
             foreach (PlayerView v in Object.FindObjectsOfType<PlayerView>(true))

@@ -802,7 +802,7 @@ namespace TexasHoldem
                     view.ResetHoleCardReveal();
                     view.SetActiveTurn(false);
                     view.HideActionBadge();
-                    view.RefreshHud(player);
+                    view.RefreshHud(player, ResolveBigBlindAmount());
 
                     if (player.Type == PlayerType.Human)
                         view.SyncHumanHoleCardDisplay(player);
@@ -928,7 +928,7 @@ namespace TexasHoldem
                 if (view == null) continue;
 
                 view.SetIsHuman(isHuman);
-                view.RefreshHud(player);
+                view.RefreshHud(player, ResolveBigBlindAmount());
 
                 if (isHuman)
                 {
@@ -1395,6 +1395,9 @@ namespace TexasHoldem
 
         private int GetMinRaiseIncrement() =>
             _gameManager != null ? _gameManager.BigBlindAmount * 2 : 40;
+
+        private int ResolveBigBlindAmount() =>
+            _gameManager != null ? _gameManager.BigBlindAmount : 0;
 
         private int GetMaxRaiseIncrement()
         {

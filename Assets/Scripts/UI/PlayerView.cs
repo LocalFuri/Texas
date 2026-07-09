@@ -12,14 +12,25 @@ namespace TexasHoldem
     public class PlayerView : MonoBehaviour
     {
         private const string PrefabDefaultName = "Alex Hunter";
-        // Platform-independent German number format: 1000 → "1.000"
-        private static readonly NumberFormatInfo GermanNFI = new NumberFormatInfo
+
+        private static readonly NumberFormatInfo GermanMoneyNFI = new NumberFormatInfo
         {
             NumberGroupSeparator   = ".",
             NumberDecimalSeparator = ",",
-            NumberDecimalDigits    = 0,
+            NumberDecimalDigits    = 2,
             NumberGroupSizes       = new[] { 3 }
         };
+
+        /// <summary>Formats seat chips for the HUD, e.g. 4002 chips at BB 20 → "4.002,00 (200 BB)".</summary>
+        public static string FormatChipsHud(int chips, int bigBlind)
+        {
+            string money = chips.ToString("N2", GermanMoneyNFI);
+            if (bigBlind <= 0)
+                return money;
+
+            int bb = chips / bigBlind;
+            return $"{money} ({bb} BB)";
+        }
 
         [Header("HUD Text")]
         [SerializeField] private TMP_Text _nameText;
@@ -470,10 +481,10 @@ namespace TexasHoldem
         }
 
         /// <summary>Updates name, chips, status text, and canvas fade. Bet is handled separately via ShowBetDisplay.</summary>
-        public void RefreshHud(PlayerState player)
+        public void RefreshHud(PlayerState player, int bigBlind)
         {
             if (_nameText  != null) _nameText.text  = player.Name;
-            if (_chipsText != null) _chipsText.text = player.Chips.ToString("N0", GermanNFI);
+            if (_chipsText != null) _chipsText.text = FormatChipsHud(player.Chips, bigBlind);
 
             string status = player.Chips == 0 ? "Eliminated"
                                 : player.HasFolded  ? "Folded"
