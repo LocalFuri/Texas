@@ -98,9 +98,8 @@ namespace TexasHoldem
         [SerializeField, Min(0f)] private float _collectPotUpdateDelay = 0.1f;
 
         [Header("Winner Celebration")]
-        [SerializeField] private Sprite _winChipSprite;
-        [SerializeField, Min(1)]  private int   _winChipCount   = 8;
-        [SerializeField, Min(0f)] private float _winChipStagger = 0.08f;
+        [Tooltip("Horizontal gap between winner ChipsText and the pot chip stack at their HUD.")]
+        [SerializeField, Min(0f)] private float _winnerHudChipPadding = 8f;
 
         [Header("Winner Card Highlight")]
         [Tooltip("Gold pulse rate in Hz while waiting for Space (1 = one pulse per second).")]
@@ -198,6 +197,8 @@ namespace TexasHoldem
         private bool          _hasPendingActionBadge;
         private bool          _winnerCelebrationActive;
         private Coroutine     _winnerCelebrationCoroutine;
+        private Transform     _potChipStackHomeParent;
+        private int           _potChipStackHomeSiblingIndex;
         private PlayerState   _pendingBadgePlayer;
         private BettingAction _pendingBadgeAction;
         private int           _pendingBadgeAmount;
@@ -1539,6 +1540,9 @@ namespace TexasHoldem
             if (_potChipStack == null)
                 return;
 
+            if (!IsPotChipStackAtHome())
+                return;
+
             RectTransform stackRoot = _potChipStack.StackRoot;
             stackRoot.anchorMin = new Vector2(0.5f, 0.5f);
             stackRoot.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1554,11 +1558,22 @@ namespace TexasHoldem
             if (_potText == null || _gameManager == null)
                 return;
 
+            if (_winnerCelebrationActive)
+                return;
+
             int pot = _gameManager.PotAmount;
             _potText.text = "Pot: " + pot.ToString("N0", GermanNFI);
 
             if (_potChipStack != null && _potChipStack.StackRoot.gameObject.activeSelf)
                 PositionPotChipStack(showStack: true);
+        }
+
+        private bool IsPotChipStackAtHome()
+        {
+            if (_potChipStack == null || _potChipStackHomeParent == null)
+                return true;
+
+            return _potChipStack.StackRoot.parent == _potChipStackHomeParent;
         }
 
         /// <summary>Hides the central pot chip stack (label unchanged).</summary>
@@ -1597,16 +1612,6 @@ namespace TexasHoldem
             ApplyPotChipStackSettings();
             _potChipStack.SetExactAmount(potAmount);
             PositionPotChipStack(showStack: true);
-        }
-
-        /// <summary>Keeps pot label and chip stack visible for the winner celebration.</summary>
-        private void ShowPotForWinnerCelebration(int potAmount)
-        {
-            if (_potText == null || potAmount <= 0)
-                return;
-
-            _potText.text = "Pot: " + potAmount.ToString("N0", GermanNFI);
-            ShowPotChipStack(potAmount);
         }
 
         private void ApplyPotChipStackSettings()
@@ -2132,6 +2137,12 @@ namespace TexasHoldem
         {
             if (!Application.isPlaying) return;
 
+            if (_winnerCelebrationActive)
+            {
+                HideBettingControls();
+                return;
+            }
+
             if (!isHumanTurn || !_gameStarted || _humanPlayer == null || _humanPlayer.HasFolded || _humanPlayer.IsAllIn)
             {
                 HideBettingControls();
@@ -2584,9 +2595,31 @@ namespace TexasHoldem
 
         // â”€â”€ Winner Celebration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+        private void DismissBettingUiForWinnerCelebration()
+        {
+            StopTurnTimer();
+
+            if (_beginTurnCoroutine != null)
+            {
+                StopCoroutine(_beginTurnCoroutine);
+                _beginTurnCoroutine = null;
+            }
+
+            HideBettingControls();
+            HideAllSeatMenus();
+
+            foreach (PlayerView view in ResolvePlayerViews())
+                view?.SetActiveTurn(false);
+        }
+
         private void OnWinnerDetermined(PlayerState winner)
         {
-            if (_gameManager == null || _playerViews == null) return;
+            if (_gameManager == null)
+                return;
+
+            IReadOnlyList<PlayerView> views = ResolvePlayerViews();
+            if (views == null || views.Count == 0)
+                return;
 
             IReadOnlyList<PlayerState> winners = _gameManager.LastRoundWinners;
             if (winners == null || winners.Count == 0)
@@ -2598,6 +2631,7 @@ namespace TexasHoldem
             _winnerCelebrationActive = true;
             ClearPendingActionBadge();
             HideAllActionBadges();
+            DismissBettingUiForWinnerCelebration();
 
             float duration = _gameManager.RoundEndPauseSecs;
             int share = winners.Count > 0
@@ -2606,14 +2640,27 @@ namespace TexasHoldem
 
             ShowWinningHandDisplay();
             ShowRakeDisplay(_gameManager.LastRakeDisplayText);
-            ShowPotForWinnerCelebration(_gameManager.LastGrossPot);
 
-            PlayerView primaryView = ResolvePlayerView(winners[0]);
+            if (_potText != null)
+                _potText.text = string.Empty;
+
+            int bigBlind = ResolveBigBlindAmount();
+            PlayerView primaryView = null;
             foreach (PlayerState roundWinner in winners)
-                ResolvePlayerView(roundWinner)?.StartWinnerHighlight(share, duration);
+            {
+                PlayerView winnerView = ResolvePlayerView(roundWinner);
+                if (winnerView == null)
+                    continue;
 
-            if (primaryView != null)
+                winnerView.RefreshHud(roundWinner, bigBlind);
+                winnerView.StartWinnerHighlight(share, duration);
+                primaryView ??= winnerView;
+            }
+
+            if (primaryView != null && share > 0)
                 _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationEffects(primaryView, share, duration));
+            else if (duration > 0f)
+                _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationEffects(null, 0, duration));
         }
 
         private void ClearWinnerCelebration()
@@ -2626,6 +2673,7 @@ namespace TexasHoldem
 
             _winnerCelebrationActive = false;
             ClearWinningHandDisplay();
+            RestorePotChipStackHome();
             HidePotChipStack();
             DestroyFlyingWinChips();
 
@@ -2650,79 +2698,79 @@ namespace TexasHoldem
             }
         }
 
-        private IEnumerator RunWinnerCelebrationEffects(PlayerView view, int potAmount, float duration)
+        private void MovePotChipsToWinnerHud(PlayerView winnerView, int amount)
         {
-            yield return null;
+            RectTransform chipsRt = winnerView.ChipsHudRect;
+            if (chipsRt == null || amount <= 0)
+                return;
 
-            // Fly chips from the pot label position to the winner's avatar.
-            RectTransform origin = _potText != null ? (RectTransform)_potText.transform : null;
-            RectTransform target = view.AvatarRect;
+            _rootCanvas ??= ResolveRootCanvas();
+            if (_rootCanvas == null)
+                return;
 
-            if (origin != null && target != null && _rootCanvas != null)
+            EnsurePotChipStack();
+            if (_potChipStack == null)
+                return;
+
+            ApplyPotChipStackSettings();
+            _potChipStack.SetExactAmount(amount);
+
+            RectTransform stackRt = _potChipStack.StackRoot;
+            var canvasRt = (RectTransform)_rootCanvas.transform;
+
+            if (_potChipStackHomeParent == null)
             {
-                for (int i = 0; i < _winChipCount; i++)
-                {
-                    StartCoroutine(SpawnFlyingChip(origin, target, i * _winChipStagger));
-                    yield return null;
-                }
+                _potChipStackHomeParent        = stackRt.parent;
+                _potChipStackHomeSiblingIndex  = stackRt.GetSiblingIndex();
             }
+
+            stackRt.SetParent(canvasRt, false);
+            stackRt.anchorMin = new Vector2(0.5f, 0.5f);
+            stackRt.anchorMax = new Vector2(0.5f, 0.5f);
+            stackRt.pivot     = new Vector2(0.5f, 0.5f);
+
+            chipsRt.GetWorldCorners(_cornerBuffer);
+            Vector2 chipsBottomCenter = canvasRt.InverseTransformPoint(
+                (_cornerBuffer[0] + _cornerBuffer[3]) * 0.5f);
+
+            float chipsWidth = Vector2.Distance(
+                canvasRt.InverseTransformPoint(_cornerBuffer[0]),
+                canvasRt.InverseTransformPoint(_cornerBuffer[3]));
+            float stackWidth = stackRt.rect.width > 0f ? stackRt.rect.width : stackRt.sizeDelta.x;
+            float stackCenterX = chipsBottomCenter.x + chipsWidth * 0.5f + _winnerHudChipPadding + stackWidth * 0.5f;
+            float chipBottomLocal = _potChipStack.GetBottomLocalY();
+            float stackCenterY = chipsBottomCenter.y - chipBottomLocal;
+
+            stackRt.anchoredPosition = new Vector2(stackCenterX, stackCenterY);
+            stackRt.gameObject.SetActive(true);
+        }
+
+        private static readonly Vector3[] _cornerBuffer = new Vector3[4];
+
+        private void RestorePotChipStackHome()
+        {
+            if (_potChipStack == null || _potChipStackHomeParent == null)
+                return;
+
+            RectTransform stackRt = _potChipStack.StackRoot;
+            stackRt.SetParent(_potChipStackHomeParent, false);
+            stackRt.SetSiblingIndex(_potChipStackHomeSiblingIndex);
+            _potChipStackHomeParent       = null;
+            _potChipStackHomeSiblingIndex = 0;
+        }
+
+        private IEnumerator RunWinnerCelebrationEffects(PlayerView primaryView, int share, float duration)
+        {
+            while (_playersRefreshCoroutine != null)
+                yield return null;
+
+            if (primaryView != null && share > 0)
+                MovePotChipsToWinnerHud(primaryView, share);
 
             if (duration > 0f)
                 yield return new WaitForSecondsRealtime(duration);
 
             _winnerCelebrationCoroutine = null;
-        }
-
-        private IEnumerator SpawnFlyingChip(RectTransform origin, RectTransform target, float delay)
-        {
-            if (delay > 0f)
-                yield return new WaitForSeconds(delay);
-
-            if (_rootCanvas == null) yield break;
-
-            var chipGo  = new GameObject("_WinChip", typeof(RectTransform), typeof(Image));
-            var chipImg = chipGo.GetComponent<Image>();
-            chipImg.sprite         = _winChipSprite;
-            chipImg.color          = _winChipSprite != null ? Color.white : UiColors.PotGold;
-            chipImg.raycastTarget  = false;
-            chipImg.preserveAspect = true;
-
-            var chipRt = (RectTransform)chipGo.transform;
-            chipRt.SetParent((RectTransform)_rootCanvas.transform, false);
-            chipRt.sizeDelta  = new Vector2(40f, 40f);
-            chipRt.anchorMin  = new Vector2(0.5f, 0.5f);
-            chipRt.anchorMax  = new Vector2(0.5f, 0.5f);
-            chipRt.pivot      = new Vector2(0.5f, 0.5f);
-
-            var canvasRt = (RectTransform)_rootCanvas.transform;
-            Vector2 startPos = canvasRt.InverseTransformPoint(origin.TransformPoint(Vector3.zero));
-            Vector2 endPos   = canvasRt.InverseTransformPoint(target.TransformPoint(Vector3.zero));
-
-            // Scatter each chip slightly so they don't all overlap.
-            startPos += new Vector2(Random.Range(-24f, 24f), Random.Range(-12f, 12f));
-            chipRt.anchoredPosition = startPos;
-
-            const float FlyDuration = 0.55f;
-            float elapsed = 0f;
-            while (elapsed < FlyDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / FlyDuration);
-
-                Vector2 pos = Vector2.Lerp(startPos, endPos, t);
-                pos.y += Mathf.Sin(t * Mathf.PI) * 70f; // parabolic arc upward
-
-                chipRt.anchoredPosition = pos;
-                chipRt.localScale       = Vector3.Lerp(Vector3.one * 1.3f, Vector3.one * 0.65f, t);
-
-                // Fade out in the final 20% of the flight.
-                float alpha = t > 0.8f ? Mathf.Lerp(1f, 0f, (t - 0.8f) / 0.2f) : 1f;
-                chipImg.color = new Color(chipImg.color.r, chipImg.color.g, chipImg.color.b, alpha);
-
-                yield return null;
-            }
-
-            if (chipGo != null) Destroy(chipGo);
         }
 
         private void EnsureWinningHandLabel()

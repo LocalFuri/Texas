@@ -281,6 +281,10 @@ namespace TexasHoldem
         public RectTransform AvatarRect =>
             _avatarFrame != null ? _avatarFrame : (RectTransform)transform;
 
+        /// <summary>Chips row in the seat HUD — target for pot chips after a win.</summary>
+        public RectTransform ChipsHudRect =>
+            _chipsText != null ? _chipsText.transform as RectTransform : null;
+
         public void SetIsHuman(bool isHuman) => _isHuman = isHuman;
 
         /// <summary>

@@ -8723,9 +8723,7 @@ MonoBehaviour:
   _collectSeatStagger: 0.08
   _collectChipsPerSeat: 2
   _collectPotUpdateDelay: 0.1
-  _winChipSprite: {fileID: 21300000, guid: 00f42296a2c9b824b9e0d93b73b24738, type: 3}
-  _winChipCount: 8
-  _winChipStagger: 0.08
+  _winnerHudChipPadding: 8
   _winnerCardPulseHz: 1
   _winnerCardPulseMinBlend: 0.5
   _winnerCardPulseMaxBlend: 0.85

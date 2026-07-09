@@ -88,7 +88,7 @@ namespace TexasHoldem
                     ? $"Straight Flush, {RankName(tb[0])} high"
                     : "Straight Flush",
                 HandRank.FourOfAKind => tiebreakerDecisive
-                    ? $"Four of a Kind, {RankName(tb[0])}s{TopKickerLabel(tb, 1)}"
+                    ? $"Four of a Kind, {RankName(tb[0])}s{KickersLabel(tb, 1, 1)}"
                     : $"Four of a Kind, {RankName(tb[0])}s",
                 HandRank.FullHouse => $"Full House, {RankName(tb[0])}s over {RankName(tb[1])}s",
                 HandRank.Flush => tiebreakerDecisive
@@ -98,16 +98,16 @@ namespace TexasHoldem
                     ? $"Straight, {RankName(tb[0])} high"
                     : "Straight",
                 HandRank.ThreeOfAKind => tiebreakerDecisive
-                    ? $"Three of a Kind, {RankName(tb[0])}s{TopKickerLabel(tb, 1)}"
+                    ? $"Three of a Kind, {RankName(tb[0])}s{KickersLabel(tb, 1, 2)}"
                     : $"Three of a Kind, {RankName(tb[0])}s",
                 HandRank.TwoPair => tiebreakerDecisive
-                    ? $"Two Pair, {RankName(tb[0])}s and {RankName(tb[1])}s{TopKickerLabel(tb, 2)}"
+                    ? $"Two Pair, {RankName(tb[0])}s and {RankName(tb[1])}s{KickersLabel(tb, 2, 1)}"
                     : $"Two Pair, {RankName(tb[0])}s and {RankName(tb[1])}s",
                 HandRank.OnePair => tiebreakerDecisive
-                    ? $"Pair of {RankName(tb[0])}s{TopKickerLabel(tb, 1)}"
+                    ? $"Pair of {RankName(tb[0])}s{KickersLabel(tb, 1, 3)}"
                     : $"Pair of {RankName(tb[0])}s",
                 HandRank.HighCard => tiebreakerDecisive
-                    ? $"{RankName(tb[0])} High"
+                    ? $"{FormatRankList(tb, 0, 5)} High"
                     : "High Card",
                 _ => result.Rank.ToString()
             };
@@ -172,12 +172,42 @@ namespace TexasHoldem
             };
         }
 
-        private static string TopKickerLabel(IReadOnlyList<int> tiebreakers, int kickerIndex)
+        public static string ShortRankName(int rankValue)
         {
-            if (tiebreakers == null || tiebreakers.Count <= kickerIndex)
+            if (!System.Enum.IsDefined(typeof(Rank), rankValue))
+                return rankValue.ToString();
+
+            return ((Rank)rankValue) switch
+            {
+                Rank.Ace   => "A",
+                Rank.King  => "K",
+                Rank.Queen => "Q",
+                Rank.Jack  => "J",
+                Rank.Ten   => "10",
+                _          => rankValue.ToString()
+            };
+        }
+
+        private static string FormatRankList(IReadOnlyList<int> tiebreakers, int startIndex, int count)
+        {
+            if (tiebreakers == null || count <= 0)
                 return string.Empty;
 
-            return $", {RankName(tiebreakers[kickerIndex])} Kicker";
+            var parts = new List<string>(count);
+            for (int i = startIndex; i < startIndex + count && i < tiebreakers.Count; i++)
+                parts.Add(ShortRankName(tiebreakers[i]));
+
+            return parts.Count > 0 ? string.Join("-", parts) : string.Empty;
+        }
+
+        private static string KickersLabel(IReadOnlyList<int> tiebreakers, int startIndex, int count)
+        {
+            string ranks = FormatRankList(tiebreakers, startIndex, count);
+            if (string.IsNullOrEmpty(ranks))
+                return string.Empty;
+
+            string suffix = count > 1 ? "Kickers" : "Kicker";
+            return $", {ranks} {suffix}";
         }
     }
 }
