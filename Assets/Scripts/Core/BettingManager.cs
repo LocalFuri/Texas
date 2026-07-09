@@ -58,6 +58,14 @@ namespace TexasHoldem
                     return true;
 
                 case BettingAction.Raise:
+                    if (!IsValidRaiseIncrement(player, raiseAmount))
+                    {
+                        Debug.LogWarning(
+                            $"{player.Name} cannot raise by {raiseAmount} " +
+                            $"(call={GetCallAmount(player)}, chips={player.Chips}, table={CurrentBet}).");
+                        return false;
+                    }
+
                     int totalAfterRaise = CurrentBet + raiseAmount;
                     PlaceBet(player, totalAfterRaise - player.CurrentBet);
                     CurrentBet = player.CurrentBet;
@@ -73,6 +81,35 @@ namespace TexasHoldem
                 default:
                     return false;
             }
+        }
+
+        /// <summary>Chips required to match the current table bet.</summary>
+        public int GetCallAmount(PlayerState player) =>
+            Math.Max(0, CurrentBet - player.CurrentBet);
+
+        /// <summary>Minimum raise increment above <see cref="CurrentBet"/> (2× big blind).</summary>
+        public int GetMinRaiseIncrement() => BigBlind * 2;
+
+        /// <summary>Maximum raise increment the player can add after calling.</summary>
+        public int GetMaxRaiseIncrement(PlayerState player) =>
+            Math.Max(0, player.Chips - GetCallAmount(player));
+
+        /// <summary>True when the player has enough chips to make a legal minimum raise.</summary>
+        public bool CanRaise(PlayerState player) =>
+            GetMaxRaiseIncrement(player) >= GetMinRaiseIncrement();
+
+        /// <summary>Validates a raise increment (amount above <see cref="CurrentBet"/>).</summary>
+        public bool IsValidRaiseIncrement(PlayerState player, int raiseAmount)
+        {
+            if (raiseAmount <= 0)
+                return false;
+
+            int minIncrement = GetMinRaiseIncrement();
+            int maxIncrement = GetMaxRaiseIncrement(player);
+            if (maxIncrement < minIncrement)
+                return false;
+
+            return raiseAmount >= minIncrement && raiseAmount <= maxIncrement;
         }
 
         private void PlaceForcedBet(PlayerState player, int amount)

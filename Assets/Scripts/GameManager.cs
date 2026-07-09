@@ -66,6 +66,21 @@ namespace TexasHoldem
         public int               CurrentBet   => _bettingManager?.CurrentBet ?? 0;
         public int               BigBlindAmount => _bigBlind;
         public bool              IsAwaitingHumanInput => _awaitingHumanInput;
+
+        /// <summary>True when the player can make a legal minimum raise (not call-only).</summary>
+        public bool CanPlayerRaise(PlayerState player) =>
+            player != null && _bettingManager != null && _bettingManager.CanRaise(player);
+
+        public int GetCallAmountFor(PlayerState player) =>
+            player != null && _bettingManager != null ? _bettingManager.GetCallAmount(player) : 0;
+
+        public int GetMinRaiseIncrement() =>
+            _bettingManager?.GetMinRaiseIncrement() ?? _bigBlind * 2;
+
+        public int GetMaxRaiseIncrement(PlayerState player) =>
+            player != null && _bettingManager != null
+                ? _bettingManager.GetMaxRaiseIncrement(player)
+                : 0;
         public float             ButtonWidth    => _buttonWidth;
         public float             ButtonHeight   => _buttonHeight;
         public float             ButtonFontSize => _buttonFontSize;

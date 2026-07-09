@@ -29,9 +29,11 @@ namespace TexasHoldem
 
             if (strength > 0.75f)
             {
-                if (Random.value < AggressionThreshold)
+                if (betting.CanRaise(player) && Random.value < AggressionThreshold)
                 {
-                    int raise = Mathf.Clamp(betting.BigBlind * 2, betting.BigBlind, player.Chips);
+                    int minRaise = betting.GetMinRaiseIncrement();
+                    int maxRaise = betting.GetMaxRaiseIncrement(player);
+                    int raise    = Mathf.Clamp(minRaise, minRaise, maxRaise);
                     return (BettingAction.Raise, raise);
                 }
                 return canCheck ? (BettingAction.Check, 0) : (BettingAction.Call, 0);

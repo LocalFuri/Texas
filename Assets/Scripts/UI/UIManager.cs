@@ -1390,11 +1390,11 @@ namespace TexasHoldem
         private int GetCallAmount()
         {
             if (_humanPlayer == null || _gameManager == null) return 0;
-            return Mathf.Max(0, _gameManager.CurrentBet - _humanPlayer.CurrentBet);
+            return _gameManager.GetCallAmountFor(_humanPlayer);
         }
 
         private int GetMinRaiseIncrement() =>
-            _gameManager != null ? _gameManager.BigBlindAmount * 2 : 40;
+            _gameManager != null ? _gameManager.GetMinRaiseIncrement() : 40;
 
         private int ResolveBigBlindAmount() =>
             _gameManager != null ? _gameManager.BigBlindAmount : 0;
@@ -1402,7 +1402,7 @@ namespace TexasHoldem
         private int GetMaxRaiseIncrement()
         {
             if (_humanPlayer == null || _gameManager == null) return 0;
-            return _humanPlayer.Chips - GetCallAmount();
+            return _gameManager.GetMaxRaiseIncrement(_humanPlayer);
         }
 
         /// <summary>Minimum total chips to put in via raise (call + min raise increment).</summary>
@@ -2215,7 +2215,7 @@ namespace TexasHoldem
         private bool CanHumanRaise()
         {
             if (_humanPlayer == null || _gameManager == null) return false;
-            return GetMaxRaiseIncrement() >= GetMinRaiseIncrement();
+            return _gameManager.CanPlayerRaise(_humanPlayer);
         }
 
         private void RevealAllCards()
