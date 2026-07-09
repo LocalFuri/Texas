@@ -17,14 +17,14 @@ namespace TexasHoldem
         {
             NumberGroupSeparator   = ".",
             NumberDecimalSeparator = ",",
-            NumberDecimalDigits    = 2,
+            NumberDecimalDigits    = 1,
             NumberGroupSizes       = new[] { 3 }
         };
 
-        /// <summary>Formats seat chips for the HUD, e.g. 4002 chips at BB 20 → "4.002,00 (200 BB)".</summary>
+        /// <summary>Formats seat chips for the HUD, e.g. 4002 chips at BB 20 → "4.002,0 (200 BB)".</summary>
         public static string FormatChipsHud(int chips, int bigBlind)
         {
-            string money = chips.ToString("N2", GermanMoneyNFI);
+            string money = chips.ToString("N1", GermanMoneyNFI);
             if (bigBlind <= 0)
                 return money;
 
