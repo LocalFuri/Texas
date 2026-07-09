@@ -8736,7 +8736,7 @@ MonoBehaviour:
   _winningHandLabelY: 130
   _rakeText: {fileID: 0}
   _rakeLabelPosition: {x: 320, y: 170}
-  _rakeFontSize: 24
+  _rakeFontSize: 20
   _rakeLabelSize: {x: 180, y: 32}
   _seatActionBadgeOffset: {x: 0, y: 0}
   _buttonFont: {fileID: 11400000, guid: 6903839b2f8979c419d5db103af926f7, type: 2}
