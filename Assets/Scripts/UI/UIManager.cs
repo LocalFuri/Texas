@@ -2678,10 +2678,7 @@ namespace TexasHoldem
             DestroyFlyingWinChips();
 
             foreach (PlayerView view in ResolvePlayerViews())
-            {
                 view?.SetActiveTurn(false);
-                view?.HideActionBadge();
-            }
         }
 
         private void DestroyFlyingWinChips()

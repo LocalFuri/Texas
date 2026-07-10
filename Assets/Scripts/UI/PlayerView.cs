@@ -743,8 +743,8 @@ namespace TexasHoldem
         }
 
         /// <summary>
-        /// Triggers the winner celebration: shimmering gold ring, HUD glow pulse, and WIN badge.
-        /// Automatically cleaned up when OnRoundEnded calls SetActiveTurn(false).
+        /// Triggers the winner celebration: shimmering gold ring, HUD glow pulse, and persistent WIN badge.
+        /// Ring/glow run for <paramref name="duration"/>; badge stays until the next hand.
         /// </summary>
         public void StartWinnerHighlight(int potAmount, float duration)
         {
@@ -766,7 +766,7 @@ namespace TexasHoldem
                 _avatarRingGold.color      = Color.white;
             }
 
-            ResolveActionBadge()?.ShowWin(potAmount, duration);
+            ResolveActionBadge()?.ShowWinPersistent(potAmount);
             _ringCountdown = StartCoroutine(RunWinnerHighlight(duration));
         }
 

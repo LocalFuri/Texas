@@ -59,10 +59,16 @@ namespace TexasHoldem
             gameObject.SetActive(false);
         }
 
-        /// <summary>Shows the winner badge for <paramref name="duration"/> seconds.</summary>
+        /// <summary>Shows the winner badge for <paramref name="duration"/> seconds (0 = stay until hidden).</summary>
         public void ShowWin(int potAmount, float duration)
         {
             PresentSprite(ActionBadgeSprites.Winner, duration);
+        }
+
+        /// <summary>Shows the winner badge until <see cref="Hide"/> or the next hand.</summary>
+        public void ShowWinPersistent(int potAmount = 0)
+        {
+            PresentSprite(ActionBadgeSprites.Winner, 0f);
         }
 
         private void PresentSprite(Sprite sprite, float duration)
@@ -97,7 +103,8 @@ namespace TexasHoldem
                 gameObject.SetActive(true);
 
             CancelInvoke(nameof(Hide));
-            Invoke(nameof(Hide), duration);
+            if (duration > 0f)
+                Invoke(nameof(Hide), duration);
         }
 
         private void ApplyLayout(Sprite sprite)
