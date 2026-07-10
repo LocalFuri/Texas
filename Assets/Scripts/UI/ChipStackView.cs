@@ -116,13 +116,10 @@ namespace TexasHoldem
         public void Clear()
         {
             EnsureRefs();
-            _lastAmount     = 0;
-            _bottomLocalY   = 0f;
-            foreach (Image img in _slots)
-            {
-                if (img != null)
-                    img.gameObject.SetActive(false);
-            }
+            RebuildSlotsFromHierarchy();
+            _lastAmount   = 0;
+            _bottomLocalY = 0f;
+            DeactivateAllChipSlots();
         }
 
         /// <summary>Re-applies layout after container resize (e.g. Apply Layout in editor).</summary>
@@ -170,6 +167,8 @@ namespace TexasHoldem
 
         private void ApplyBreakdown(List<int> denoms)
         {
+            EnsureRefs();
+            RebuildSlotsFromHierarchy();
             EnsureSlotCount(denoms.Count);
 
             int slotIndex = 0;
@@ -194,7 +193,79 @@ namespace TexasHoldem
                     _slots[slotIndex].gameObject.SetActive(false);
             }
 
+            DeactivateUntrackedChipChildren();
+
             LayoutChips(denoms);
+        }
+
+        /// <summary>Registers every Chip_N child so stale slots from larger stacks are deactivated.</summary>
+        private void RebuildSlotsFromHierarchy()
+        {
+            var indexed = new List<(int index, Image img)>();
+
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                Transform child = transform.GetChild(i);
+                if (child == null || !TryParseChipChildName(child.name, out int chipIndex))
+                    continue;
+
+                Image img = child.GetComponent<Image>();
+                if (img != null)
+                    indexed.Add((chipIndex, img));
+            }
+
+            if (indexed.Count == 0)
+            {
+                if (_slots.Count == 0)
+                {
+                    if (_chip0 != null) _slots.Add(_chip0);
+                    if (_chip1 != null) _slots.Add(_chip1);
+                    if (_chip2 != null) _slots.Add(_chip2);
+                }
+
+                return;
+            }
+
+            indexed.Sort((a, b) => a.index.CompareTo(b.index));
+            _slots.Clear();
+            foreach ((int _, Image img) in indexed)
+                _slots.Add(img);
+        }
+
+        private static bool TryParseChipChildName(string name, out int chipIndex)
+        {
+            chipIndex = -1;
+            if (name == null || !name.StartsWith("Chip_"))
+                return false;
+
+            return int.TryParse(name.Substring(5), out chipIndex);
+        }
+
+        private void DeactivateAllChipSlots()
+        {
+            foreach (Image img in _slots)
+            {
+                if (img != null)
+                    img.gameObject.SetActive(false);
+            }
+
+            DeactivateUntrackedChipChildren();
+        }
+
+        private void DeactivateUntrackedChipChildren()
+        {
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                Transform child = transform.GetChild(i);
+                if (child == null || !TryParseChipChildName(child.name, out _))
+                    continue;
+
+                Image img = child.GetComponent<Image>();
+                if (img == null || _slots.Contains(img))
+                    continue;
+
+                child.gameObject.SetActive(false);
+            }
         }
 
         private void EnsureSlotCount(int required)
@@ -490,13 +561,6 @@ namespace TexasHoldem
             if (_chip0 == null) _chip0 = transform.Find("Chip_0")?.GetComponent<Image>();
             if (_chip1 == null) _chip1 = transform.Find("Chip_1")?.GetComponent<Image>();
             if (_chip2 == null) _chip2 = transform.Find("Chip_2")?.GetComponent<Image>();
-
-            if (_slots.Count == 0)
-            {
-                if (_chip0 != null) _slots.Add(_chip0);
-                if (_chip1 != null) _slots.Add(_chip1);
-                if (_chip2 != null) _slots.Add(_chip2);
-            }
         }
 
         /// <summary>Copies chip sprites from another stack (e.g. when bootstrapping the pot stack).</summary>

@@ -824,6 +824,8 @@ namespace TexasHoldem
 
             _previousBets.Clear();
             ClearWinningHandDisplay();
+            HidePotChipStack();
+            UpdatePotLabel();
         }
 
         private void OnDealerButtonPlaced(int seatIndex)
@@ -1564,8 +1566,21 @@ namespace TexasHoldem
             int pot = _gameManager.PotAmount;
             _potText.text = "Pot: " + pot.ToString("N0", GermanNFI);
 
-            if (_potChipStack != null && _potChipStack.StackRoot.gameObject.activeSelf)
-                PositionPotChipStack(showStack: true);
+            if (_potChipStack == null || !IsPotChipStackAtHome())
+                return;
+
+            bool stackActive = _potChipStack.StackRoot.gameObject.activeSelf;
+            if (!stackActive)
+                return;
+
+            if (pot <= 0)
+            {
+                HidePotChipStack();
+                return;
+            }
+
+            _potChipStack.SetExactAmount(pot);
+            PositionPotChipStack(showStack: true);
         }
 
         private bool IsPotChipStackAtHome()
