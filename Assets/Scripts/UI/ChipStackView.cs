@@ -8,6 +8,7 @@ namespace TexasHoldem
     /// Chip graphics — identical denominations stack vertically with slight overlap;
     /// different denominations sit in horizontal columns, bottom-aligned on a shared baseline.
     /// Bet stacks use exact chip breakdown ({500,100,25,5,1}); pot stacks use the same via SetExactAmount.
+    /// Columns are laid out left to right, lowest denomination first.
     /// </summary>
     public class ChipStackView : MonoBehaviour
     {
@@ -172,7 +173,7 @@ namespace TexasHoldem
             EnsureSlotCount(denoms.Count);
 
             int slotIndex = 0;
-            foreach (DenomGroup group in GroupByDenomination(denoms))
+            foreach (DenomGroup group in OrderGroupsLowToHigh(GroupByDenomination(denoms)))
             {
                 for (int i = 0; i < group.Count && slotIndex < _slots.Count; i++)
                 {
@@ -327,12 +328,20 @@ namespace TexasHoldem
             return groups;
         }
 
+        /// <summary>Display order: lowest denomination in the leftmost column.</summary>
+        private static List<DenomGroup> OrderGroupsLowToHigh(List<DenomGroup> groups)
+        {
+            var ordered = new List<DenomGroup>(groups);
+            ordered.Sort((a, b) => a.Denomination.CompareTo(b.Denomination));
+            return ordered;
+        }
+
         private void LayoutChips(List<int> denoms)
         {
             if (denoms.Count == 0)
                 return;
 
-            List<DenomGroup> groups   = GroupByDenomination(denoms);
+            List<DenomGroup> groups   = OrderGroupsLowToHigh(GroupByDenomination(denoms));
             int              maxStack = 1;
             foreach (DenomGroup g in groups)
             {
