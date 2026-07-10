@@ -206,7 +206,7 @@ namespace TexasHoldem
         private bool          _winnerPotChipsCollected;
         private PlayerView    _winnerCollectTarget;
         private int           _winnerCollectShare;
-        private int           _winnerDisplayGrossPot;
+        private int           _winnerDisplayPotAmount;
         private Transform     _potChipStackHomeParent;
         private int           _potChipStackHomeSiblingIndex;
         private PlayerState   _pendingBadgePlayer;
@@ -335,7 +335,7 @@ namespace TexasHoldem
 
         private bool CanCollectPotToWinner()
         {
-            if (_winnerPotChipsCollected || _winnerDisplayGrossPot <= 0)
+            if (_winnerPotChipsCollected || _winnerDisplayPotAmount <= 0)
                 return false;
 
             if (_gameManager != null && _gameManager.AwaitingWinnerDismiss)
@@ -346,7 +346,7 @@ namespace TexasHoldem
 
         private bool CanAdvanceAfterWinnerDismiss()
         {
-            if (_winnerDisplayGrossPot <= 0)
+            if (_winnerDisplayPotAmount <= 0)
                 return true;
 
             return _winnerPotChipsCollected;
@@ -1805,7 +1805,8 @@ namespace TexasHoldem
             RectTransform stackRt = _potChipStack.StackRoot;
             bool show = showStack
                         && _gameManager != null
-                        && _gameManager.PotAmount > 0;
+                        && (_gameManager.PotAmount > 0
+                            || (_winnerCelebrationActive && _winnerDisplayPotAmount > 0));
 
             stackRt.gameObject.SetActive(show);
             LayoutPotArea();
@@ -2750,8 +2751,8 @@ namespace TexasHoldem
             ShowRakeDisplay(_gameManager.LastRakeDisplayText);
 
             _winnerPotChipsCollected = false;
-            _winnerDisplayGrossPot   = _gameManager.LastGrossPot;
-            ShowPotDisplayForWinner(_winnerDisplayGrossPot);
+            _winnerDisplayPotAmount   = share;
+            ShowPotDisplayForWinner(_winnerDisplayPotAmount);
 
             int bigBlind = ResolveBigBlindAmount();
             PlayerView primaryView = null;
@@ -2769,22 +2770,22 @@ namespace TexasHoldem
             _winnerCollectTarget = primaryView;
             _winnerCollectShare  = share;
 
-            if (_winnerDisplayGrossPot <= 0)
+            if (_winnerDisplayPotAmount <= 0)
                 _winnerPotChipsCollected = true;
 
             _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationPrepare());
         }
 
-        private void ShowPotDisplayForWinner(int grossPot)
+        private void ShowPotDisplayForWinner(int potAmount)
         {
-            if (grossPot <= 0)
+            if (potAmount <= 0)
                 return;
 
             if (_potText != null)
-                _potText.text = "Pot: " + grossPot.ToString("N0", GermanNFI);
+                _potText.text = "Pot: " + potAmount.ToString("N0", GermanNFI);
 
             RestorePotChipStackHome();
-            ShowPotChipStack(grossPot);
+            ShowPotChipStack(potAmount);
         }
 
         private bool BeginCollectPotToWinner()
@@ -2800,7 +2801,7 @@ namespace TexasHoldem
             if (_winnerCollectTarget == null || amount <= 0)
             {
                 Debug.LogError(
-                    $"[UIManager] Pot collect FAILED — target={_winnerCollectTarget != null}, amount={amount}, gross={_winnerDisplayGrossPot}, share={_winnerCollectShare}.",
+                    $"[UIManager] Pot collect FAILED — target={_winnerCollectTarget != null}, amount={amount}, display={_winnerDisplayPotAmount}, share={_winnerCollectShare}.",
                     this);
                 return false;
             }
@@ -2841,7 +2842,7 @@ namespace TexasHoldem
             if (_winnerCollectShare > 0)
                 return _winnerCollectShare;
 
-            return _winnerDisplayGrossPot;
+            return _winnerDisplayPotAmount;
         }
 
         private void ClearWinnerCelebration()
@@ -2856,7 +2857,7 @@ namespace TexasHoldem
             _winnerPotChipsCollected    = false;
             _winnerCollectTarget        = null;
             _winnerCollectShare         = 0;
-            _winnerDisplayGrossPot      = 0;
+            _winnerDisplayPotAmount     = 0;
             ClearWinningHandDisplay();
             RestorePotChipStackHome();
             HidePotChipStack();
@@ -2881,12 +2882,12 @@ namespace TexasHoldem
         }
 
         private bool TryResolveWinnerHudStackPosition(
-            PlayerView winnerView, int amount, out Vector2 canvasAnchoredPosition)
+            PlayerView winnerView, out Vector2 canvasAnchoredPosition, bool relayoutStack = true)
         {
             canvasAnchoredPosition = Vector2.zero;
 
             RectTransform avatarRt = winnerView.AvatarRect;
-            if (avatarRt == null || amount <= 0)
+            if (avatarRt == null)
                 return false;
 
             _rootCanvas ??= ResolveRootCanvas();
@@ -2897,8 +2898,15 @@ namespace TexasHoldem
             if (_potChipStack == null)
                 return false;
 
-            ApplyPotChipStackSettings();
-            _potChipStack.SetExactAmount(amount);
+            if (relayoutStack)
+            {
+                int amount = ResolveWinnerCollectAmount();
+                if (amount <= 0)
+                    return false;
+
+                ApplyPotChipStackSettings();
+                _potChipStack.SetExactAmount(amount);
+            }
 
             RectTransform stackRt = _potChipStack.StackRoot;
             var canvasRt = (RectTransform)_rootCanvas.transform;
@@ -2955,7 +2963,7 @@ namespace TexasHoldem
                 yield break;
             }
 
-            if (!TryResolveWinnerHudStackPosition(winnerView, amount, out Vector2 endPos))
+            if (!TryResolveWinnerHudStackPosition(winnerView, out Vector2 endPos, relayoutStack: false))
             {
                 Debug.LogError(
                     $"[UIManager] Pot collect FAILED — could not resolve winner HUD position (amount={amount}).",
