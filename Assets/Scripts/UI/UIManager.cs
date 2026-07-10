@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.EventSystems;
 using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
@@ -99,8 +100,9 @@ namespace TexasHoldem
         [SerializeField, Min(0f)] private float _collectPotUpdateDelay = 0.1f;
 
         [Header("Winner Celebration")]
-        [Tooltip("Horizontal gap between winner ChipsText and the pot chip stack at their HUD.")]
-        [SerializeField, Min(0f)] private float _winnerHudChipPadding = 8f;
+        [Tooltip("Gap between avatar bottom edge and pot chip stack top when collecting to winner HUD.")]
+        [FormerlySerializedAs("_winnerHudChipPadding")]
+        [SerializeField, Min(0f)] private float _winnerHudGapBelowAvatar = 3f;
         [Tooltip("Duration for pot chips flying to the winner HUD (Backspace or B).")]
         [SerializeField, Min(0.05f)] private float _winnerPotCollectFlyDuration = 0.5f;
 
@@ -2883,8 +2885,8 @@ namespace TexasHoldem
         {
             canvasAnchoredPosition = Vector2.zero;
 
-            RectTransform chipsRt = winnerView.ChipsHudRect;
-            if (chipsRt == null || amount <= 0)
+            RectTransform avatarRt = winnerView.AvatarRect;
+            if (avatarRt == null || amount <= 0)
                 return false;
 
             _rootCanvas ??= ResolveRootCanvas();
@@ -2901,19 +2903,17 @@ namespace TexasHoldem
             RectTransform stackRt = _potChipStack.StackRoot;
             var canvasRt = (RectTransform)_rootCanvas.transform;
 
-            chipsRt.GetWorldCorners(_cornerBuffer);
-            Vector2 chipsBottomCenter = canvasRt.InverseTransformPoint(
+            avatarRt.GetWorldCorners(_cornerBuffer);
+            Vector2 avatarBottomCenter = canvasRt.InverseTransformPoint(
                 (_cornerBuffer[0] + _cornerBuffer[3]) * 0.5f);
 
-            float chipsWidth = Vector2.Distance(
-                canvasRt.InverseTransformPoint(_cornerBuffer[0]),
-                canvasRt.InverseTransformPoint(_cornerBuffer[3]));
-            float stackWidth = stackRt.rect.width > 0f ? stackRt.rect.width : stackRt.sizeDelta.x;
-            float stackCenterX = chipsBottomCenter.x + chipsWidth * 0.5f + _winnerHudChipPadding + stackWidth * 0.5f;
             float chipBottomLocal = _potChipStack.GetBottomLocalY();
-            float stackCenterY = chipsBottomCenter.y - chipBottomLocal;
+            float stackHeight = stackRt.sizeDelta.y > 0f ? stackRt.sizeDelta.y : stackRt.rect.height;
+            float stackTopLocal = chipBottomLocal + stackHeight;
 
-            canvasAnchoredPosition = new Vector2(stackCenterX, stackCenterY);
+            canvasAnchoredPosition = new Vector2(
+                avatarBottomCenter.x,
+                avatarBottomCenter.y - _winnerHudGapBelowAvatar - stackTopLocal);
             return true;
         }
 

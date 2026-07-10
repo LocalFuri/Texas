@@ -8723,7 +8723,7 @@ MonoBehaviour:
   _collectSeatStagger: 0.08
   _collectChipsPerSeat: 2
   _collectPotUpdateDelay: 0.1
-  _winnerHudChipPadding: 8
+  _winnerHudGapBelowAvatar: 8
   _winnerPotCollectFlyDuration: 0.5
   _winnerCardPulseHz: 1
   _winnerCardPulseMinBlend: 0.5
@@ -10064,7 +10064,7 @@ MonoBehaviour:
   m_lineSpacingMax: 0
   m_paragraphSpacing: 0
   m_charWidthMaxAdj: 0
-  m_TextWrappingMode: 0
+  m_TextWrappingMode: 3
   m_wordWrappingRatios: 0.4
   m_overflowMode: 0
   m_linkedTextComponent: {fileID: 0}
