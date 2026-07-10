@@ -100,6 +100,8 @@ namespace TexasHoldem
         [Header("Winner Celebration")]
         [Tooltip("Horizontal gap between winner ChipsText and the pot chip stack at their HUD.")]
         [SerializeField, Min(0f)] private float _winnerHudChipPadding = 8f;
+        [Tooltip("Duration for pot chips flying to the winner HUD when Backspace is pressed.")]
+        [SerializeField, Min(0.05f)] private float _winnerPotCollectFlyDuration = 0.5f;
 
         [Header("Winner Card Highlight")]
         [Tooltip("Gold pulse rate in Hz while waiting for Space (1 = one pulse per second).")]
@@ -197,6 +199,10 @@ namespace TexasHoldem
         private bool          _hasPendingActionBadge;
         private bool          _winnerCelebrationActive;
         private Coroutine     _winnerCelebrationCoroutine;
+        private bool          _winnerPotChipsCollected;
+        private PlayerView    _winnerCollectTarget;
+        private int           _winnerCollectShare;
+        private int           _winnerDisplayGrossPot;
         private Transform     _potChipStackHomeParent;
         private int           _potChipStackHomeSiblingIndex;
         private PlayerState   _pendingBadgePlayer;
@@ -298,10 +304,20 @@ namespace TexasHoldem
 
         private void Update()
         {
-            if (_gameManager == null || !_gameManager.AwaitingWinnerDismiss)
+            if (_gameManager == null)
                 return;
 
             if (OptionsMenu.Instance != null && OptionsMenu.Instance.IsOpen)
+                return;
+
+            if (_winnerCelebrationActive && !_winnerPotChipsCollected)
+            {
+                if (Input.GetKeyDown(KeyCode.Backspace))
+                    BeginCollectPotToWinner();
+                return;
+            }
+
+            if (!_gameManager.AwaitingWinnerDismiss)
                 return;
 
             if (Input.GetKeyDown(KeyCode.Space))
@@ -2656,8 +2672,9 @@ namespace TexasHoldem
             ShowWinningHandDisplay();
             ShowRakeDisplay(_gameManager.LastRakeDisplayText);
 
-            if (_potText != null)
-                _potText.text = string.Empty;
+            _winnerPotChipsCollected = false;
+            _winnerDisplayGrossPot   = _gameManager.LastGrossPot;
+            ShowPotDisplayForWinner(_winnerDisplayGrossPot);
 
             int bigBlind = ResolveBigBlindAmount();
             PlayerView primaryView = null;
@@ -2672,10 +2689,40 @@ namespace TexasHoldem
                 primaryView ??= winnerView;
             }
 
-            if (primaryView != null && share > 0)
-                _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationEffects(primaryView, share, duration));
-            else if (duration > 0f)
-                _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationEffects(null, 0, duration));
+            _winnerCollectTarget = primaryView;
+            _winnerCollectShare  = share;
+
+            if (primaryView == null || share <= 0 || _winnerDisplayGrossPot <= 0)
+                _winnerPotChipsCollected = true;
+
+            _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationPrepare());
+        }
+
+        private void ShowPotDisplayForWinner(int grossPot)
+        {
+            if (grossPot <= 0)
+                return;
+
+            if (_potText != null)
+                _potText.text = "Pot: " + grossPot.ToString("N0", GermanNFI);
+
+            RestorePotChipStackHome();
+            ShowPotChipStack(grossPot);
+        }
+
+        private void BeginCollectPotToWinner()
+        {
+            if (_winnerPotChipsCollected || _winnerCollectTarget == null || _winnerCollectShare <= 0)
+                return;
+
+            if (_winnerCelebrationCoroutine != null)
+            {
+                StopCoroutine(_winnerCelebrationCoroutine);
+                _winnerCelebrationCoroutine = null;
+            }
+
+            _winnerCelebrationCoroutine = StartCoroutine(AnimatePotChipsToWinner(
+                _winnerCollectTarget, _winnerCollectShare));
         }
 
         private void ClearWinnerCelebration()
@@ -2686,7 +2733,11 @@ namespace TexasHoldem
                 _winnerCelebrationCoroutine = null;
             }
 
-            _winnerCelebrationActive = false;
+            _winnerCelebrationActive  = false;
+            _winnerPotChipsCollected    = false;
+            _winnerCollectTarget        = null;
+            _winnerCollectShare         = 0;
+            _winnerDisplayGrossPot      = 0;
             ClearWinningHandDisplay();
             RestorePotChipStackHome();
             HidePotChipStack();
@@ -2710,36 +2761,28 @@ namespace TexasHoldem
             }
         }
 
-        private void MovePotChipsToWinnerHud(PlayerView winnerView, int amount)
+        private bool TryResolveWinnerHudStackPosition(
+            PlayerView winnerView, int amount, out Vector2 canvasAnchoredPosition)
         {
+            canvasAnchoredPosition = Vector2.zero;
+
             RectTransform chipsRt = winnerView.ChipsHudRect;
             if (chipsRt == null || amount <= 0)
-                return;
+                return false;
 
             _rootCanvas ??= ResolveRootCanvas();
             if (_rootCanvas == null)
-                return;
+                return false;
 
             EnsurePotChipStack();
             if (_potChipStack == null)
-                return;
+                return false;
 
             ApplyPotChipStackSettings();
             _potChipStack.SetExactAmount(amount);
 
             RectTransform stackRt = _potChipStack.StackRoot;
             var canvasRt = (RectTransform)_rootCanvas.transform;
-
-            if (_potChipStackHomeParent == null)
-            {
-                _potChipStackHomeParent        = stackRt.parent;
-                _potChipStackHomeSiblingIndex  = stackRt.GetSiblingIndex();
-            }
-
-            stackRt.SetParent(canvasRt, false);
-            stackRt.anchorMin = new Vector2(0.5f, 0.5f);
-            stackRt.anchorMax = new Vector2(0.5f, 0.5f);
-            stackRt.pivot     = new Vector2(0.5f, 0.5f);
 
             chipsRt.GetWorldCorners(_cornerBuffer);
             Vector2 chipsBottomCenter = canvasRt.InverseTransformPoint(
@@ -2753,8 +2796,8 @@ namespace TexasHoldem
             float chipBottomLocal = _potChipStack.GetBottomLocalY();
             float stackCenterY = chipsBottomCenter.y - chipBottomLocal;
 
-            stackRt.anchoredPosition = new Vector2(stackCenterX, stackCenterY);
-            stackRt.gameObject.SetActive(true);
+            canvasAnchoredPosition = new Vector2(stackCenterX, stackCenterY);
+            return true;
         }
 
         private static readonly Vector3[] _cornerBuffer = new Vector3[4];
@@ -2771,17 +2814,75 @@ namespace TexasHoldem
             _potChipStackHomeSiblingIndex = 0;
         }
 
-        private IEnumerator RunWinnerCelebrationEffects(PlayerView primaryView, int share, float duration)
+        private IEnumerator RunWinnerCelebrationPrepare()
         {
             while (_playersRefreshCoroutine != null)
                 yield return null;
 
-            if (primaryView != null && share > 0)
-                MovePotChipsToWinnerHud(primaryView, share);
+            _winnerCelebrationCoroutine = null;
+        }
 
-            if (duration > 0f)
-                yield return new WaitForSecondsRealtime(duration);
+        private IEnumerator AnimatePotChipsToWinner(PlayerView winnerView, int share)
+        {
+            while (_playersRefreshCoroutine != null)
+                yield return null;
 
+            if (winnerView == null || share <= 0)
+            {
+                _winnerPotChipsCollected = true;
+                _winnerCelebrationCoroutine = null;
+                yield break;
+            }
+
+            if (!TryResolveWinnerHudStackPosition(winnerView, share, out Vector2 endPos))
+            {
+                _winnerPotChipsCollected = true;
+                _winnerCelebrationCoroutine = null;
+                yield break;
+            }
+
+            EnsurePotChipStack();
+            RectTransform stackRt = _potChipStack.StackRoot;
+            var canvasRt = (RectTransform)_rootCanvas.transform;
+
+            if (_potChipStackHomeParent == null)
+            {
+                _potChipStackHomeParent       = stackRt.parent;
+                _potChipStackHomeSiblingIndex = stackRt.GetSiblingIndex();
+            }
+
+            Vector3 worldPos = stackRt.position;
+            stackRt.SetParent(canvasRt, worldPositionStays: true);
+            stackRt.position = worldPos;
+            stackRt.anchorMin = new Vector2(0.5f, 0.5f);
+            stackRt.anchorMax = new Vector2(0.5f, 0.5f);
+            stackRt.pivot     = new Vector2(0.5f, 0.5f);
+            stackRt.gameObject.SetActive(true);
+
+            Vector2 startPos = stackRt.anchoredPosition;
+            float duration = Mathf.Max(0.05f, _winnerPotCollectFlyDuration);
+            float elapsed  = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
+
+                Vector2 pos = Vector2.Lerp(startPos, endPos, t);
+                pos.y += Mathf.Sin(t * Mathf.PI) * 40f;
+                stackRt.anchoredPosition = pos;
+                stackRt.localScale = Vector3.Lerp(Vector3.one, Vector3.one * 0.85f, t);
+
+                yield return null;
+            }
+
+            stackRt.anchoredPosition = endPos;
+            stackRt.localScale       = Vector3.one;
+
+            if (_potText != null)
+                _potText.text = string.Empty;
+
+            _winnerPotChipsCollected    = true;
             _winnerCelebrationCoroutine = null;
         }
 
