@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
 
@@ -100,7 +101,7 @@ namespace TexasHoldem
         [Header("Winner Celebration")]
         [Tooltip("Horizontal gap between winner ChipsText and the pot chip stack at their HUD.")]
         [SerializeField, Min(0f)] private float _winnerHudChipPadding = 8f;
-        [Tooltip("Duration for pot chips flying to the winner HUD when Backspace is pressed.")]
+        [Tooltip("Duration for pot chips flying to the winner HUD (Backspace or B).")]
         [SerializeField, Min(0.05f)] private float _winnerPotCollectFlyDuration = 0.5f;
 
         [Header("Winner Card Highlight")]
@@ -186,6 +187,7 @@ namespace TexasHoldem
         private int                  _revealedCommunityCount;
         private Coroutine            _communityRevealCoroutine;
         private Coroutine            _playersRefreshCoroutine;
+        private bool                 _playersRefreshInProgress;
         private Coroutine            _humanHoleRevealCoroutine;
         private Coroutine            _beginTurnCoroutine;
         private Coroutine            _timerCoroutine;
@@ -302,26 +304,50 @@ namespace TexasHoldem
             }
         }
 
-        private void Update()
+        /// <summary>Backspace / B / Delete — flies pot chips to the winner during the post-hand pause.</summary>
+        public bool TryCollectWinnerPot()
         {
-            if (_gameManager == null)
+            if (!CanCollectPotToWinner())
+                return false;
+
+            return BeginCollectPotToWinner();
+        }
+
+        /// <summary>Space — allowed after pot chips were collected (or when there is no pot).</summary>
+        public bool CanAdvancePastWinnerDismiss() => CanAdvanceAfterWinnerDismiss();
+
+        /// <summary>True while Backspace/B/Delete should collect the center pot to the winner.</summary>
+        public bool WinnerPotCollectPending => CanCollectPotToWinner();
+
+        /// <summary>Stops table UI from eating clicks/keys during the post-win pause.</summary>
+        public void PrepareTableForWinnerDismissInput()
+        {
+            if (!Application.isPlaying)
                 return;
 
-            if (OptionsMenu.Instance != null && OptionsMenu.Instance.IsOpen)
-                return;
+            HideBettingControls();
+            HideAllSeatMenus();
+            ClearUiKeyboardFocus();
+            SetActionPanelVisible(false);
+        }
 
-            if (_winnerCelebrationActive && !_winnerPotChipsCollected)
-            {
-                if (Input.GetKeyDown(KeyCode.Backspace))
-                    BeginCollectPotToWinner();
-                return;
-            }
+        private bool CanCollectPotToWinner()
+        {
+            if (_winnerPotChipsCollected || _winnerDisplayGrossPot <= 0)
+                return false;
 
-            if (!_gameManager.AwaitingWinnerDismiss)
-                return;
+            if (_gameManager != null && _gameManager.AwaitingWinnerDismiss)
+                return true;
 
-            if (Input.GetKeyDown(KeyCode.Space))
-                _gameManager.AcknowledgeWinnerDismiss();
+            return _winnerCelebrationActive;
+        }
+
+        private bool CanAdvanceAfterWinnerDismiss()
+        {
+            if (_winnerDisplayGrossPot <= 0)
+                return true;
+
+            return _winnerPotChipsCollected;
         }
 
         private IEnumerator BindOptionsMenuWhenReady()
@@ -871,6 +897,7 @@ namespace TexasHoldem
             {
                 StopCoroutine(_playersRefreshCoroutine);
                 _playersRefreshCoroutine = null;
+                _playersRefreshInProgress = false;
             }
 
             _playersRefreshCoroutine = StartCoroutine(RefreshPlayers(players));
@@ -912,8 +939,7 @@ namespace TexasHoldem
 
         private IEnumerator WaitForTableUiIdle(bool waitForHoleReveal)
         {
-            while (_playersRefreshCoroutine != null)
-                yield return null;
+            yield return WaitForPlayersRefreshIdle();
 
             if (waitForHoleReveal)
             {
@@ -922,14 +948,34 @@ namespace TexasHoldem
             }
         }
 
+        private IEnumerator WaitForPlayersRefreshIdle()
+        {
+            while (_playersRefreshInProgress)
+                yield return null;
+        }
+
+        private void ForceEndPlayersRefresh()
+        {
+            if (_playersRefreshCoroutine != null)
+            {
+                StopCoroutine(_playersRefreshCoroutine);
+                _playersRefreshCoroutine  = null;
+            }
+
+            _playersRefreshInProgress = false;
+        }
+
         private IEnumerator RefreshPlayers(List<PlayerState> players)
         {
-            if (players == null)
-                yield break;
+            _playersRefreshInProgress = true;
+            try
+            {
+                if (players == null)
+                    yield break;
 
-            IReadOnlyList<PlayerView> views = ResolvePlayerViews();
-            if (views == null || views.Count == 0)
-                yield break;
+                IReadOnlyList<PlayerView> views = ResolvePlayerViews();
+                if (views == null || views.Count == 0)
+                    yield break;
 
             _humanPlayer = players.Find(p => p.Type == PlayerType.Human);
 
@@ -993,7 +1039,12 @@ namespace TexasHoldem
             if (anyBetIncreased && !_collectInProgress && !_winnerCelebrationActive)
                 HidePotChipStack();
             RefreshDealerButton();
-            _playersRefreshCoroutine = null;
+            }
+            finally
+            {
+                _playersRefreshInProgress = false;
+                _playersRefreshCoroutine  = null;
+            }
         }
 
         private void RefreshDealerButton()
@@ -1770,7 +1821,8 @@ namespace TexasHoldem
             if (_playersRefreshCoroutine != null)
             {
                 StopCoroutine(_playersRefreshCoroutine);
-                _playersRefreshCoroutine = null;
+                _playersRefreshCoroutine  = null;
+                _playersRefreshInProgress = false;
             }
 
             IReadOnlyList<PlayerView> views = ResolvePlayerViews();
@@ -2638,9 +2690,32 @@ namespace TexasHoldem
 
             HideBettingControls();
             HideAllSeatMenus();
+            ClearUiKeyboardFocus();
+            SetActionPanelVisible(false);
 
             foreach (PlayerView view in ResolvePlayerViews())
                 view?.SetActiveTurn(false);
+        }
+
+        private void ClearUiKeyboardFocus()
+        {
+            if (_raiseInput != null && _raiseInput.isFocused)
+                _raiseInput.DeactivateInputField();
+
+            foreach (PlayerView view in ResolvePlayerViews())
+            {
+                if (view == null)
+                    continue;
+
+                foreach (TMP_InputField input in view.GetComponentsInChildren<TMP_InputField>(true))
+                {
+                    if (input != null && input.isFocused)
+                        input.DeactivateInputField();
+                }
+            }
+
+            if (EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(null);
         }
 
         private void OnWinnerDetermined(PlayerState winner)
@@ -2692,7 +2767,7 @@ namespace TexasHoldem
             _winnerCollectTarget = primaryView;
             _winnerCollectShare  = share;
 
-            if (primaryView == null || share <= 0 || _winnerDisplayGrossPot <= 0)
+            if (_winnerDisplayGrossPot <= 0)
                 _winnerPotChipsCollected = true;
 
             _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationPrepare());
@@ -2710,10 +2785,23 @@ namespace TexasHoldem
             ShowPotChipStack(grossPot);
         }
 
-        private void BeginCollectPotToWinner()
+        private bool BeginCollectPotToWinner()
         {
-            if (_winnerPotChipsCollected || _winnerCollectTarget == null || _winnerCollectShare <= 0)
-                return;
+            if (_winnerPotChipsCollected)
+                return false;
+
+            ForceEndPlayersRefresh();
+            ClearUiKeyboardFocus();
+            EnsureWinnerCollectTarget();
+
+            int amount = ResolveWinnerCollectAmount();
+            if (_winnerCollectTarget == null || amount <= 0)
+            {
+                Debug.LogError(
+                    $"[UIManager] Pot collect FAILED — target={_winnerCollectTarget != null}, amount={amount}, gross={_winnerDisplayGrossPot}, share={_winnerCollectShare}.",
+                    this);
+                return false;
+            }
 
             if (_winnerCelebrationCoroutine != null)
             {
@@ -2722,7 +2810,36 @@ namespace TexasHoldem
             }
 
             _winnerCelebrationCoroutine = StartCoroutine(AnimatePotChipsToWinner(
-                _winnerCollectTarget, _winnerCollectShare));
+                _winnerCollectTarget, amount));
+            return true;
+        }
+
+        private void EnsureWinnerCollectTarget()
+        {
+            if (_winnerCollectTarget != null || _gameManager == null)
+                return;
+
+            IReadOnlyList<PlayerState> winners = _gameManager.LastRoundWinners;
+            if (winners == null || winners.Count == 0)
+                return;
+
+            foreach (PlayerState winner in winners)
+            {
+                PlayerView view = ResolvePlayerView(winner);
+                if (view == null)
+                    continue;
+
+                _winnerCollectTarget = view;
+                return;
+            }
+        }
+
+        private int ResolveWinnerCollectAmount()
+        {
+            if (_winnerCollectShare > 0)
+                return _winnerCollectShare;
+
+            return _winnerDisplayGrossPot;
         }
 
         private void ClearWinnerCelebration()
@@ -2816,32 +2933,45 @@ namespace TexasHoldem
 
         private IEnumerator RunWinnerCelebrationPrepare()
         {
-            while (_playersRefreshCoroutine != null)
-                yield return null;
-
+            yield return WaitForPlayersRefreshIdle();
             _winnerCelebrationCoroutine = null;
         }
 
-        private IEnumerator AnimatePotChipsToWinner(PlayerView winnerView, int share)
+        private IEnumerator AnimatePotChipsToWinner(PlayerView winnerView, int amount)
         {
-            while (_playersRefreshCoroutine != null)
-                yield return null;
+            ForceEndPlayersRefresh();
 
-            if (winnerView == null || share <= 0)
+            if (winnerView == null || amount <= 0)
             {
-                _winnerPotChipsCollected = true;
-                _winnerCelebrationCoroutine = null;
+                Debug.LogError($"[UIManager] Pot collect FAILED — winner or amount invalid (amount={amount}).", this);
+                CompleteWinnerPotCollection();
                 yield break;
             }
 
-            if (!TryResolveWinnerHudStackPosition(winnerView, share, out Vector2 endPos))
+            if (ResolveRootCanvas() == null)
             {
-                _winnerPotChipsCollected = true;
-                _winnerCelebrationCoroutine = null;
+                Debug.LogError("[UIManager] Pot collect FAILED — root canvas not found.", this);
+                CompleteWinnerPotCollection();
+                yield break;
+            }
+
+            if (!TryResolveWinnerHudStackPosition(winnerView, amount, out Vector2 endPos))
+            {
+                Debug.LogError(
+                    $"[UIManager] Pot collect FAILED — could not resolve winner HUD position (amount={amount}).",
+                    this);
+                CompleteWinnerPotCollection();
                 yield break;
             }
 
             EnsurePotChipStack();
+            if (_potChipStack == null)
+            {
+                Debug.LogError("[UIManager] Pot collect FAILED — pot chip stack missing.", this);
+                CompleteWinnerPotCollection();
+                yield break;
+            }
+
             RectTransform stackRt = _potChipStack.StackRoot;
             var canvasRt = (RectTransform)_rootCanvas.transform;
 
@@ -2865,7 +2995,7 @@ namespace TexasHoldem
 
             while (elapsed < duration)
             {
-                elapsed += Time.deltaTime;
+                elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
 
                 Vector2 pos = Vector2.Lerp(startPos, endPos, t);
@@ -2878,7 +3008,11 @@ namespace TexasHoldem
 
             stackRt.anchoredPosition = endPos;
             stackRt.localScale       = Vector3.one;
+            CompleteWinnerPotCollection();
+        }
 
+        private void CompleteWinnerPotCollection()
+        {
             if (_potText != null)
                 _potText.text = string.Empty;
 
@@ -3211,14 +3345,54 @@ namespace TexasHoldem
                 _winningHandText.gameObject.SetActive(false);
         }
 
-        /// <summary>Walks up the Canvas hierarchy to find the root canvas for spawning overlay objects.</summary>
+        /// <summary>Finds the UI root canvas (UIManager lives on Main Camera, not under Canvas).</summary>
         private Canvas ResolveRootCanvas()
         {
-            Canvas c = GetComponentInParent<Canvas>();
+            if (_rootCanvas != null)
+                return _rootCanvas;
+
+            if (_potText != null)
+            {
+                _rootCanvas = FindRootCanvasForTransform(_potText.transform);
+                if (_rootCanvas != null)
+                    return _rootCanvas;
+            }
+
+            EnsurePotChipStack();
+            if (_potChipStack != null)
+            {
+                _rootCanvas = FindRootCanvasForTransform(_potChipStack.StackRoot);
+                if (_rootCanvas != null)
+                    return _rootCanvas;
+            }
+
+            if (_actionPanel != null)
+            {
+                _rootCanvas = FindRootCanvasForTransform(_actionPanel.transform);
+                if (_rootCanvas != null)
+                    return _rootCanvas;
+            }
+
+#if UNITY_2023_1_OR_NEWER
+            _rootCanvas = FindFirstObjectByType<Canvas>();
+#else
+            _rootCanvas = FindObjectOfType<Canvas>();
+#endif
+            return _rootCanvas;
+        }
+
+        private static Canvas FindRootCanvasForTransform(Transform t)
+        {
+            if (t == null)
+                return null;
+
+            Canvas c = t.GetComponentInParent<Canvas>();
             while (c != null && !c.isRootCanvas)
-                c = c.transform.parent != null
-                    ? c.transform.parent.GetComponentInParent<Canvas>()
-                    : null;
+            {
+                Transform parent = c.transform.parent;
+                c = parent != null ? parent.GetComponentInParent<Canvas>() : null;
+            }
+
             return c;
         }
     }

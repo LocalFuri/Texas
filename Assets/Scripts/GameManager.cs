@@ -37,6 +37,8 @@ namespace TexasHoldem
         [Header("Round End")]
         [Tooltip("How long the winner celebration plays before the next round begins.")]
         [SerializeField, Min(0f)] private float _roundEndPauseSecs = 2.5f;
+        [Tooltip("Shows on-screen Collect / Next-hand buttons after a win (debug flow).")]
+        [SerializeField] private bool _showWinnerDebugOverlay = true;
 
         [Header("Round Start")]
         [Tooltip("Pause before the dealer button appears at the start of each hand.")]
@@ -102,6 +104,7 @@ namespace TexasHoldem
         public void AcknowledgeWinnerDismiss()
         {
             _awaitingWinnerDismiss = false;
+            HideWinnerDismissControls();
         }
         public float             DealerButtonDelay       => _dealerButtonDelay;
         public float             BlindPostDelay          => _blindPostDelay;
@@ -145,6 +148,7 @@ namespace TexasHoldem
         private bool          _awaitingWinnerDismiss;
         private BettingAction _humanAction;
         private int           _humanRaiseAmount;
+        private WinnerDismissControls _winnerDismissControls;
 
         private void Awake()
         {
@@ -155,6 +159,8 @@ namespace TexasHoldem
 
             if (_tableLayout == null)
                 _tableLayout = FindObjectOfType<TableLayoutManager>(includeInactive: true);
+
+            ResolveUiManagerReference();
 
             OnPhaseChanged          ??= new UnityEvent<GamePhase>();
             OnPlayersUpdated        ??= new UnityEvent<List<PlayerState>>();
@@ -170,7 +176,47 @@ namespace TexasHoldem
 
         private void Start()
         {
+            ResolveUiManagerReference();
+            EnsureWinnerDismissControls();
             InitializePlayers();
+        }
+
+        private void EnsureWinnerDismissControls()
+        {
+            _winnerDismissControls = GetComponent<WinnerDismissControls>();
+            if (_winnerDismissControls == null)
+                _winnerDismissControls = gameObject.AddComponent<WinnerDismissControls>();
+
+            _winnerDismissControls.Bind(this, _uiManager);
+        }
+
+        private void ShowWinnerDismissControls()
+        {
+            EnsureWinnerDismissControls();
+            ResolveUiManagerReference();
+            _winnerDismissControls.Bind(this, _uiManager);
+            _winnerDismissControls.Begin(_showWinnerDebugOverlay);
+        }
+
+        private void HideWinnerDismissControls()
+        {
+            _winnerDismissControls?.End();
+        }
+
+        private void ResolveUiManagerReference()
+        {
+            if (_uiManager != null)
+                return;
+
+            _uiManager = UIManager.Instance;
+
+#if UNITY_2023_1_OR_NEWER
+            if (_uiManager == null)
+                _uiManager = FindFirstObjectByType<UIManager>(FindObjectsInactive.Include);
+#else
+            if (_uiManager == null)
+                _uiManager = FindObjectOfType<UIManager>(true);
+#endif
         }
 
         /// <summary>Called by the UI Start button to begin the game loop.</summary>
@@ -183,8 +229,9 @@ namespace TexasHoldem
         public void ResetToStartScreen()
         {
             StopAllCoroutines();
-            _awaitingHumanInput   = false;
+            _awaitingHumanInput    = false;
             _awaitingWinnerDismiss = false;
+            HideWinnerDismissControls();
             _humanAction        = default;
             _humanRaiseAmount   = 0;
             DealerIndex         = 0;
@@ -492,10 +539,11 @@ namespace TexasHoldem
 
             OnGameMessage?.Invoke(BuildRoundEndMessage(
                 roundWinners.Players, LastPotAwarded, LastRakeAmount, LastRakeDisplayText));
+            _awaitingWinnerDismiss = true;
             OnWinnerDetermined?.Invoke(roundWinners.Players[0]);
             NotifyPlayersUpdated();
+            ShowWinnerDismissControls();
 
-            _awaitingWinnerDismiss = true;
             yield return new WaitUntil(() => !_awaitingWinnerDismiss);
 
             OnRoundEnded?.Invoke();

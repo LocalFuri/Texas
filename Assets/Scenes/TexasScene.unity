@@ -8714,7 +8714,7 @@ MonoBehaviour:
   _potChipPadding: 12
   _potChipColumnGapX: 12
   _potStackOverlapY: 6
-  _copyrightLabel: CodeRed Soft 2026-07-09
+  _copyrightLabel: "CodeRed Soft \xAE 2026-07-10"
   _copyrightLabelText: {fileID: 881100003}
   _openMenuBetweenHands: 0
   _animateBetPlace: 0
@@ -11873,7 +11873,7 @@ MonoBehaviour:
   _humanThinkTime: 20
   _dealDelay: 0.4
   _tableLayout: {fileID: 2125510646}
-  _uiManager: {fileID: 0}
+  _uiManager: {fileID: 895263173}
   _buttonWidth: 120
   _buttonHeight: 50
   _buttonFontSize: 30
@@ -11881,6 +11881,7 @@ MonoBehaviour:
   _communityFlipDuration: 0.1
   _communityFlipGap: 0.1
   _roundEndPauseSecs: 2.5
+  _showWinnerDebugOverlay: 1
   _dealerButtonDelay: 0
   _blindPostDelay: 0.5
   _rake:
