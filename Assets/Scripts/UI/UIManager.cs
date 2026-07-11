@@ -3364,6 +3364,7 @@ namespace TexasHoldem
             if (_potText != null)
                 _potText.text = string.Empty;
 
+            ClearWinningCardHighlights();
             _gameManager?.ApplyPendingPotAward();
 
             _winnerPotChipsCollected    = true;
