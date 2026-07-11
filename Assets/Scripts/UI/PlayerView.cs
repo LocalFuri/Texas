@@ -795,5 +795,56 @@ namespace TexasHoldem
             ApplyGoldRingIdle();
             ApplyHudGlowIdle();
         }
+
+        /// <summary>Scales the avatar frame (photo + rings) when a player wins.</summary>
+        public IEnumerator PulseAvatarImage(int pulseCount, float peakScale, float halfPulseDuration)
+        {
+            RectTransform rt = ResolveAvatarPulseTarget();
+            if (rt == null || pulseCount <= 0)
+                yield break;
+
+            Vector3 baseScale = Vector3.one;
+            Vector3 peak        = baseScale * Mathf.Max(1f, peakScale);
+            halfPulseDuration   = Mathf.Max(0.03f, halfPulseDuration);
+
+            try
+            {
+                for (int i = 0; i < pulseCount; i++)
+                {
+                    yield return LerpAvatarImageScale(rt, baseScale, peak, halfPulseDuration);
+                    yield return LerpAvatarImageScale(rt, peak, baseScale, halfPulseDuration);
+                }
+            }
+            finally
+            {
+                rt.localScale = baseScale;
+            }
+        }
+
+        private RectTransform ResolveAvatarPulseTarget()
+        {
+            if (_avatarFrame != null)
+                return _avatarFrame;
+
+            if (_avatarImage != null)
+                return _avatarImage.rectTransform;
+
+            return null;
+        }
+
+        private static IEnumerator LerpAvatarImageScale(
+            RectTransform rt, Vector3 from, Vector3 to, float duration)
+        {
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
+                rt.localScale = Vector3.Lerp(from, to, t);
+                yield return null;
+            }
+
+            rt.localScale = to;
+        }
     }
 }

@@ -101,6 +101,12 @@ namespace TexasHoldem
         [SerializeField, Min(0f)] private float _winnerPotCollectHoldDuration = 0.5f;
         [Tooltip("Duration for chips shrinking and fading into the avatar center.")]
         [SerializeField, Min(0.05f)] private float _winnerPotCollectVanishDuration = 0.35f;
+        [Tooltip("Avatar frame scale (photo + rings) at win — peak scale (1.2 = 20% bigger).")]
+        [SerializeField, Min(1f)] private float _winnerAvatarPulseScale = 1.4f;
+        [Tooltip("Number of avatar frame scale pulses when a player wins.")]
+        [SerializeField, Range(0, 6)] private int _winnerAvatarPulseCount = 3;
+        [Tooltip("Duration of each half pulse (scale up or down). Full pulse = 2× this (0.25 = 0.5s per pulse).")]
+        [SerializeField, Min(0.03f)] private float _winnerAvatarPulseHalfDuration = 0.25f;
 
         [Header("Winner Card Highlight")]
         [Tooltip("Gold pulse rate in Hz while waiting for Space (1 = one pulse per second).")]
@@ -3016,6 +3022,7 @@ namespace TexasHoldem
 
                 winnerView.RefreshHud(roundWinner, bigBlind);
                 winnerView.StartWinnerHighlight(winnerNetShare, duration);
+                TryStartWinnerAvatarPulse(winnerView);
             }
 
             if (_winnerDisplayPotAmount <= 0)
@@ -3025,6 +3032,17 @@ namespace TexasHoldem
             }
 
             _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationPrepare());
+        }
+
+        private void TryStartWinnerAvatarPulse(PlayerView winnerView)
+        {
+            if (winnerView == null || _winnerAvatarPulseCount <= 0)
+                return;
+
+            winnerView.StartCoroutine(winnerView.PulseAvatarImage(
+                _winnerAvatarPulseCount,
+                _winnerAvatarPulseScale,
+                _winnerAvatarPulseHalfDuration));
         }
 
         private readonly struct WinnerCollectLeg
