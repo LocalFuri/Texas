@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.EventSystems;
 using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
@@ -100,9 +99,6 @@ namespace TexasHoldem
         [SerializeField, Min(0f)] private float _collectPotUpdateDelay = 0.1f;
 
         [Header("Winner Celebration")]
-        [Tooltip("Gap between avatar bottom edge and pot chip stack top when collecting to winner HUD.")]
-        [FormerlySerializedAs("_winnerHudChipPadding")]
-        [SerializeField, Min(0f)] private float _winnerHudGapBelowAvatar = 3f;
         [Tooltip("Duration for pot chips flying to the winner HUD (Backspace or B).")]
         [SerializeField, Min(0.05f)] private float _winnerPotCollectFlyDuration = 0.5f;
 
@@ -3044,8 +3040,7 @@ namespace TexasHoldem
         {
             canvasAnchoredPosition = Vector2.zero;
 
-            RectTransform avatarRt = winnerView.AvatarRect;
-            if (avatarRt == null)
+            if (winnerView == null)
                 return false;
 
             _rootCanvas ??= ResolveRootCanvas();
@@ -3056,9 +3051,9 @@ namespace TexasHoldem
             if (_potChipStack == null)
                 return false;
 
+            int amount = ResolveWinnerCollectAmount();
             if (relayoutStack)
             {
-                int amount = ResolveWinnerCollectAmount();
                 if (amount <= 0)
                     return false;
 
@@ -3066,24 +3061,23 @@ namespace TexasHoldem
                 _potChipStack.SetExactAmount(amount);
             }
 
-            RectTransform stackRt = _potChipStack.StackRoot;
             var canvasRt = (RectTransform)_rootCanvas.transform;
 
-            avatarRt.GetWorldCorners(_cornerBuffer);
-            Vector2 avatarBottomCenter = canvasRt.InverseTransformPoint(
-                (_cornerBuffer[0] + _cornerBuffer[3]) * 0.5f);
+            if (_tableLayout != null
+                && _tableLayout.TryGetBetChipStackCanvasPosition(
+                    winnerView, canvasRt, amount, out canvasAnchoredPosition))
+            {
+                return true;
+            }
 
-            float chipBottomLocal = _potChipStack.GetBottomLocalY();
-            float stackHeight = stackRt.sizeDelta.y > 0f ? stackRt.sizeDelta.y : stackRt.rect.height;
-            float stackTopLocal = chipBottomLocal + stackHeight;
+            RectTransform betAnchor = winnerView.BetAnchorRect;
+            if (betAnchor == null)
+                return false;
 
-            canvasAnchoredPosition = new Vector2(
-                avatarBottomCenter.x,
-                avatarBottomCenter.y - _winnerHudGapBelowAvatar - stackTopLocal);
+            Vector3 canvasLocal = canvasRt.InverseTransformPoint(betAnchor.position);
+            canvasAnchoredPosition = new Vector2(canvasLocal.x, canvasLocal.y);
             return true;
         }
-
-        private static readonly Vector3[] _cornerBuffer = new Vector3[4];
 
         private void RestorePotChipStackHome()
         {

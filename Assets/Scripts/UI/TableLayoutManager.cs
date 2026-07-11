@@ -157,6 +157,49 @@ namespace TexasHoldem
         public SeatConfig GetSeatConfig(int seatIndex)
             => (uint)seatIndex < (uint)SeatCount ? _seats[seatIndex] : default;
 
+        /// <summary>
+        /// Root-canvas position of a seat's bet chip stack — the same spot used when
+        /// <see cref="BetDisplay.ShowBet"/> places chips under the avatar.
+        /// </summary>
+        /// <param name="layoutAmount">
+        /// Chip breakdown used to size the stack for layout (pass the pot share being collected).
+        /// </param>
+        public bool TryGetBetChipStackCanvasPosition(
+            PlayerView view, RectTransform rootCanvas, int layoutAmount, out Vector2 canvasPosition)
+        {
+            canvasPosition = Vector2.zero;
+            if (view == null || rootCanvas == null)
+                return false;
+
+            BetDisplay betDisplay = view.GetComponentInChildren<BetDisplay>(true);
+            if (betDisplay == null)
+                return false;
+
+            if (!TryGetSeatConfig(view, out SeatConfig cfg))
+                return false;
+
+            ApplyBetAnchor(view, cfg);
+
+            ChipStackView betStack = betDisplay.GetComponentInChildren<ChipStackView>(true);
+            if (layoutAmount > 0)
+                betStack?.SetExactAmount(layoutAmount);
+
+            SyncBetDisplayLayoutInternal(betDisplay.transform);
+
+            RectTransform chipOrigin = betDisplay.ChipStackOrigin;
+            if (chipOrigin == null)
+            {
+                betStack?.Clear();
+                return false;
+            }
+
+            Vector3 canvasLocal = rootCanvas.InverseTransformPoint(chipOrigin.position);
+            canvasPosition = new Vector2(canvasLocal.x, canvasLocal.y);
+
+            betStack?.Clear();
+            return true;
+        }
+
         /// <summary>Avatar frame outer diameter in canvas pixels.</summary>
         public float AvatarDiameter => _avatarDiameter;
 
@@ -462,6 +505,24 @@ namespace TexasHoldem
                 : PlayerHudLayout.AvatarPosX(cfg.mirrorHud);
 
             return new Vector2(avatarX, ComputeBetAnchorCenterY());
+        }
+
+        private bool TryGetSeatConfig(PlayerView view, out SeatConfig cfg)
+        {
+            cfg = default;
+            if (_playerViews == null)
+                return false;
+
+            for (int i = 0; i < _playerViews.Length; i++)
+            {
+                if (_playerViews[i] != view)
+                    continue;
+
+                cfg = GetSeatConfig(i);
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>

@@ -8723,7 +8723,6 @@ MonoBehaviour:
   _collectSeatStagger: 0.08
   _collectChipsPerSeat: 2
   _collectPotUpdateDelay: 0.1
-  _winnerHudGapBelowAvatar: 8
   _winnerPotCollectFlyDuration: 0.5
   _winnerCardPulseHz: 1
   _winnerCardPulseMinBlend: 0.5
