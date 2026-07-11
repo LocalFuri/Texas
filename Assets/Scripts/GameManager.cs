@@ -103,9 +103,30 @@ namespace TexasHoldem
         /// <summary>Continues past the showdown result after the human presses Space.</summary>
         public void AcknowledgeWinnerDismiss()
         {
+            ApplyPendingPotAward();
             _awaitingWinnerDismiss = false;
             HideWinnerDismissControls();
         }
+
+        /// <summary>
+        /// Pays the net pot to winners. Called when pot chips are collected to the winner HUD
+        /// (Backspace / B), not at showdown resolution.
+        /// </summary>
+        public void ApplyPendingPotAward()
+        {
+            if (!_potAwardPending)
+                return;
+
+            _potAwardPending = false;
+
+            if (LastPotAwarded <= 0 || LastRoundWinners == null || LastRoundWinners.Count == 0)
+                return;
+
+            PotAward.Split(LastPotAwarded, LastRoundWinners);
+            NotifyPlayersUpdated();
+        }
+
+        public bool PotAwardPending => _potAwardPending;
         public float             DealerButtonDelay       => _dealerButtonDelay;
         public float             BlindPostDelay          => _blindPostDelay;
         public int               LastPotAwarded          { get; private set; }
@@ -146,6 +167,7 @@ namespace TexasHoldem
 
         private bool          _awaitingHumanInput;
         private bool          _awaitingWinnerDismiss;
+        private bool          _potAwardPending;
         private BettingAction _humanAction;
         private int           _humanRaiseAmount;
         private WinnerDismissControls _winnerDismissControls;
@@ -231,6 +253,7 @@ namespace TexasHoldem
             StopAllCoroutines();
             _awaitingHumanInput    = false;
             _awaitingWinnerDismiss = false;
+            _potAwardPending       = false;
             HideWinnerDismissControls();
             _humanAction        = default;
             _humanRaiseAmount   = 0;
@@ -534,8 +557,7 @@ namespace TexasHoldem
             LastRakeAmount      = rakeResult.Amount;
             LastRakeDisplayText = _rake.FormatDisplay(rakeResult);
             LastPotAwarded = LastGrossPot - LastRakeAmount;
-
-            PotAward.Split(LastPotAwarded, roundWinners.Players);
+            _potAwardPending = true;
 
             OnGameMessage?.Invoke(BuildRoundEndMessage(
                 roundWinners.Players, LastPotAwarded, LastRakeAmount, LastRakeDisplayText));

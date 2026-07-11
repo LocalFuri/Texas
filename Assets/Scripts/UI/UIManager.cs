@@ -2897,15 +2897,20 @@ namespace TexasHoldem
             DismissBettingUiForWinnerCelebration();
 
             float duration = _gameManager.RoundEndPauseSecs;
-            int share = winners.Count > 0
-                ? _gameManager.LastPotAwarded / winners.Count
+            int winnerCount = winners.Count > 0 ? winners.Count : 1;
+            int grossShare = winnerCount > 0
+                ? _gameManager.LastGrossPot / winnerCount
+                : _gameManager.LastGrossPot;
+            int netShare = winnerCount > 0
+                ? _gameManager.LastPotAwarded / winnerCount
                 : _gameManager.LastPotAwarded;
 
             ShowWinningHandDisplay();
             ShowRakeDisplay(_gameManager.LastRakeDisplayText);
 
             _winnerPotChipsCollected = false;
-            _winnerDisplayPotAmount   = share;
+            _winnerDisplayPotAmount  = grossShare;
+            _winnerCollectShare      = netShare;
             ShowPotDisplayForWinner(_winnerDisplayPotAmount);
 
             int bigBlind = ResolveBigBlindAmount();
@@ -2917,15 +2922,17 @@ namespace TexasHoldem
                     continue;
 
                 winnerView.RefreshHud(roundWinner, bigBlind);
-                winnerView.StartWinnerHighlight(share, duration);
+                winnerView.StartWinnerHighlight(netShare, duration);
                 primaryView ??= winnerView;
             }
 
             _winnerCollectTarget = primaryView;
-            _winnerCollectShare  = share;
 
             if (_winnerDisplayPotAmount <= 0)
+            {
+                _gameManager.ApplyPendingPotAward();
                 _winnerPotChipsCollected = true;
+            }
 
             _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationPrepare());
         }
@@ -2942,6 +2949,30 @@ namespace TexasHoldem
             ShowPotChipStack(potAmount);
         }
 
+        /// <summary>Shrinks the center pot stack and label to the net amount (after rake).</summary>
+        private void ApplyNetPotToCenterDisplay(int netAmount)
+        {
+            if (netAmount <= 0)
+            {
+                if (_potText != null)
+                    _potText.text = string.Empty;
+                HidePotChipStack();
+                return;
+            }
+
+            if (_potText != null)
+                _potText.text = "Pot: " + netAmount.ToString("N0", GermanNFI);
+
+            if (_potChipStack == null)
+                EnsurePotChipStack();
+            if (_potChipStack == null)
+                return;
+
+            ApplyPotChipStackSettings();
+            _potChipStack.SetExactAmount(netAmount);
+            PositionPotChipStack(showStack: true);
+        }
+
         private bool BeginCollectPotToWinner()
         {
             if (_winnerPotChipsCollected)
@@ -2952,12 +2983,19 @@ namespace TexasHoldem
             EnsureWinnerCollectTarget();
 
             int amount = ResolveWinnerCollectAmount();
-            if (_winnerCollectTarget == null || amount <= 0)
+            if (_winnerCollectTarget == null)
             {
                 Debug.LogError(
                     $"[UIManager] Pot collect FAILED — target={_winnerCollectTarget != null}, amount={amount}, display={_winnerDisplayPotAmount}, share={_winnerCollectShare}.",
                     this);
                 return false;
+            }
+
+            if (amount <= 0)
+            {
+                ApplyNetPotToCenterDisplay(0);
+                CompleteWinnerPotCollection();
+                return true;
             }
 
             if (_winnerCelebrationCoroutine != null)
@@ -3006,6 +3044,8 @@ namespace TexasHoldem
                 StopCoroutine(_winnerCelebrationCoroutine);
                 _winnerCelebrationCoroutine = null;
             }
+
+            _gameManager?.ApplyPendingPotAward();
 
             _winnerCelebrationActive  = false;
             _winnerPotChipsCollected    = false;
@@ -3101,9 +3141,16 @@ namespace TexasHoldem
         {
             ForceEndPlayersRefresh();
 
-            if (winnerView == null || amount <= 0)
+            if (winnerView == null)
             {
-                Debug.LogError($"[UIManager] Pot collect FAILED — winner or amount invalid (amount={amount}).", this);
+                Debug.LogError("[UIManager] Pot collect FAILED — winner view missing.", this);
+                CompleteWinnerPotCollection();
+                yield break;
+            }
+
+            if (amount <= 0)
+            {
+                ApplyNetPotToCenterDisplay(0);
                 CompleteWinnerPotCollection();
                 yield break;
             }
@@ -3111,15 +3158,6 @@ namespace TexasHoldem
             if (ResolveRootCanvas() == null)
             {
                 Debug.LogError("[UIManager] Pot collect FAILED — root canvas not found.", this);
-                CompleteWinnerPotCollection();
-                yield break;
-            }
-
-            if (!TryResolveWinnerHudStackPosition(winnerView, out Vector2 endPos, relayoutStack: false))
-            {
-                Debug.LogError(
-                    $"[UIManager] Pot collect FAILED — could not resolve winner HUD position (amount={amount}).",
-                    this);
                 CompleteWinnerPotCollection();
                 yield break;
             }
@@ -3132,7 +3170,17 @@ namespace TexasHoldem
                 yield break;
             }
 
+            ApplyNetPotToCenterDisplay(amount);
             ShowPotAmountBadge(amount);
+
+            if (!TryResolveWinnerHudStackPosition(winnerView, out Vector2 endPos, relayoutStack: false))
+            {
+                Debug.LogError(
+                    $"[UIManager] Pot collect FAILED — could not resolve winner HUD position (amount={amount}).",
+                    this);
+                CompleteWinnerPotCollection();
+                yield break;
+            }
 
             RectTransform stackRt = _potChipStack.StackRoot;
             var canvasRt = (RectTransform)_rootCanvas.transform;
@@ -3177,6 +3225,8 @@ namespace TexasHoldem
         {
             if (_potText != null)
                 _potText.text = string.Empty;
+
+            _gameManager?.ApplyPendingPotAward();
 
             _winnerPotChipsCollected    = true;
             _winnerCelebrationCoroutine = null;
