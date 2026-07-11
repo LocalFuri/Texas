@@ -214,6 +214,7 @@ namespace TexasHoldem
 
         private const float PotAmountBadgeWidth  = 90f;
         private const float PotAmountBadgeHeight = 30f;
+        private const float PotAmountBadgeFontSize = 20f;
         private PlayerState   _pendingBadgePlayer;
         private BettingAction _pendingBadgeAction;
         private int           _pendingBadgeAmount;
@@ -1788,11 +1789,30 @@ namespace TexasHoldem
                 return;
 
             RectTransform stackRt = _potChipStack.StackRoot;
-            Transform existing = stackRt.Find("PotAmountBadge");
+            Transform existing    = null;
+
+            for (int i = stackRt.childCount - 1; i >= 0; i--)
+            {
+                Transform child = stackRt.GetChild(i);
+                if (child.name != "PotAmountBadge")
+                    continue;
+
+                if (existing == null)
+                    existing = child;
+                else if (Application.isPlaying)
+                    Destroy(child.gameObject);
+#if UNITY_EDITOR
+                else
+                    DestroyImmediate(child.gameObject);
+#endif
+            }
+
             if (existing != null)
             {
                 _potAmountBadgeRt   = (RectTransform)existing;
-                _potAmountBadgeText = existing.Find("AmountText")?.GetComponent<TMP_Text>();
+                _potAmountBadgeText = FindDirectChildIncludingInactive(existing, "AmountText")
+                    ?.GetComponent<TMP_Text>();
+                ApplyPotAmountBadgeStyle(_potAmountBadgeText);
                 return;
             }
 
@@ -1819,17 +1839,41 @@ namespace TexasHoldem
             textRt.offsetMax = Vector2.zero;
 
             var amountText = textGo.AddComponent<TextMeshProUGUI>();
-            amountText.alignment          = TextAlignmentOptions.Center;
-            amountText.fontStyle          = FontStyles.Bold;
-            amountText.enableWordWrapping = false;
-            amountText.overflowMode       = TextOverflowModes.Ellipsis;
-            amountText.raycastTarget      = false;
-            amountText.color              = UiColors.PotGold;
-            PlayerHudLayout.ApplyStackAmountFontIfMissing(amountText);
+            ApplyPotAmountBadgeStyle(amountText);
 
             _potAmountBadgeRt   = (RectTransform)badgeGo.transform;
             _potAmountBadgeText = amountText;
             badgeGo.SetActive(false);
+        }
+
+        private static Transform FindDirectChildIncludingInactive(Transform parent, string name)
+        {
+            if (parent == null)
+                return null;
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform child = parent.GetChild(i);
+                if (child.name == name)
+                    return child;
+            }
+
+            return null;
+        }
+
+        private static void ApplyPotAmountBadgeStyle(TMP_Text text)
+        {
+            if (text == null)
+                return;
+
+            text.alignment          = TextAlignmentOptions.Center;
+            text.fontStyle          = FontStyles.Bold;
+            text.enableWordWrapping = false;
+            text.overflowMode       = TextOverflowModes.Ellipsis;
+            text.raycastTarget      = false;
+            text.color              = UiColors.PotGold;
+            text.fontSize           = PotAmountBadgeFontSize;
+            PlayerHudLayout.ApplyStackAmountFontIfMissing(text);
         }
 
         private void LayoutPotAmountBadge()
@@ -1861,12 +1905,19 @@ namespace TexasHoldem
             }
 
             EnsurePotAmountBadge();
-            if (_potAmountBadgeText != null)
-                _potAmountBadgeText.text = amount.ToString("N0", GermanNFI);
-
             LayoutPotAmountBadge();
+
             if (_potAmountBadgeRt != null)
+            {
+                _potAmountBadgeRt.SetAsLastSibling();
                 _potAmountBadgeRt.gameObject.SetActive(true);
+            }
+
+            if (_potAmountBadgeText != null)
+            {
+                _potAmountBadgeText.text = amount.ToString("N0", GermanNFI);
+                _potAmountBadgeText.ForceMeshUpdate();
+            }
         }
 
         private void HidePotAmountBadge()
