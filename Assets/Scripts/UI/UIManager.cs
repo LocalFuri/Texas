@@ -25,10 +25,15 @@ namespace TexasHoldem
 
         private CardView[] _communityCardSlots;
 
-        public const float FlopCardFlyDuration = 0.12f;
-        public const float FlopCardStagger     = 0.04f;
-        public static float FlopDealTotalDuration =>
-            3f * FlopCardFlyDuration + 2f * FlopCardStagger;
+        [Tooltip("Duration for each flop card flying from the deal origin to its board slot.")]
+        [SerializeField, Min(0.05f)] private float _flopCardFlyDuration = 0.12f;
+        [Tooltip("Pause after each flop card lands before the next flop card is dealt.")]
+        [SerializeField, Min(0f)] private float _flopCardStagger = 0.04f;
+
+        public float FlopCardFlyDuration => _flopCardFlyDuration;
+        public float FlopCardStagger     => _flopCardStagger;
+        public float FlopDealTotalDuration =>
+            3f * _flopCardFlyDuration + 2f * _flopCardStagger;
 
         [Header("Player Seats")]
         [SerializeField] private List<PlayerView> _playerViews;
@@ -1204,14 +1209,14 @@ namespace TexasHoldem
                     continue;
 
                 yield return slot.AnimateStraightFlyOnCanvas(
-                    canvasRt, dealOrigin, cards[i], FlopCardFlyDuration);
+                    canvasRt, dealOrigin, cards[i], _flopCardFlyDuration);
 
                 _revealedCommunityCount = i + 1;
 
                 if (i < 2)
                 {
                     float elapsed = 0f;
-                    while (elapsed < FlopCardStagger)
+                    while (elapsed < _flopCardStagger)
                     {
                         elapsed += Time.unscaledDeltaTime;
                         yield return null;
