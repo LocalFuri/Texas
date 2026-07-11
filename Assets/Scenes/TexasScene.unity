@@ -8716,9 +8716,10 @@ MonoBehaviour:
   _potChipPadding: 12
   _potChipColumnGapX: 12
   _potStackOverlapY: 6
-  _copyrightLabel: "CodeRed Soft \xAE 2026-07-10"
+  _copyrightLabel: "CodeRed Soft \xAE 2026-07-11"
   _copyrightLabelText: {fileID: 881100003}
   _openMenuBetweenHands: 0
+  _showBotCardsForTesting: 1
   _animateBetPlace: 0
   _animateStreetCollect: 1
   _collectFlyDuration: 0.5
