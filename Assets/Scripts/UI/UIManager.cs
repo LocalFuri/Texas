@@ -101,6 +101,10 @@ namespace TexasHoldem
         [Header("Winner Celebration")]
         [Tooltip("Duration for pot chips flying to the winner HUD (Backspace or B).")]
         [SerializeField, Min(0.05f)] private float _winnerPotCollectFlyDuration = 0.5f;
+        [Tooltip("Pause after chips land at the winner before they vanish into the avatar.")]
+        [SerializeField, Min(0f)] private float _winnerPotCollectHoldDuration = 0.5f;
+        [Tooltip("Duration for chips shrinking and fading into the avatar center.")]
+        [SerializeField, Min(0.05f)] private float _winnerPotCollectVanishDuration = 0.35f;
 
         [Header("Winner Card Highlight")]
         [Tooltip("Gold pulse rate in Hz while waiting for Space (1 = one pulse per second).")]
@@ -1673,6 +1677,7 @@ namespace TexasHoldem
             _potChipStack.Clear();
             _potChipStack.StackRoot.gameObject.SetActive(false);
             HidePotAmountBadge();
+            ResetPotCollectVisualAlpha();
             LayoutPotArea();
         }
 
@@ -1920,6 +1925,52 @@ namespace TexasHoldem
         {
             if (_potAmountBadgeRt != null)
                 _potAmountBadgeRt.gameObject.SetActive(false);
+        }
+
+        private static Vector2 CanvasPointFromRect(RectTransform canvasRt, RectTransform target)
+        {
+            if (canvasRt == null || target == null)
+                return Vector2.zero;
+
+            return canvasRt.InverseTransformPoint(target.TransformPoint(Vector3.zero));
+        }
+
+        private void SetPotCollectVisualAlpha(float alpha)
+        {
+            alpha = Mathf.Clamp01(alpha);
+
+            if (_potChipStack != null)
+            {
+                foreach (Image img in _potChipStack.GetComponentsInChildren<Image>(true))
+                {
+                    if (img == null)
+                        continue;
+
+                    Color c = img.color;
+                    img.color = new Color(c.r, c.g, c.b, alpha);
+                }
+            }
+
+            if (_potAmountBadgeRt != null)
+            {
+                Image badgeImg = _potAmountBadgeRt.GetComponent<Image>();
+                if (badgeImg != null)
+                {
+                    Color c = badgeImg.color;
+                    badgeImg.color = new Color(c.r, c.g, c.b, alpha);
+                }
+            }
+
+            if (_potAmountBadgeText != null)
+            {
+                Color c = _potAmountBadgeText.color;
+                _potAmountBadgeText.color = new Color(c.r, c.g, c.b, alpha);
+            }
+        }
+
+        private void ResetPotCollectVisualAlpha()
+        {
+            SetPotCollectVisualAlpha(1f);
         }
 
         /// <summary>Seat bet stacks use the same 100/500 sprites as the pot chip stack.</summary>
@@ -3220,6 +3271,39 @@ namespace TexasHoldem
 
             stackRt.anchoredPosition = endPos;
             stackRt.localScale       = Vector3.one;
+
+            if (_potText != null)
+                _potText.text = string.Empty;
+
+            _gameManager?.ApplyPendingPotAward();
+
+            if (_winnerPotCollectHoldDuration > 0f)
+                yield return new WaitForSecondsRealtime(_winnerPotCollectHoldDuration);
+
+            RectTransform avatarRt = winnerView.AvatarRect;
+            Vector2 avatarCenter = avatarRt != null
+                ? CanvasPointFromRect(canvasRt, avatarRt)
+                : endPos;
+
+            float vanishDuration = Mathf.Max(0.05f, _winnerPotCollectVanishDuration);
+            elapsed              = 0f;
+            Vector2 vanishStart  = stackRt.anchoredPosition;
+            Vector3 scaleStart   = stackRt.localScale;
+
+            while (elapsed < vanishDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / vanishDuration));
+
+                stackRt.anchoredPosition = Vector2.Lerp(vanishStart, avatarCenter, t);
+                stackRt.localScale       = Vector3.Lerp(scaleStart, Vector3.zero, t);
+                SetPotCollectVisualAlpha(1f - t);
+
+                yield return null;
+            }
+
+            RestorePotChipStackHome();
+            HidePotChipStack();
             CompleteWinnerPotCollection();
         }
 
