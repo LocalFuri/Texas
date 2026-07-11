@@ -547,9 +547,12 @@ namespace TexasHoldem
 
             RoundWinners roundWinners = ResolveRoundWinners(contenders);
             LastWinningHand   = roundWinners.BestEvaluation;
-            LastRoundWinners  = roundWinners.Players;
             LastShowdownHands       = roundWinners.ShowdownHands;
             LastShowdownEvaluations = roundWinners.ShowdownEvaluations;
+
+            int dealerInActive = ((DealerIndex % active.Count) + active.Count) % active.Count;
+            LastRoundWinners = PotAward.OrderWinnersClockwiseFromDealer(
+                roundWinners.Players, active, dealerInActive);
 
             LastGrossPot   = _bettingManager.Pot;
             bool flopDealt = _boardManager.CommunityCards.Count >= 3;
@@ -560,9 +563,9 @@ namespace TexasHoldem
             _potAwardPending = true;
 
             OnGameMessage?.Invoke(BuildRoundEndMessage(
-                roundWinners.Players, LastPotAwarded, LastRakeAmount, LastRakeDisplayText));
+                LastRoundWinners, LastPotAwarded, LastRakeAmount, LastRakeDisplayText));
             _awaitingWinnerDismiss = true;
-            OnWinnerDetermined?.Invoke(roundWinners.Players[0]);
+            OnWinnerDetermined?.Invoke(LastRoundWinners[0]);
             NotifyPlayersUpdated();
             ShowWinnerDismissControls();
 

@@ -2898,12 +2898,8 @@ namespace TexasHoldem
 
             float duration = _gameManager.RoundEndPauseSecs;
             int winnerCount = winners.Count > 0 ? winners.Count : 1;
-            int grossShare = winnerCount > 0
-                ? _gameManager.LastGrossPot / winnerCount
-                : _gameManager.LastGrossPot;
-            int netShare = winnerCount > 0
-                ? _gameManager.LastPotAwarded / winnerCount
-                : _gameManager.LastPotAwarded;
+            int grossShare = PotAward.ShareForWinnerIndex(_gameManager.LastGrossPot, winnerCount, 0);
+            int netShare   = PotAward.ShareForWinnerIndex(_gameManager.LastPotAwarded, winnerCount, 0);
 
             ShowWinningHandDisplay();
             ShowRakeDisplay(_gameManager.LastRakeDisplayText);
@@ -2915,14 +2911,18 @@ namespace TexasHoldem
 
             int bigBlind = ResolveBigBlindAmount();
             PlayerView primaryView = null;
-            foreach (PlayerState roundWinner in winners)
+            for (int i = 0; i < winners.Count; i++)
             {
+                PlayerState roundWinner = winners[i];
                 PlayerView winnerView = ResolvePlayerView(roundWinner);
                 if (winnerView == null)
                     continue;
 
+                int winnerNetShare = PotAward.ShareForWinnerIndex(
+                    _gameManager.LastPotAwarded, winnerCount, i);
+
                 winnerView.RefreshHud(roundWinner, bigBlind);
-                winnerView.StartWinnerHighlight(netShare, duration);
+                winnerView.StartWinnerHighlight(winnerNetShare, duration);
                 primaryView ??= winnerView;
             }
 
@@ -2977,6 +2977,8 @@ namespace TexasHoldem
         {
             if (_winnerPotChipsCollected)
                 return false;
+
+            HideRakeDisplay();
 
             ForceEndPlayersRefresh();
             ClearUiKeyboardFocus();

@@ -60,9 +60,60 @@ namespace TexasHoldem
         public bool WasCapped;
     }
 
-    /// <summary>Splits a net pot evenly among winners (remainder chips go to earliest seats in list).</summary>
+    /// <summary>
+    /// Splits a net pot among winners. Order winners with
+    /// <see cref="OrderWinnersClockwiseFromDealer"/> first — remainder chips go to the
+    /// first winner(s) in that list (WSOP Online: clockwise from the dealer).
+    /// </summary>
     public static class PotAward
     {
+        /// <summary>
+        /// Orders winners clockwise from the dealer button (WSOP Online rule):
+        /// the first winner after the button receives the first remainder chip.
+        /// </summary>
+        public static List<PlayerState> OrderWinnersClockwiseFromDealer(
+            IReadOnlyList<PlayerState> winners,
+            IReadOnlyList<PlayerState> activeHand,
+            int dealerIndexInActive)
+        {
+            if (winners == null || winners.Count == 0)
+                return new List<PlayerState>();
+
+            if (winners.Count == 1 || activeHand == null || activeHand.Count == 0)
+                return new List<PlayerState>(winners);
+
+            var winnerSet = new HashSet<PlayerState>(winners);
+            var ordered   = new List<PlayerState>(winners.Count);
+            int n           = activeHand.Count;
+            int dealerIndex = ((dealerIndexInActive % n) + n) % n;
+
+            for (int i = 1; i <= n; i++)
+            {
+                PlayerState player = activeHand[(dealerIndex + i) % n];
+                if (winnerSet.Contains(player))
+                    ordered.Add(player);
+            }
+
+            foreach (PlayerState winner in winners)
+            {
+                if (!ordered.Contains(winner))
+                    ordered.Add(winner);
+            }
+
+            return ordered;
+        }
+
+        /// <summary>Share for one winner after <see cref="Split"/> ordering (base + optional remainder chip).</summary>
+        public static int ShareForWinnerIndex(int netPot, int winnerCount, int winnerIndexInAwardOrder)
+        {
+            if (netPot <= 0 || winnerCount <= 0)
+                return 0;
+
+            int share     = netPot / winnerCount;
+            int remainder = netPot % winnerCount;
+            return share + (winnerIndexInAwardOrder < remainder ? 1 : 0);
+        }
+
         public static void Split(int netPot, IReadOnlyList<PlayerState> winners)
         {
             if (netPot <= 0 || winners == null || winners.Count == 0)
