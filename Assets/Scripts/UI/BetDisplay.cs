@@ -179,61 +179,50 @@ namespace TexasHoldem
             }
         }
 
-        /// <summary>Flies a chip from the bet stack toward the pot at end of a betting street.</summary>
-        public IEnumerator PlayCollectToPot(
-            RectTransform potTarget, int amount, float flyDuration, float delay = 0f, bool useArc = true)
+        /// <summary>Flies the seat bet chip stack in a straight line toward the pot center.</summary>
+        public IEnumerator AnimateBetStackToPot(Vector2 canvasEndPos, float flyDuration)
         {
-            if (delay > 0f)
-                yield return new WaitForSeconds(delay);
-
-            if (_rootCanvas == null || potTarget == null)
+            if (_rootCanvas == null || _chipStackView == null || !_chipStackView.HasVisibleStack)
                 yield break;
 
-            RectTransform origin = ChipStackOrigin;
-            Sprite chipSprite = _chipStackView != null
-                ? _chipStackView.SpriteForAmount(amount)
-                : null;
+            RectTransform stackRt = _chipStackView.StackRoot;
+            var canvasRt = (RectTransform)_rootCanvas.transform;
+            Transform homeParent = stackRt.parent;
+            int homeSibling = stackRt.GetSiblingIndex();
 
-            var chipGo  = new GameObject("_ChipCollect", typeof(RectTransform), typeof(Image));
-            var chipImg = chipGo.GetComponent<Image>();
-            chipImg.sprite         = chipSprite;
-            chipImg.color          = chipSprite != null ? Color.white : ChipAnimFallbackColor;
-            chipImg.raycastTarget  = false;
-            chipImg.preserveAspect = true;
-
-            var chipRt = (RectTransform)chipGo.transform;
-            chipRt.SetParent((RectTransform)_rootCanvas.transform, false);
-            chipRt.sizeDelta = new Vector2(ChipAnimSize, ChipAnimSize);
-            chipRt.anchorMin = new Vector2(0.5f, 0.5f);
-            chipRt.anchorMax = new Vector2(0.5f, 0.5f);
-            chipRt.pivot     = new Vector2(0.5f, 0.5f);
-
-            Vector2 startPos = ToCanvasLocal(origin);
-            Vector2 endPos   = ToCanvasLocal(potTarget);
-            startPos += new Vector2(Random.Range(-8f, 8f), Random.Range(-4f, 4f));
-            chipRt.anchoredPosition = startPos;
-
-            float duration = Mathf.Max(0.05f, flyDuration);
-            float elapsed  = 0f;
-            while (elapsed < duration)
+            try
             {
-                elapsed += Time.deltaTime;
-                float t = EaseCurve.Evaluate(Mathf.Clamp01(elapsed / duration));
+                Vector3 worldPos = stackRt.position;
+                stackRt.SetParent(canvasRt, worldPositionStays: true);
+                stackRt.position = worldPos;
+                stackRt.anchorMin = new Vector2(0.5f, 0.5f);
+                stackRt.anchorMax = new Vector2(0.5f, 0.5f);
+                stackRt.pivot     = new Vector2(0.5f, 0.5f);
+                stackRt.localScale = Vector3.one;
 
-                Vector2 pos = Vector2.Lerp(startPos, endPos, t);
-                if (useArc)
-                    pos.y += Mathf.Sin(t * Mathf.PI) * 40f;
+                Vector2 startPos = stackRt.anchoredPosition;
+                float duration = Mathf.Max(0.05f, flyDuration);
+                float elapsed  = 0f;
 
-                chipRt.anchoredPosition = pos;
-                chipRt.localScale       = Vector3.Lerp(Vector3.one * 1.1f, Vector3.one * 0.75f, t);
+                while (elapsed < duration)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
+                    stackRt.anchoredPosition = Vector2.Lerp(startPos, canvasEndPos, t);
+                    yield return null;
+                }
 
-                float alpha = t > 0.75f ? Mathf.Lerp(1f, 0f, (t - 0.75f) / 0.25f) : 1f;
-                chipImg.color = new Color(chipImg.color.r, chipImg.color.g, chipImg.color.b, alpha);
-                yield return null;
+                stackRt.anchoredPosition = canvasEndPos;
             }
-
-            if (chipGo != null)
-                Destroy(chipGo);
+            finally
+            {
+                if (stackRt != null && homeParent != null)
+                {
+                    stackRt.SetParent(homeParent, false);
+                    stackRt.SetSiblingIndex(homeSibling);
+                    stackRt.localScale = Vector3.one;
+                }
+            }
         }
 
         private IEnumerator AnimateChip(RectTransform origin, int amount)

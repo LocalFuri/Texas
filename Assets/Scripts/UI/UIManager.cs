@@ -89,13 +89,9 @@ namespace TexasHoldem
         [Header("Street Bet Collect")]
         [Tooltip("When off, seat bets clear instantly and the pot stack updates (GGPoker / PokerStars style).")]
         [SerializeField] private bool _animateStreetCollect;
-        [Tooltip("Duration of each chip flying from a seat bet stack to the pot.")]
+        [Tooltip("Duration for each seat bet stack flying straight to the pot center.")]
         [SerializeField, Min(0.05f)] private float _collectFlyDuration = 0.5f;
-        [Tooltip("Delay between seats when collecting bets into the pot.")]
-        [SerializeField, Min(0f)] private float _collectSeatStagger = 0.08f;
-        [Tooltip("Flying chips spawned per seat with a visible bet.")]
-        [SerializeField, Range(1, 4)] private int _collectChipsPerSeat = 2;
-        [Tooltip("Pause after collect animation before updating the pot display.")]
+        [Tooltip("Pause after all seat stacks arrive before updating the center pot display.")]
         [SerializeField, Min(0f)] private float _collectPotUpdateDelay = 0.1f;
 
         [Header("Winner Celebration")]
@@ -2059,52 +2055,47 @@ namespace TexasHoldem
             if (_animateStreetCollect)
             {
                 _rootCanvas ??= ResolveRootCanvas();
-                RectTransform potTarget = ResolvePotCollectTarget();
-                if (potTarget == null)
-                    yield break;
-
                 EnsurePotChipStack();
 
-                List<PlayerState> players = _gameManager.Players;
-                if (players == null)
-                    yield break;
-
-                var routines = new List<IEnumerator>();
-                int seatOrder = 0;
-
-                for (int i = 0; i < players.Count && i < views.Count; i++)
+                if (TryResolvePotCollectCanvasPosition(out Vector2 potCanvasPos))
                 {
-                    PlayerState player = players[i];
-                    if (player.CurrentBet <= 0)
-                        continue;
-
-                    PlayerView view = views[i];
-                    if (view == null)
-                        continue;
-
-                    BetDisplay bet = view.GetComponentInChildren<BetDisplay>(true);
-                    if (bet == null || !bet.HasVisibleBet)
-                        continue;
-
-                    float seatDelay = seatOrder * _collectSeatStagger;
-                    for (int c = 0; c < _collectChipsPerSeat; c++)
+                    List<PlayerState> players = _gameManager.Players;
+                    if (players != null)
                     {
-                        float chipDelay = seatDelay + c * (_collectSeatStagger * 0.35f);
-                        routines.Add(bet.PlayCollectToPot(
-                            potTarget, player.CurrentBet, _collectFlyDuration, chipDelay));
+                        var routines = new List<IEnumerator>();
+                        var viewsToHide = new List<PlayerView>();
+
+                        for (int i = 0; i < players.Count && i < views.Count; i++)
+                        {
+                            PlayerState player = players[i];
+                            if (player.CurrentBet <= 0)
+                                continue;
+
+                            PlayerView view = views[i];
+                            if (view == null)
+                                continue;
+
+                            BetDisplay bet = view.GetComponentInChildren<BetDisplay>(true);
+                            if (bet == null || !bet.HasVisibleBet)
+                                continue;
+
+                            routines.Add(bet.AnimateBetStackToPot(potCanvasPos, _collectFlyDuration));
+                            viewsToHide.Add(view);
+                        }
+
+                        if (routines.Count > 0)
+                        {
+                            _collectInProgress = true;
+                            yield return RunParallel(routines);
+                            _collectInProgress = false;
+
+                            foreach (PlayerView view in viewsToHide)
+                                view.HideBetDisplay();
+
+                            if (_collectPotUpdateDelay > 0f)
+                                yield return new WaitForSecondsRealtime(_collectPotUpdateDelay);
+                        }
                     }
-
-                    seatOrder++;
-                }
-
-                if (routines.Count > 0)
-                {
-                    _collectInProgress = true;
-                    yield return RunParallel(routines);
-                    _collectInProgress = false;
-
-                    if (_collectPotUpdateDelay > 0f)
-                        yield return new WaitForSeconds(_collectPotUpdateDelay);
                 }
             }
 
@@ -2127,6 +2118,20 @@ namespace TexasHoldem
                 return _potChipStack.StackRoot;
 
             return _potText != null ? (RectTransform)_potText.transform : null;
+        }
+
+        private bool TryResolvePotCollectCanvasPosition(out Vector2 canvasAnchoredPosition)
+        {
+            canvasAnchoredPosition = Vector2.zero;
+
+            _rootCanvas ??= ResolveRootCanvas();
+            RectTransform potTarget = ResolvePotCollectTarget();
+            if (_rootCanvas == null || potTarget == null)
+                return false;
+
+            canvasAnchoredPosition = CanvasPointFromRect(
+                (RectTransform)_rootCanvas.transform, potTarget);
+            return true;
         }
 
         private IEnumerator RunParallel(List<IEnumerator> routines)

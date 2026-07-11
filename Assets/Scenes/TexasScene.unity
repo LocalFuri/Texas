@@ -8718,13 +8718,11 @@ MonoBehaviour:
   _copyrightLabelText: {fileID: 881100003}
   _openMenuBetweenHands: 0
   _animateBetPlace: 0
-  _animateStreetCollect: 0
+  _animateStreetCollect: 1
   _collectFlyDuration: 0.5
-  _collectSeatStagger: 0.08
-  _collectChipsPerSeat: 2
   _collectPotUpdateDelay: 0.1
   _winnerPotCollectFlyDuration: 0.5
-  _winnerPotCollectHoldDuration: 0.5
+  _winnerPotCollectHoldDuration: 1
   _winnerPotCollectVanishDuration: 0.5
   _winnerCardPulseHz: 1
   _winnerCardPulseMinBlend: 0.5
