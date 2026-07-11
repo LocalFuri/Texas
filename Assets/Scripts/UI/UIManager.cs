@@ -3113,6 +3113,7 @@ namespace TexasHoldem
             if (_winnerPotChipsCollected)
                 return false;
 
+            ClearWinningCardHighlights();
             HideRakeDisplay();
 
             ForceEndPlayersRefresh();
@@ -3364,7 +3365,6 @@ namespace TexasHoldem
             if (_potText != null)
                 _potText.text = string.Empty;
 
-            ClearWinningCardHighlights();
             _gameManager?.ApplyPendingPotAward();
 
             _winnerPotChipsCollected    = true;
