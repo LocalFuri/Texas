@@ -1658,12 +1658,29 @@ namespace TexasHoldem
             PositionPotChipStack(showStack: true);
         }
 
+        private Transform ResolvePotChipStackHomeParent()
+            => _potText != null ? _potText.transform.parent : null;
+
         private bool IsPotChipStackAtHome()
         {
-            if (_potChipStack == null || _potChipStackHomeParent == null)
+            if (_potChipStack == null)
                 return true;
 
-            return _potChipStack.StackRoot.parent == _potChipStackHomeParent;
+            Transform expectedHome = _potChipStackHomeParent ?? ResolvePotChipStackHomeParent();
+            if (expectedHome == null)
+                return true;
+
+            return _potChipStack.StackRoot.parent == expectedHome;
+        }
+
+        private void ResetPotChipStackTransform()
+        {
+            if (_potChipStack == null)
+                return;
+
+            RectTransform stackRt = _potChipStack.StackRoot;
+            stackRt.localScale    = Vector3.one;
+            stackRt.localRotation = Quaternion.identity;
         }
 
         /// <summary>Hides the central pot chip stack (label unchanged).</summary>
@@ -1675,6 +1692,7 @@ namespace TexasHoldem
                 return;
 
             _potChipStack.Clear();
+            ResetPotChipStackTransform();
             _potChipStack.StackRoot.gameObject.SetActive(false);
             HidePotAmountBadge();
             ResetPotCollectVisualAlpha();
@@ -2012,6 +2030,9 @@ namespace TexasHoldem
                         && _gameManager != null
                         && (_gameManager.PotAmount > 0
                             || (_winnerCelebrationActive && _winnerDisplayPotAmount > 0));
+
+            if (show)
+                ResetPotChipStackTransform();
 
             stackRt.gameObject.SetActive(show);
             LayoutPotArea();
@@ -3174,14 +3195,24 @@ namespace TexasHoldem
 
         private void RestorePotChipStackHome()
         {
-            if (_potChipStack == null || _potChipStackHomeParent == null)
+            if (_potChipStack == null)
+                return;
+
+            Transform home = _potChipStackHomeParent ?? ResolvePotChipStackHomeParent();
+            if (home == null)
                 return;
 
             RectTransform stackRt = _potChipStack.StackRoot;
-            stackRt.SetParent(_potChipStackHomeParent, false);
-            stackRt.SetSiblingIndex(_potChipStackHomeSiblingIndex);
+            if (stackRt.parent != home)
+            {
+                stackRt.SetParent(home, false);
+                if (_potChipStackHomeParent != null)
+                    stackRt.SetSiblingIndex(_potChipStackHomeSiblingIndex);
+            }
+
             _potChipStackHomeParent       = null;
             _potChipStackHomeSiblingIndex = 0;
+            ResetPotChipStackTransform();
         }
 
         private IEnumerator RunWinnerCelebrationPrepare()
