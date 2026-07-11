@@ -44,7 +44,7 @@ namespace TexasHoldem
 
             HandResult hand = HandEvaluator.Evaluate(allCards);
 
-            if (hand.Rank >= HandRank.ThreeOfAKind)
+            if (IsTopPairOrBetter(player.HoleCards, communityCards, hand))
             {
                 if (betting.CanRaise(player) && Random.value < PostflopStrongRaiseChance)
                     return MinRaise(betting, player);
@@ -104,6 +104,45 @@ namespace TexasHoldem
             int maxRaise = betting.GetMaxRaiseIncrement(player);
             int raise    = Mathf.Clamp(minRaise, minRaise, maxRaise);
             return (BettingAction.Raise, raise);
+        }
+
+        /// <summary>True when the bot holds top pair, an overpair, or any made hand stronger than one pair.</summary>
+        private static bool IsTopPairOrBetter(
+            IReadOnlyList<Card> holeCards,
+            IReadOnlyList<Card> communityCards,
+            HandResult hand)
+        {
+            if (communityCards == null || communityCards.Count == 0)
+                return false;
+
+            if (hand.Rank >= HandRank.TwoPair)
+                return true;
+
+            if (hand.Rank != HandRank.OnePair || holeCards == null || holeCards.Count < 2)
+                return false;
+
+            int pairRank = hand.Tiebreakers[0];
+            int maxBoardRank = (int)communityCards[0].Rank;
+            foreach (Card boardCard in communityCards)
+                maxBoardRank = Mathf.Max(maxBoardRank, (int)boardCard.Rank);
+
+            bool holePairsRank = false;
+            foreach (Card holeCard in holeCards)
+            {
+                if ((int)holeCard.Rank == pairRank)
+                {
+                    holePairsRank = true;
+                    break;
+                }
+            }
+
+            if (!holePairsRank)
+                return false;
+
+            if (holeCards[0].Rank == holeCards[1].Rank && pairRank > maxBoardRank)
+                return true;
+
+            return pairRank >= maxBoardRank;
         }
 
         private static PreflopHandGroup ClassifyPreflopHand(IReadOnlyList<Card> holeCards)
