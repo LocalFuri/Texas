@@ -466,11 +466,19 @@ namespace TexasHoldem
                     continue;
                 }
 
-                if (i < _revealedHoleCount)
-                    _cardSlots[i].Show(player.HoleCards[i]);
-                else if (!holeRevealInProgress)
-                    _cardSlots[i].ShowFaceDown();
+                if (i < player.HoleCards.Count)
+                {
+                    if (_isHuman)
+                        _cardSlots[i].Show(player.HoleCards[i]);
+                    else if (i < _revealedHoleCount)
+                        _cardSlots[i].Show(player.HoleCards[i]);
+                    else if (!holeRevealInProgress)
+                        _cardSlots[i].ShowFaceDown();
+                }
             }
+
+            if (_isHuman && player.HoleCards.Count > 0)
+                _revealedHoleCount = player.HoleCards.Count;
         }
 
         /// <summary>Hides hole cards and clears reveal state (title screen / full reset).</summary>
@@ -661,10 +669,11 @@ namespace TexasHoldem
             }
         }
 
-        /// <summary>Staggered flip reveal for the human player's hole cards.</summary>
-        public IEnumerator RevealHumanHoleCards(PlayerState player, float flipDuration, float flipGap)
+        /// <summary>Reveals the human player's hole cards instantly (no flip animation).</summary>
+        public IEnumerator RevealHumanHoleCards(PlayerState player)
         {
-            if (!_isHuman) yield break;
+            if (!_isHuman)
+                yield break;
 
             if (player.HoleCards.Count == 0)
             {
@@ -675,18 +684,10 @@ namespace TexasHoldem
 
             for (int i = _revealedHoleCount; i < player.HoleCards.Count; i++)
             {
-                if (i >= _cardSlots.Count || _cardSlots[i] == null) continue;
+                if (i >= _cardSlots.Count || _cardSlots[i] == null)
+                    continue;
 
-                CardView slot = _cardSlots[i];
-                slot.SetFlipDuration(flipDuration);
-                slot.ShowFaceDown();
-
-                bool flipDone = false;
-                slot.FlipToFace(player.HoleCards[i], () => flipDone = true);
-                yield return new WaitUntil(() => flipDone);
-
-                if (i < player.HoleCards.Count - 1)
-                    yield return new WaitForSeconds(flipGap);
+                _cardSlots[i].Show(player.HoleCards[i]);
             }
 
             _revealedHoleCount = player.HoleCards.Count;

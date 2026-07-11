@@ -938,10 +938,7 @@ namespace TexasHoldem
 
         private IEnumerator HumanHoleRevealRoutine(PlayerView humanView, PlayerState humanState)
         {
-            float flipDuration = _gameManager != null ? _gameManager.CommunityFlipDuration : 0.35f;
-            float flipGap      = _gameManager != null ? _gameManager.CommunityFlipGap : 0.1f;
-
-            yield return humanView.RevealHumanHoleCards(humanState, flipDuration, flipGap);
+            yield return humanView.RevealHumanHoleCards(humanState);
             _humanHoleRevealCoroutine = null;
         }
 
@@ -1104,31 +1101,22 @@ namespace TexasHoldem
                 yield break;
             }
 
-            float flipDuration = _gameManager != null ? _gameManager.CommunityFlipDuration : 0.35f;
-            float flipGap      = _gameManager != null ? _gameManager.CommunityFlipGap : 0.1f;
-
             int startIndex = _revealedCommunityCount;
             for (int i = startIndex; i < cards.Count; i++)
             {
                 CardView slot = _communityCardSlots[i];
-                if (slot == null) continue;
+                if (slot == null)
+                    continue;
 
-                slot.SetFlipDuration(flipDuration);
-                slot.ShowFaceDown();
-
-                bool flipDone = false;
-                slot.FlipToFace(cards[i], () => flipDone = true);
-                yield return new WaitUntil(() => flipDone);
-                _revealedCommunityCount = i + 1; // update per-card so StopCoroutine leaves count correct
-
-                if (i < cards.Count - 1)
-                    yield return new WaitForSeconds(flipGap);
+                slot.Show(cards[i]);
+                _revealedCommunityCount = i + 1;
             }
 
             for (int i = cards.Count; i < _communityCardSlots.Length; i++)
                 _communityCardSlots[i]?.Hide();
 
             _communityRevealCoroutine = null;
+            yield break;
         }
 
         private void OnPlayerTurn(PlayerState player)

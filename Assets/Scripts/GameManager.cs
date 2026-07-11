@@ -153,12 +153,10 @@ namespace TexasHoldem
             return Players.IndexOf(active[dealerActiveIndex]);
         }
 
-        /// <summary>Wait time for staggered community-card flip animations.</summary>
+        /// <summary>Wait time after dealing — flip animations removed; only base deal delay when clearing.</summary>
         public float GetCommunityRevealDuration(int newCardCount)
         {
-            if (newCardCount <= 0) return _dealDelay;
-            return newCardCount * _communityFlipDuration
-                 + Mathf.Max(0, newCardCount - 1) * _communityFlipGap;
+            return newCardCount <= 0 ? _dealDelay : 0f;
         }
 
         private BettingManager _bettingManager;

@@ -145,25 +145,11 @@ namespace TexasHoldem
             ResetScale();
         }
 
-        /// <summary>Flips from face-down to the given card face (BlackJack-style scale animation).</summary>
+        /// <summary>Instantly shows the card face (no flip animation).</summary>
         public void FlipToFace(Card card, Action onComplete = null)
         {
-            if (_cardBackground == null)
-            {
-                Show(card);
-                onComplete?.Invoke();
-                return;
-            }
-
-            _faceSprite = _spriteLibrary != null ? _spriteLibrary.GetSprite(card) : null;
-            gameObject.SetActive(true);
-            if (_faceDownOverlay != null) _faceDownOverlay.SetActive(false);
-
-            if (!_isFaceUp && _spriteLibrary?.CardBack != null)
-                _cardBackground.sprite = _spriteLibrary.CardBack;
-
-            StopFlip();
-            _flipCoroutine = StartCoroutine(FlipRoutine(true, onComplete));
+            Show(card);
+            onComplete?.Invoke();
         }
 
         /// <summary>Shows the slot as a dark empty placeholder — visible but no card assigned.</summary>
