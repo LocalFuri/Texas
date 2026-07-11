@@ -2087,10 +2087,14 @@ namespace TexasHoldem
                         {
                             _collectInProgress = true;
                             yield return RunParallel(routines);
-                            _collectInProgress = false;
+
+                            _previousBets.Clear();
+                            ApplyPotCenterDisplay();
 
                             foreach (PlayerView view in viewsToHide)
                                 view.HideBetDisplay();
+
+                            _collectInProgress = false;
 
                             if (_collectPotUpdateDelay > 0f)
                                 yield return new WaitForSecondsRealtime(_collectPotUpdateDelay);
@@ -2108,8 +2112,26 @@ namespace TexasHoldem
                 view?.HideBetDisplay();
 
             _previousBets.Clear();
-            UpdatePotLabel();
-            ShowPotChipStack();
+            ApplyPotCenterDisplay();
+        }
+
+        /// <summary>Shows pot label and chip stack together to avoid a label-only flash.</summary>
+        private void ApplyPotCenterDisplay()
+        {
+            if (_potText == null || _gameManager == null)
+                return;
+
+            int pot = _gameManager.PotAmount;
+            if (pot <= 0)
+            {
+                _potText.text = string.Empty;
+                HidePotChipStack();
+                return;
+            }
+
+            ShowPotChipStack(pot);
+            _potText.text = "Pot: " + pot.ToString("N0", GermanNFI);
+            LayoutPotArea();
         }
 
         private RectTransform ResolvePotCollectTarget()

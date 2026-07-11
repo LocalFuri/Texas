@@ -49,6 +49,8 @@ namespace TexasHoldem
         private Canvas     _rootCanvas;
         private Coroutine  _chipCoroutine;
         private GameObject _chipAnimGo;
+        private Transform  _chipStackHomeParent;
+        private int        _chipStackHomeSibling;
 
         private void Awake()
         {
@@ -160,8 +162,24 @@ namespace TexasHoldem
         public void HideBet()
         {
             CancelChipAnim();
+            RestoreChipStackHome();
             _chipStackView?.Clear();
             gameObject.SetActive(false);
+        }
+
+        private void RestoreChipStackHome()
+        {
+            if (_chipStackView == null || _chipStackHomeParent == null)
+                return;
+
+            RectTransform stackRt = _chipStackView.StackRoot;
+            if (stackRt.parent != _chipStackHomeParent)
+            {
+                stackRt.SetParent(_chipStackHomeParent, false);
+                stackRt.SetSiblingIndex(_chipStackHomeSibling);
+            }
+
+            stackRt.localScale = Vector3.one;
         }
 
         private void CancelChipAnim()
@@ -187,42 +205,31 @@ namespace TexasHoldem
 
             RectTransform stackRt = _chipStackView.StackRoot;
             var canvasRt = (RectTransform)_rootCanvas.transform;
-            Transform homeParent = stackRt.parent;
-            int homeSibling = stackRt.GetSiblingIndex();
 
-            try
+            _chipStackHomeParent       = stackRt.parent;
+            _chipStackHomeSibling      = stackRt.GetSiblingIndex();
+
+            Vector3 worldPos = stackRt.position;
+            stackRt.SetParent(canvasRt, worldPositionStays: true);
+            stackRt.position = worldPos;
+            stackRt.anchorMin = new Vector2(0.5f, 0.5f);
+            stackRt.anchorMax = new Vector2(0.5f, 0.5f);
+            stackRt.pivot     = new Vector2(0.5f, 0.5f);
+            stackRt.localScale = Vector3.one;
+
+            Vector2 startPos = stackRt.anchoredPosition;
+            float duration = Mathf.Max(0.05f, flyDuration);
+            float elapsed  = 0f;
+
+            while (elapsed < duration)
             {
-                Vector3 worldPos = stackRt.position;
-                stackRt.SetParent(canvasRt, worldPositionStays: true);
-                stackRt.position = worldPos;
-                stackRt.anchorMin = new Vector2(0.5f, 0.5f);
-                stackRt.anchorMax = new Vector2(0.5f, 0.5f);
-                stackRt.pivot     = new Vector2(0.5f, 0.5f);
-                stackRt.localScale = Vector3.one;
-
-                Vector2 startPos = stackRt.anchoredPosition;
-                float duration = Mathf.Max(0.05f, flyDuration);
-                float elapsed  = 0f;
-
-                while (elapsed < duration)
-                {
-                    elapsed += Time.unscaledDeltaTime;
-                    float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
-                    stackRt.anchoredPosition = Vector2.Lerp(startPos, canvasEndPos, t);
-                    yield return null;
-                }
-
-                stackRt.anchoredPosition = canvasEndPos;
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
+                stackRt.anchoredPosition = Vector2.Lerp(startPos, canvasEndPos, t);
+                yield return null;
             }
-            finally
-            {
-                if (stackRt != null && homeParent != null)
-                {
-                    stackRt.SetParent(homeParent, false);
-                    stackRt.SetSiblingIndex(homeSibling);
-                    stackRt.localScale = Vector3.one;
-                }
-            }
+
+            stackRt.anchoredPosition = canvasEndPos;
         }
 
         private IEnumerator AnimateChip(RectTransform origin, int amount)
