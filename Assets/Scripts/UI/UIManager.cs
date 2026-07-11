@@ -3292,10 +3292,7 @@ namespace TexasHoldem
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
 
-                Vector2 pos = Vector2.Lerp(startPos, endPos, t);
-                pos.y += Mathf.Sin(t * Mathf.PI) * 40f;
-                stackRt.anchoredPosition = pos;
-                stackRt.localScale = Vector3.Lerp(Vector3.one, Vector3.one * 0.85f, t);
+                stackRt.anchoredPosition = Vector2.Lerp(startPos, endPos, t);
 
                 yield return null;
             }
