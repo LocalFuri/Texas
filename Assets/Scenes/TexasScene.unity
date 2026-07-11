@@ -8724,8 +8724,8 @@ MonoBehaviour:
   _collectChipsPerSeat: 2
   _collectPotUpdateDelay: 0.1
   _winnerPotCollectFlyDuration: 0.5
-  _winnerPotCollectHoldDuration: 0.15
-  _winnerPotCollectVanishDuration: 0.3
+  _winnerPotCollectHoldDuration: 0.5
+  _winnerPotCollectVanishDuration: 0.5
   _winnerCardPulseHz: 1
   _winnerCardPulseMinBlend: 0.5
   _winnerCardPulseMaxBlend: 0.85
