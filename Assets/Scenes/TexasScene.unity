@@ -8721,6 +8721,9 @@ MonoBehaviour:
   _animateStreetCollect: 1
   _collectFlyDuration: 0.5
   _collectPotUpdateDelay: 0.1
+  _animatePreflopDeal: 1
+  _holeCardFlyDuration: 0.28
+  _holeCardDealGap: 0.08
   _winnerPotCollectFlyDuration: 0.5
   _winnerPotCollectHoldDuration: 1
   _winnerPotCollectVanishDuration: 0.5

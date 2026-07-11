@@ -241,6 +241,35 @@ namespace TexasHoldem
             return (RectTransform)_cardSlots[index].transform;
         }
 
+        /// <summary>Card slot for hole-card index (0 = first card dealt).</summary>
+        public CardView GetHoleCardSlot(int index)
+        {
+            if (index < 0 || index >= _cardSlots.Count)
+                return null;
+
+            return _cardSlots[index];
+        }
+
+        /// <summary>Flies one hole card from the table centre to this seat.</summary>
+        public IEnumerator AnimateHoleCardDeal(
+            int slotIndex,
+            Card card,
+            bool faceUp,
+            RectTransform canvasRt,
+            Vector2 dealOriginCanvasPos,
+            float flyDuration)
+        {
+            CardView slot = GetHoleCardSlot(slotIndex);
+            if (slot == null)
+                yield break;
+
+            yield return slot.AnimateFlyInOnCanvas(
+                canvasRt, dealOriginCanvasPos, card, faceUp, flyDuration);
+
+            if (_isHuman && faceUp)
+                _revealedHoleCount = Mathf.Max(_revealedHoleCount, slotIndex + 1);
+        }
+
         /// <summary>
         /// BetAnchor in seat local space — chip stack sits here (TableLayoutManager.ApplyBetAnchor).
         /// </summary>

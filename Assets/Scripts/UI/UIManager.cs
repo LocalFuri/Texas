@@ -94,6 +94,17 @@ namespace TexasHoldem
         [Tooltip("Pause after all seat stacks arrive before updating the center pot display.")]
         [SerializeField, Min(0f)] private float _collectPotUpdateDelay = 0.1f;
 
+        [Header("Preflop Deal")]
+        [Tooltip("When on, hole cards fly from the table centre one at a time clockwise from the small blind.")]
+        [SerializeField] private bool _animatePreflopDeal = true;
+        [Tooltip("Duration for each hole card flying from centre to its seat.")]
+        [SerializeField, Min(0.05f)] private float _holeCardFlyDuration = 0.28f;
+        [Tooltip("Pause after each card lands before the next card is dealt.")]
+        [SerializeField, Min(0f)] private float _holeCardDealGap = 0.08f;
+
+        public bool AnimatePreflopDeal => _animatePreflopDeal;
+        public float HoleCardDealGap => _holeCardDealGap;
+
         [Header("Winner Celebration")]
         [Tooltip("Duration for pot chips flying to the winner HUD (Backspace or B).")]
         [SerializeField, Min(0.05f)] private float _winnerPotCollectFlyDuration = 0.5f;
@@ -200,6 +211,7 @@ namespace TexasHoldem
         private readonly Dictionary<int, int> _previousBets = new Dictionary<int, int>();
         private bool                          _suppressDealerButton;
         private bool                          _collectInProgress;
+        private bool                          _preflopDealInProgress;
         private Canvas               _rootCanvas;
 
         private bool          _hasPendingActionBadge;
@@ -832,6 +844,7 @@ namespace TexasHoldem
         private void OnRoundStarting()
         {
             _winnerCelebrationActive = false;
+            _preflopDealInProgress   = false;
             _suppressDealerButton = true;
             _tableLayout?.HideDealerButton();
 
@@ -1005,17 +1018,21 @@ namespace TexasHoldem
                     humanView  = view;
                     humanState = player;
                     _humanSeatView = view;
-                    view.SyncHumanHoleCardDisplay(player, holeRevealRunning);
+                    if (!_preflopDealInProgress)
+                        view.SyncHumanHoleCardDisplay(player, holeRevealRunning);
                 }
                 else
                 {
                     bool showBotCards = OptionsMenu.Instance != null && OptionsMenu.Instance.ShowBotCards;
                     bool isShowdown   = _gameManager != null
                                         && _gameManager.CurrentPhase == GamePhase.Showdown;
-                    if (!player.HasFolded && (isShowdown || showBotCards))
-                        view.RevealCards(player);
-                    else
-                        view.RefreshOpponentCards(player);
+                    if (!_preflopDealInProgress)
+                    {
+                        if (!player.HasFolded && (isShowdown || showBotCards))
+                            view.RevealCards(player);
+                        else
+                            view.RefreshOpponentCards(player);
+                    }
                 }
 
                 // Update BetDisplay â€” animate chip only when the player's bet increases.
@@ -2147,6 +2164,50 @@ namespace TexasHoldem
 
             canvasAnchoredPosition = CanvasPointFromRect(
                 (RectTransform)_rootCanvas.transform, potTarget);
+            return true;
+        }
+
+        /// <summary>Flies one hole card from the table centre to a seat (preflop deal animation).</summary>
+        public IEnumerator AnimateHoleCardDeal(int seatIndex, int slotIndex, Card card, bool faceUp)
+        {
+            if (!_animatePreflopDeal || card == null)
+                yield break;
+
+            _rootCanvas ??= ResolveRootCanvas();
+            if (_rootCanvas == null)
+                yield break;
+
+            IReadOnlyList<PlayerView> views = ResolvePlayerViews();
+            if (seatIndex < 0 || seatIndex >= views.Count)
+                yield break;
+
+            PlayerView view = views[seatIndex];
+            if (view == null)
+                yield break;
+
+            var canvasRt = (RectTransform)_rootCanvas.transform;
+            if (!TryResolveDealOriginCanvasPosition(out Vector2 dealOrigin))
+                dealOrigin = Vector2.zero;
+
+            yield return view.AnimateHoleCardDeal(
+                slotIndex, card, faceUp, canvasRt, dealOrigin, _holeCardFlyDuration);
+        }
+
+        public void BeginPreflopDealAnimation() => _preflopDealInProgress = true;
+
+        public void EndPreflopDealAnimation() => _preflopDealInProgress = false;
+
+        private bool TryResolveDealOriginCanvasPosition(out Vector2 canvasAnchoredPosition)
+        {
+            canvasAnchoredPosition = Vector2.zero;
+
+            _rootCanvas ??= ResolveRootCanvas();
+            RectTransform flopRt = CommunityCardSlotRect(_flop1);
+            if (_rootCanvas == null || flopRt == null)
+                return false;
+
+            canvasAnchoredPosition = CanvasPointFromRect(
+                (RectTransform)_rootCanvas.transform, flopRt);
             return true;
         }
 

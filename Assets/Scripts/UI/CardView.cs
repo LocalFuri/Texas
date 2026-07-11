@@ -186,6 +186,83 @@ namespace TexasHoldem
             StopFlip();
         }
 
+        /// <summary>
+        /// Flies the card from a table-centre canvas point to its home slot (GGPoker-style preflop deal).
+        /// </summary>
+        public IEnumerator AnimateFlyInOnCanvas(
+            RectTransform canvasRt,
+            Vector2 startCanvasPos,
+            Card card,
+            bool faceUp,
+            float duration)
+        {
+            if (canvasRt == null)
+            {
+                if (faceUp && card != null)
+                    Show(card);
+                else
+                    ShowFaceDown();
+                yield break;
+            }
+
+            StopWinnerPulse();
+            StopFlip();
+
+            var rt = (RectTransform)transform;
+            Transform homeParent   = rt.parent;
+            int       homeSibling  = rt.GetSiblingIndex();
+            Vector2   origAnchorMin = rt.anchorMin;
+            Vector2   origAnchorMax = rt.anchorMax;
+            Vector2   origPivot     = rt.pivot;
+            Vector2   origAnchored  = rt.anchoredPosition;
+            Vector3   origScale     = rt.localScale;
+
+            bool restoreInactive = !gameObject.activeSelf;
+            if (restoreInactive)
+                gameObject.SetActive(true);
+
+            Vector2 endCanvasPos = CanvasPointFromRect(canvasRt, rt);
+
+            if (faceUp && card != null)
+                Show(card);
+            else
+                ShowFaceDown();
+
+            rt.SetParent(canvasRt, worldPositionStays: false);
+            rt.anchorMin        = new Vector2(0.5f, 0.5f);
+            rt.anchorMax        = new Vector2(0.5f, 0.5f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = startCanvasPos;
+            rt.localScale       = Vector3.one;
+
+            float flyDuration = Mathf.Max(0.05f, duration);
+            float elapsed     = 0f;
+
+            while (elapsed < flyDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / flyDuration);
+                rt.anchoredPosition = Vector2.Lerp(startCanvasPos, endCanvasPos, t);
+                yield return null;
+            }
+
+            rt.SetParent(homeParent, worldPositionStays: false);
+            rt.SetSiblingIndex(homeSibling);
+            rt.anchorMin        = origAnchorMin;
+            rt.anchorMax        = origAnchorMax;
+            rt.pivot            = origPivot;
+            rt.anchoredPosition = origAnchored;
+            rt.localScale       = origScale;
+        }
+
+        private static Vector2 CanvasPointFromRect(RectTransform canvasRt, RectTransform target)
+        {
+            if (canvasRt == null || target == null)
+                return Vector2.zero;
+
+            return canvasRt.InverseTransformPoint(target.TransformPoint(Vector3.zero));
+        }
+
         private IEnumerator FlipRoutine(bool toFaceUp, Action onComplete)
         {
             var rt        = (RectTransform)transform;

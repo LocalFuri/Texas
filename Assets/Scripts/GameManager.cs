@@ -333,7 +333,7 @@ namespace TexasHoldem
             OnGameMessage?.Invoke($"{active[bbIndex].Name} posts big blind (${_bigBlind}).");
             NotifyPlayersUpdated();
 
-            _boardManager.DealHoleCards(active);
+            yield return DealPreflopHoleCards(active, sbIndex);
             NotifyPlayersUpdated();
             yield return DelaySeconds(GetCommunityRevealDuration(2));
 
@@ -759,6 +759,48 @@ namespace TexasHoldem
             {
                 if (player.Type == PlayerType.Human && player.Chips < 100_000)
                     player.Chips = 100_000;
+            }
+        }
+
+        private IEnumerator DealPreflopHoleCards(List<PlayerState> active, int sbIndex)
+        {
+            _boardManager.ClearHoleCards(active);
+
+            int playerCount = active.Count;
+            if (playerCount == 0)
+                yield break;
+
+            UIManager ui = ResolveUiManager();
+            if (ui == null || !ui.AnimatePreflopDeal)
+            {
+                _boardManager.DealHoleCards(active, sbIndex);
+                yield break;
+            }
+
+            sbIndex = ((sbIndex % playerCount) + playerCount) % playerCount;
+            ui.BeginPreflopDealAnimation();
+
+            try
+            {
+                for (int round = 0; round < 2; round++)
+                {
+                    for (int i = 0; i < playerCount; i++)
+                    {
+                        PlayerState player = active[(sbIndex + i) % playerCount];
+                        Card card = _boardManager.DealHoleCardTo(player);
+                        int seatIndex = Players.IndexOf(player);
+                        bool faceUp = player.Type == PlayerType.Human;
+
+                        yield return ui.AnimateHoleCardDeal(seatIndex, round, card, faceUp);
+
+                        if (ui.HoleCardDealGap > 0f)
+                            yield return DelaySeconds(ui.HoleCardDealGap);
+                    }
+                }
+            }
+            finally
+            {
+                ui.EndPreflopDealAnimation();
             }
         }
 

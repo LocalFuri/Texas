@@ -16,15 +16,40 @@ namespace TexasHoldem
             CommunityCards.Clear();
         }
 
-        /// <summary>Deals two hole cards to each player, one card at a time around the table.</summary>
-        public void DealHoleCards(List<PlayerState> players)
+        /// <summary>Clears hole cards for every seated player in the list.</summary>
+        public void ClearHoleCards(IEnumerable<PlayerState> players)
         {
             foreach (var player in players)
                 player.HoleCards.Clear();
+        }
+
+        /// <summary>Deals one hole card to a player from the deck.</summary>
+        public Card DealHoleCardTo(PlayerState player)
+        {
+            Card card = _deck.Deal();
+            player.HoleCards.Add(card);
+            return card;
+        }
+
+        /// <summary>
+        /// Deals two hole cards to each player, one card at a time clockwise from
+        /// <paramref name="startIndex"/> (small blind in active-player order).
+        /// </summary>
+        public void DealHoleCards(List<PlayerState> players, int startIndex = 0)
+        {
+            ClearHoleCards(players);
+
+            int count = players.Count;
+            if (count == 0)
+                return;
+
+            startIndex = ((startIndex % count) + count) % count;
 
             for (int round = 0; round < 2; round++)
-                foreach (var player in players)
-                    player.HoleCards.Add(_deck.Deal());
+            {
+                for (int i = 0; i < count; i++)
+                    DealHoleCardTo(players[(startIndex + i) % count]);
+            }
         }
 
         /// <summary>Burns one card then reveals the three flop cards.</summary>
