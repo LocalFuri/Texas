@@ -127,6 +127,19 @@ namespace TexasHoldem
             ResetScale();
         }
 
+        public Sprite CardBackSprite =>
+            _spriteLibrary != null ? _spriteLibrary.CardBack : null;
+
+        /// <summary>Canvas pixel size of this card slot.</summary>
+        public Vector2 GetDisplaySize()
+        {
+            if (transform is not RectTransform rt)
+                return Vector2.zero;
+
+            Vector2 size = rt.rect.size;
+            return size.sqrMagnitude > 0f ? size : rt.sizeDelta;
+        }
+
         /// <summary>Displays the real card back sprite from the library (face-down).</summary>
         public void ShowFaceDown()
         {
@@ -187,18 +200,23 @@ namespace TexasHoldem
         }
 
         /// <summary>
-        /// Flies the card from a table-centre canvas point to its home slot (GGPoker-style preflop deal).
+        /// Flies the card from a table-centre canvas point to its home slot with GGPoker-style motion smears.
+        /// Card stays face-down and upright during flight; reveals on landing when requested.
         /// </summary>
         public IEnumerator AnimateFlyInOnCanvas(
             RectTransform canvasRt,
             Vector2 startCanvasPos,
             Card card,
-            bool faceUp,
-            float duration)
+            bool revealFaceUpOnLand,
+            float duration,
+            float smearLength = 2f,
+            float smearAlpha = 0.4f,
+            float smearSpawnInterval = 0.02f,
+            float smearFadeDuration = 0.18f)
         {
             if (canvasRt == null)
             {
-                if (faceUp && card != null)
+                if (revealFaceUpOnLand && card != null)
                     Show(card);
                 else
                     ShowFaceDown();
@@ -209,40 +227,65 @@ namespace TexasHoldem
             StopFlip();
 
             var rt = (RectTransform)transform;
-            Transform homeParent   = rt.parent;
-            int       homeSibling  = rt.GetSiblingIndex();
+            Transform homeParent    = rt.parent;
+            int       homeSibling   = rt.GetSiblingIndex();
             Vector2   origAnchorMin = rt.anchorMin;
             Vector2   origAnchorMax = rt.anchorMax;
             Vector2   origPivot     = rt.pivot;
             Vector2   origAnchored  = rt.anchoredPosition;
             Vector3   origScale     = rt.localScale;
+            Vector2   cardSize      = rt.rect.size.sqrMagnitude > 0f ? rt.rect.size : rt.sizeDelta;
 
             bool restoreInactive = !gameObject.activeSelf;
             if (restoreInactive)
                 gameObject.SetActive(true);
 
             Vector2 endCanvasPos = CanvasPointFromRect(canvasRt, rt);
-
-            if (faceUp && card != null)
-                Show(card);
+            Vector2 flyDir       = endCanvasPos - startCanvasPos;
+            if (flyDir.sqrMagnitude > 0.0001f)
+                flyDir.Normalize();
             else
-                ShowFaceDown();
+                flyDir = Vector2.down;
+
+            ShowFaceDown();
 
             rt.SetParent(canvasRt, worldPositionStays: false);
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta        = cardSize;
+            rt.localEulerAngles = Vector3.zero;
             rt.anchoredPosition = startCanvasPos;
             rt.localScale       = Vector3.one;
 
-            float flyDuration = Mathf.Max(0.05f, duration);
-            float elapsed     = 0f;
+            float flyDuration       = Mathf.Max(0.05f, duration);
+            float elapsed           = 0f;
+            float nextSmearSpawn    = 0f;
+            bool  spawnSmears       = smearSpawnInterval > 0f && smearLength > 1f && smearAlpha > 0f;
+            Sprite smearSprite      = _spriteLibrary != null ? _spriteLibrary.CardBack : null;
+            float smearSpacing      = cardSize.y * 0.22f;
 
             while (elapsed < flyDuration)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / flyDuration);
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / flyDuration));
                 rt.anchoredPosition = Vector2.Lerp(startCanvasPos, endCanvasPos, t);
+
+                if (spawnSmears && smearSprite != null && elapsed >= nextSmearSpawn)
+                {
+                    SpawnDealMotionSmear(
+                        canvasRt,
+                        rt.anchoredPosition,
+                        cardSize,
+                        flyDir,
+                        smearSpacing,
+                        smearSprite,
+                        smearLength,
+                        smearAlpha,
+                        smearFadeDuration);
+                    nextSmearSpawn += smearSpawnInterval;
+                }
+
                 yield return null;
             }
 
@@ -253,6 +296,63 @@ namespace TexasHoldem
             rt.pivot            = origPivot;
             rt.anchoredPosition = origAnchored;
             rt.localScale       = origScale;
+            rt.localEulerAngles = Vector3.zero;
+
+            if (revealFaceUpOnLand && card != null)
+                Show(card);
+            else
+                ShowFaceDown();
+        }
+
+        /// <summary>Vertical elongated smear trailing behind the card along its flight path.</summary>
+        private void SpawnDealMotionSmear(
+            RectTransform canvasRt,
+            Vector2 headPos,
+            Vector2 cardSize,
+            Vector2 flyDir,
+            float smearSpacing,
+            Sprite backSprite,
+            float smearLength,
+            float startAlpha,
+            float fadeDuration)
+        {
+            var go = new GameObject("_DealSmear", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var smearRt = go.GetComponent<RectTransform>();
+            smearRt.SetParent(canvasRt, false);
+            smearRt.anchorMin        = new Vector2(0.5f, 0.5f);
+            smearRt.anchorMax        = new Vector2(0.5f, 0.5f);
+            smearRt.pivot            = new Vector2(0.5f, 0.5f);
+            smearRt.localEulerAngles = Vector3.zero;
+            smearRt.sizeDelta        = new Vector2(cardSize.x, cardSize.y * smearLength);
+            smearRt.anchoredPosition = headPos - flyDir * smearSpacing;
+
+            var img = go.GetComponent<Image>();
+            img.sprite        = backSprite;
+            img.raycastTarget = false;
+            img.color         = new Color(1f, 1f, 1f, startAlpha);
+
+            StartCoroutine(FadeDestroyDealSmear(smearRt, img, fadeDuration));
+        }
+
+        private static IEnumerator FadeDestroyDealSmear(RectTransform rt, Image img, float duration)
+        {
+            if (rt == null || img == null)
+                yield break;
+
+            float startAlpha = img.color.a;
+            float elapsed    = 0f;
+            duration         = Mathf.Max(0.05f, duration);
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                img.color = new Color(1f, 1f, 1f, startAlpha * (1f - t));
+                yield return null;
+            }
+
+            if (rt != null)
+                Destroy(rt.gameObject);
         }
 
         private static Vector2 CanvasPointFromRect(RectTransform canvasRt, RectTransform target)

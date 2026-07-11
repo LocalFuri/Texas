@@ -257,14 +257,26 @@ namespace TexasHoldem
             bool faceUp,
             RectTransform canvasRt,
             Vector2 dealOriginCanvasPos,
-            float flyDuration)
+            float flyDuration,
+            float smearLength,
+            float smearAlpha,
+            float smearSpawnInterval,
+            float smearFadeDuration)
         {
             CardView slot = GetHoleCardSlot(slotIndex);
             if (slot == null)
                 yield break;
 
             yield return slot.AnimateFlyInOnCanvas(
-                canvasRt, dealOriginCanvasPos, card, faceUp, flyDuration);
+                canvasRt,
+                dealOriginCanvasPos,
+                card,
+                faceUp,
+                flyDuration,
+                smearLength,
+                smearAlpha,
+                smearSpawnInterval,
+                smearFadeDuration);
 
             if (_isHuman && faceUp)
                 _revealedHoleCount = Mathf.Max(_revealedHoleCount, slotIndex + 1);

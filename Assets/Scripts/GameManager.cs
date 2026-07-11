@@ -780,6 +780,8 @@ namespace TexasHoldem
             sbIndex = ((sbIndex % playerCount) + playerCount) % playerCount;
             ui.BeginPreflopDealAnimation();
 
+            int inFlight = 0;
+
             try
             {
                 for (int round = 0; round < 2; round++)
@@ -791,17 +793,31 @@ namespace TexasHoldem
                         int seatIndex = Players.IndexOf(player);
                         bool faceUp = player.Type == PlayerType.Human;
 
-                        yield return ui.AnimateHoleCardDeal(seatIndex, round, card, faceUp);
+                        inFlight++;
+                        StartCoroutine(TrackHoleCardDeal(
+                            ui.AnimateHoleCardDeal(seatIndex, round, card, faceUp),
+                            () => inFlight--));
 
-                        if (ui.HoleCardDealGap > 0f)
-                            yield return DelaySeconds(ui.HoleCardDealGap);
+                        if (ui.HoleCardDealStagger > 0f)
+                            yield return DelaySeconds(ui.HoleCardDealStagger);
                     }
                 }
+
+                while (inFlight > 0)
+                    yield return null;
             }
             finally
             {
                 ui.EndPreflopDealAnimation();
             }
+        }
+
+        private IEnumerator TrackHoleCardDeal(IEnumerator routine, System.Action onComplete)
+        {
+            if (routine != null)
+                yield return routine;
+
+            onComplete?.Invoke();
         }
 
         private void NotifyPlayersUpdated() => OnPlayersUpdated?.Invoke(Players);

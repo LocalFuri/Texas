@@ -95,15 +95,40 @@ namespace TexasHoldem
         [SerializeField, Min(0f)] private float _collectPotUpdateDelay = 0.1f;
 
         [Header("Preflop Deal")]
-        [Tooltip("When on, hole cards fly from the table centre one at a time clockwise from the small blind.")]
+        [Tooltip("When on, hole cards fly from the dealer area with motion trails (GGPoker style).")]
         [SerializeField] private bool _animatePreflopDeal = true;
-        [Tooltip("Duration for each hole card flying from centre to its seat.")]
-        [SerializeField, Min(0.05f)] private float _holeCardFlyDuration = 0.28f;
-        [Tooltip("Pause after each card lands before the next card is dealt.")]
-        [SerializeField, Min(0f)] private float _holeCardDealGap = 0.08f;
+        [Tooltip("Optional anchor for deal origin. When unset, uses community-board centre plus Deal Origin Offset.")]
+        [SerializeField] private RectTransform _dealOriginAnchor;
+        [Tooltip("Canvas offset from the community-board centre when Deal Origin Anchor is unset.")]
+        [SerializeField] private Vector2 _dealOriginCanvasOffset = new Vector2(-55f, -10f);
+        [Tooltip("Shows a faint stacked deck at the deal origin while cards are dealt.")]
+        [SerializeField] private bool _showDealDeckGhost = true;
+        [Tooltip("Number of stacked card outlines in the deal-origin deck.")]
+        [SerializeField, Range(1, 5)] private int _dealDeckGhostCount = 3;
+        [Tooltip("Alpha of each deal-origin deck outline.")]
+        [SerializeField, Range(0.05f, 0.6f)] private float _dealDeckGhostAlpha = 0.28f;
+        [Tooltip("Pixel offset between stacked deck outlines (X = right, Y = up).")]
+        [SerializeField] private Vector2 _dealDeckGhostStackOffset = new Vector2(3f, 5f);
+        [Tooltip("Duration for each hole card flying to its seat.")]
+        [SerializeField, Min(0.05f)] private float _holeCardFlyDuration = 0.5f;
+        [Tooltip("Delay between starting each deal (cards overlap while in flight).")]
+        [SerializeField, Min(0f)] private float _holeCardDealStagger = 0.06f;
+        [Tooltip("Vertical stretch of each motion-smear copy (GGPoker-style blur streak).")]
+        [SerializeField, Range(1f, 3.5f)] private float _holeCardSmearLength = 2f;
+        [Tooltip("Starting alpha for each motion smear.")]
+        [SerializeField, Range(0.05f, 0.8f)] private float _holeCardSmearAlpha = 0.4f;
+        [Tooltip("Seconds between spawning smears along the flight path.")]
+        [SerializeField, Range(0.01f, 0.08f)] private float _holeCardSmearSpawnInterval = 0.02f;
+        [Tooltip("How long each smear fades out.")]
+        [SerializeField, Range(0.05f, 0.35f)] private float _holeCardSmearFadeDuration = 0.24f;
 
         public bool AnimatePreflopDeal => _animatePreflopDeal;
-        public float HoleCardDealGap => _holeCardDealGap;
+        public float HoleCardDealStagger => _holeCardDealStagger;
+        public float HoleCardSmearLength => _holeCardSmearLength;
+        public float HoleCardSmearAlpha => _holeCardSmearAlpha;
+        public float HoleCardSmearSpawnInterval => _holeCardSmearSpawnInterval;
+        public float HoleCardSmearFadeDuration => _holeCardSmearFadeDuration;
+        public float HoleCardFlyDuration => _holeCardFlyDuration;
 
         [Header("Winner Celebration")]
         [Tooltip("Duration for pot chips flying to the winner HUD (Backspace or B).")]
@@ -212,6 +237,7 @@ namespace TexasHoldem
         private bool                          _suppressDealerButton;
         private bool                          _collectInProgress;
         private bool                          _preflopDealInProgress;
+        private GameObject                    _dealDeckGhostRoot;
         private Canvas               _rootCanvas;
 
         private bool          _hasPendingActionBadge;
@@ -847,6 +873,7 @@ namespace TexasHoldem
             _preflopDealInProgress   = false;
             _suppressDealerButton = true;
             _tableLayout?.HideDealerButton();
+            HideDealDeckGhost();
 
             StopHumanHoleReveal();
             HideAllActionBadges();
@@ -2190,24 +2217,136 @@ namespace TexasHoldem
                 dealOrigin = Vector2.zero;
 
             yield return view.AnimateHoleCardDeal(
-                slotIndex, card, faceUp, canvasRt, dealOrigin, _holeCardFlyDuration);
+                slotIndex,
+                card,
+                faceUp,
+                canvasRt,
+                dealOrigin,
+                _holeCardFlyDuration,
+                _holeCardSmearLength,
+                _holeCardSmearAlpha,
+                _holeCardSmearSpawnInterval,
+                _holeCardSmearFadeDuration);
         }
 
-        public void BeginPreflopDealAnimation() => _preflopDealInProgress = true;
+        public void BeginPreflopDealAnimation()
+        {
+            _preflopDealInProgress = true;
+            ShowDealDeckGhost();
+        }
 
-        public void EndPreflopDealAnimation() => _preflopDealInProgress = false;
+        public void EndPreflopDealAnimation()
+        {
+            _preflopDealInProgress = false;
+            HideDealDeckGhost();
+        }
+
+        private void ShowDealDeckGhost()
+        {
+            if (!_showDealDeckGhost || !_animatePreflopDeal)
+                return;
+
+            HideDealDeckGhost();
+
+            _rootCanvas ??= ResolveRootCanvas();
+            if (_rootCanvas == null || !TryResolveDealOriginCanvasPosition(out Vector2 origin))
+                return;
+
+            if (!TryResolveDealCardVisuals(out Sprite cardBack, out Vector2 cardSize))
+                return;
+
+            var canvasRt = (RectTransform)_rootCanvas.transform;
+            _dealDeckGhostRoot = new GameObject("DealDeckGhost", typeof(RectTransform));
+            var rootRt = (RectTransform)_dealDeckGhostRoot.transform;
+            rootRt.SetParent(canvasRt, false);
+            rootRt.anchorMin        = new Vector2(0.5f, 0.5f);
+            rootRt.anchorMax        = new Vector2(0.5f, 0.5f);
+            rootRt.pivot            = new Vector2(0.5f, 0.5f);
+            rootRt.anchoredPosition = origin;
+            rootRt.localScale       = Vector3.one;
+
+            int count = Mathf.Clamp(_dealDeckGhostCount, 1, 5);
+            for (int i = 0; i < count; i++)
+            {
+                var go = new GameObject($"DeckOutline_{i}", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                var rt = go.GetComponent<RectTransform>();
+                rt.SetParent(rootRt, false);
+                rt.anchorMin        = new Vector2(0.5f, 0.5f);
+                rt.anchorMax        = new Vector2(0.5f, 0.5f);
+                rt.pivot            = new Vector2(0.5f, 0.5f);
+                rt.sizeDelta        = cardSize;
+                rt.anchoredPosition = _dealDeckGhostStackOffset * i;
+
+                var img = go.GetComponent<Image>();
+                img.sprite        = cardBack;
+                img.raycastTarget = false;
+                img.color         = new Color(1f, 1f, 1f, _dealDeckGhostAlpha);
+
+                var outline = go.AddComponent<Outline>();
+                outline.effectColor    = new Color(1f, 1f, 1f, Mathf.Clamp01(_dealDeckGhostAlpha + 0.25f));
+                outline.effectDistance = new Vector2(1.5f, -1.5f);
+                outline.useGraphicAlpha = true;
+            }
+        }
+
+        private void HideDealDeckGhost()
+        {
+            if (_dealDeckGhostRoot == null)
+                return;
+
+            Destroy(_dealDeckGhostRoot);
+            _dealDeckGhostRoot = null;
+        }
+
+        private bool TryResolveDealCardVisuals(out Sprite cardBack, out Vector2 cardSize)
+        {
+            cardBack = null;
+            cardSize = Vector2.zero;
+
+            CardView reference = _flop1;
+            if (reference == null)
+            {
+                IReadOnlyList<PlayerView> views = ResolvePlayerViews();
+                if (views != null)
+                {
+                    foreach (PlayerView view in views)
+                    {
+                        reference = view?.GetHoleCardSlot(0);
+                        if (reference != null)
+                            break;
+                    }
+                }
+            }
+
+            if (reference == null)
+                return false;
+
+            cardBack = reference.CardBackSprite;
+            cardSize = reference.GetDisplaySize();
+            return cardBack != null && cardSize.sqrMagnitude > 0f;
+        }
 
         private bool TryResolveDealOriginCanvasPosition(out Vector2 canvasAnchoredPosition)
         {
             canvasAnchoredPosition = Vector2.zero;
 
             _rootCanvas ??= ResolveRootCanvas();
-            RectTransform flopRt = CommunityCardSlotRect(_flop1);
-            if (_rootCanvas == null || flopRt == null)
+            if (_rootCanvas == null)
                 return false;
 
-            canvasAnchoredPosition = CanvasPointFromRect(
-                (RectTransform)_rootCanvas.transform, flopRt);
+            var canvasRt = (RectTransform)_rootCanvas.transform;
+
+            if (_dealOriginAnchor != null)
+            {
+                canvasAnchoredPosition = CanvasPointFromRect(canvasRt, _dealOriginAnchor);
+                return true;
+            }
+
+            RectTransform flopRt = CommunityCardSlotRect(_flop1);
+            if (flopRt == null)
+                return false;
+
+            canvasAnchoredPosition = CanvasPointFromRect(canvasRt, flopRt) + _dealOriginCanvasOffset;
             return true;
         }
 
