@@ -355,6 +355,79 @@ namespace TexasHoldem
                 Destroy(rt.gameObject);
         }
 
+        /// <summary>
+        /// Straight-line fly to the slot home position — no rotation, scale, or bounce (flop deal).
+        /// </summary>
+        public IEnumerator AnimateStraightFlyOnCanvas(
+            RectTransform canvasRt,
+            Vector2 startCanvasPos,
+            Card card,
+            float duration)
+        {
+            if (canvasRt == null)
+            {
+                if (card != null)
+                    Show(card);
+                yield break;
+            }
+
+            StopWinnerPulse();
+            StopFlip();
+
+            var rt = (RectTransform)transform;
+            Transform homeParent    = rt.parent;
+            int       homeSibling   = rt.GetSiblingIndex();
+            Vector2   origAnchorMin = rt.anchorMin;
+            Vector2   origAnchorMax = rt.anchorMax;
+            Vector2   origPivot     = rt.pivot;
+            Vector2   origAnchored  = rt.anchoredPosition;
+            Vector3   origScale     = rt.localScale;
+            Vector3   origRotation  = rt.localEulerAngles;
+            Vector2   cardSize      = rt.rect.size.sqrMagnitude > 0f ? rt.rect.size : rt.sizeDelta;
+
+            if (!gameObject.activeSelf)
+                gameObject.SetActive(true);
+
+            Vector2 endCanvasPos = CanvasPointFromRect(canvasRt, rt);
+
+            if (card != null)
+                Show(card);
+
+            rt.SetParent(canvasRt, worldPositionStays: false);
+            rt.anchorMin        = new Vector2(0.5f, 0.5f);
+            rt.anchorMax        = new Vector2(0.5f, 0.5f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta        = cardSize;
+            rt.localEulerAngles = origRotation;
+            rt.localScale       = origScale;
+            rt.anchoredPosition = startCanvasPos;
+
+            float flyDuration = Mathf.Max(0.05f, duration);
+            float elapsed     = 0f;
+
+            while (elapsed < flyDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t   = EaseOutQuad(Mathf.Clamp01(elapsed / flyDuration));
+                rt.anchoredPosition = Vector2.Lerp(startCanvasPos, endCanvasPos, t);
+                yield return null;
+            }
+
+            rt.SetParent(homeParent, worldPositionStays: false);
+            rt.SetSiblingIndex(homeSibling);
+            rt.anchorMin        = origAnchorMin;
+            rt.anchorMax        = origAnchorMax;
+            rt.pivot            = origPivot;
+            rt.anchoredPosition = origAnchored;
+            rt.localScale       = origScale;
+            rt.localEulerAngles = origRotation;
+
+            if (card != null)
+                Show(card);
+        }
+
+        private static float EaseOutQuad(float t) => 1f - (1f - t) * (1f - t);
+
         private static Vector2 CanvasPointFromRect(RectTransform canvasRt, RectTransform target)
         {
             if (canvasRt == null || target == null)

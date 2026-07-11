@@ -351,7 +351,7 @@ namespace TexasHoldem
             var flop = _boardManager.CommunityCards;
             SetPhase(GamePhase.Flop);
             OnCommunityCardsUpdated?.Invoke(flop);
-            yield return DelaySeconds(GetCommunityRevealDuration(flop.Count - boardCount));
+            yield return DelaySeconds(UIManager.FlopDealTotalDuration);
             yield return null; // extra frame so UI reveal coroutine finishes updating _revealedCommunityCount
             boardCount = flop.Count;
             yield return StartCoroutine(BettingRound(active, sbIndex));

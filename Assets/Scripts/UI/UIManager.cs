@@ -25,6 +25,11 @@ namespace TexasHoldem
 
         private CardView[] _communityCardSlots;
 
+        public const float FlopCardFlyDuration = 0.12f;
+        public const float FlopCardStagger     = 0.04f;
+        public static float FlopDealTotalDuration =>
+            3f * FlopCardFlyDuration + 2f * FlopCardStagger;
+
         [Header("Player Seats")]
         [SerializeField] private List<PlayerView> _playerViews;
 
@@ -1146,14 +1151,22 @@ namespace TexasHoldem
             }
 
             int startIndex = _revealedCommunityCount;
-            for (int i = startIndex; i < cards.Count; i++)
-            {
-                CardView slot = _communityCardSlots[i];
-                if (slot == null)
-                    continue;
 
-                slot.Show(cards[i]);
-                _revealedCommunityCount = i + 1;
+            if (startIndex == 0 && cards.Count >= 3)
+            {
+                yield return AnimateFlopDeal(cards);
+            }
+            else
+            {
+                for (int i = startIndex; i < cards.Count; i++)
+                {
+                    CardView slot = _communityCardSlots[i];
+                    if (slot == null)
+                        continue;
+
+                    slot.Show(cards[i]);
+                    _revealedCommunityCount = i + 1;
+                }
             }
 
             for (int i = cards.Count; i < _communityCardSlots.Length; i++)
@@ -1161,6 +1174,52 @@ namespace TexasHoldem
 
             _communityRevealCoroutine = null;
             yield break;
+        }
+
+        private IEnumerator AnimateFlopDeal(List<Card> cards)
+        {
+            _rootCanvas ??= ResolveRootCanvas();
+            if (_rootCanvas == null || _communityCardSlots == null)
+            {
+                for (int i = 0; i < 3 && i < cards.Count; i++)
+                {
+                    _communityCardSlots[i]?.Show(cards[i]);
+                    _revealedCommunityCount = i + 1;
+                }
+                yield break;
+            }
+
+            if (!TryResolveDealOriginCanvasPosition(out Vector2 dealOrigin))
+                dealOrigin = Vector2.zero;
+
+            var canvasRt = (RectTransform)_rootCanvas.transform;
+
+            for (int i = 0; i < 3; i++)
+                _communityCardSlots[i]?.Hide();
+
+            for (int i = 0; i < 3; i++)
+            {
+                CardView slot = _communityCardSlots[i];
+                if (slot == null)
+                    continue;
+
+                yield return slot.AnimateStraightFlyOnCanvas(
+                    canvasRt, dealOrigin, cards[i], FlopCardFlyDuration);
+
+                _revealedCommunityCount = i + 1;
+
+                if (i < 2)
+                {
+                    float elapsed = 0f;
+                    while (elapsed < FlopCardStagger)
+                    {
+                        elapsed += Time.unscaledDeltaTime;
+                        yield return null;
+                    }
+                }
+            }
+
+            _revealedCommunityCount = Mathf.Max(_revealedCommunityCount, cards.Count);
         }
 
         private void OnPlayerTurn(PlayerState player)
