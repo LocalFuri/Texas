@@ -209,6 +209,11 @@ namespace TexasHoldem
         private int           _winnerDisplayPotAmount;
         private Transform     _potChipStackHomeParent;
         private int           _potChipStackHomeSiblingIndex;
+        private RectTransform _potAmountBadgeRt;
+        private TMP_Text      _potAmountBadgeText;
+
+        private const float PotAmountBadgeWidth  = 90f;
+        private const float PotAmountBadgeHeight = 30f;
         private PlayerState   _pendingBadgePlayer;
         private BettingAction _pendingBadgeAction;
         private int           _pendingBadgeAmount;
@@ -1670,6 +1675,7 @@ namespace TexasHoldem
 
             _potChipStack.Clear();
             _potChipStack.StackRoot.gameObject.SetActive(false);
+            HidePotAmountBadge();
             LayoutPotArea();
         }
 
@@ -1713,59 +1719,160 @@ namespace TexasHoldem
 
         private void EnsurePotChipStack()
         {
-            if (_potChipStack != null || _potText == null)
-                return;
-
-            Transform parent = _potText.transform.parent;
-            if (parent == null)
-                return;
-
-            Transform existing = parent.Find("PotChipStack");
-            GameObject stackGo;
-            if (existing != null)
+            if (_potChipStack == null)
             {
-                stackGo = existing.gameObject;
-            }
-            else
-            {
-                stackGo = new GameObject("PotChipStack", typeof(RectTransform), typeof(ChipStackView));
-                var stackRt = (RectTransform)stackGo.transform;
-                stackRt.SetParent(parent, false);
-                stackRt.anchorMin        = new Vector2(0.5f, 0.5f);
-                stackRt.anchorMax        = new Vector2(0.5f, 0.5f);
-                stackRt.pivot            = new Vector2(0.5f, 0.5f);
-                stackRt.anchoredPosition = ((RectTransform)_potText.transform).anchoredPosition;
-                stackRt.sizeDelta        = new Vector2(ChipStackView.MaxLayoutWidth, ChipStackView.MaxLayoutHeight);
+                if (_potText == null)
+                    return;
 
-                for (int i = 0; i < 3; i++)
+                Transform parent = _potText.transform.parent;
+                if (parent == null)
+                    return;
+
+                Transform existing = parent.Find("PotChipStack");
+                GameObject stackGo;
+                if (existing != null)
                 {
-                    var chipGo = new GameObject(
-                        $"Chip_{i}",
-                        typeof(RectTransform),
-                        typeof(CanvasRenderer),
-                        typeof(Image));
-                    chipGo.transform.SetParent(stackGo.transform, false);
-                    var chipRt = (RectTransform)chipGo.transform;
-                    chipRt.sizeDelta = new Vector2(ChipStackView.ResolveChipDisplaySize(), ChipStackView.ResolveChipDisplaySize());
-                    var img = chipGo.GetComponent<Image>();
-                    img.raycastTarget  = false;
-                    img.preserveAspect = true;
-                    chipGo.SetActive(false);
+                    stackGo = existing.gameObject;
                 }
+                else
+                {
+                    stackGo = new GameObject("PotChipStack", typeof(RectTransform), typeof(ChipStackView));
+                    var stackRt = (RectTransform)stackGo.transform;
+                    stackRt.SetParent(parent, false);
+                    stackRt.anchorMin        = new Vector2(0.5f, 0.5f);
+                    stackRt.anchorMax        = new Vector2(0.5f, 0.5f);
+                    stackRt.pivot            = new Vector2(0.5f, 0.5f);
+                    stackRt.anchoredPosition = ((RectTransform)_potText.transform).anchoredPosition;
+                    stackRt.sizeDelta        = new Vector2(ChipStackView.MaxLayoutWidth, ChipStackView.MaxLayoutHeight);
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var chipGo = new GameObject(
+                            $"Chip_{i}",
+                            typeof(RectTransform),
+                            typeof(CanvasRenderer),
+                            typeof(Image));
+                        chipGo.transform.SetParent(stackGo.transform, false);
+                        var chipRt = (RectTransform)chipGo.transform;
+                        chipRt.sizeDelta = new Vector2(ChipStackView.ResolveChipDisplaySize(), ChipStackView.ResolveChipDisplaySize());
+                        var img = chipGo.GetComponent<Image>();
+                        img.raycastTarget  = false;
+                        img.preserveAspect = true;
+                        chipGo.SetActive(false);
+                    }
+                }
+
+                _potChipStack = stackGo.GetComponent<ChipStackView>();
+                if (_potChipStack == null)
+                    return;
+
+                ChipStackView sample = FindSampleBetChipStack();
+                if (sample != null)
+                    _potChipStack.CopySpritesFrom(sample);
+
+                _potChipStack.AssignHighDenominations(_potChipSprite100, _potChipSprite500);
+                ApplyPotChipStackSettings();
+                _potChipStack.Clear();
+                stackGo.SetActive(false);
             }
 
-            _potChipStack = stackGo.GetComponent<ChipStackView>();
+            EnsurePotAmountBadge();
+        }
+
+        private float ResolvePotBadgeGap()
+            => _tableLayout != null ? _tableLayout.BetChipBadgeGap : 3f;
+
+        private void EnsurePotAmountBadge()
+        {
             if (_potChipStack == null)
                 return;
 
-            ChipStackView sample = FindSampleBetChipStack();
-            if (sample != null)
-                _potChipStack.CopySpritesFrom(sample);
+            RectTransform stackRt = _potChipStack.StackRoot;
+            Transform existing = stackRt.Find("PotAmountBadge");
+            if (existing != null)
+            {
+                _potAmountBadgeRt   = (RectTransform)existing;
+                _potAmountBadgeText = existing.Find("AmountText")?.GetComponent<TMP_Text>();
+                return;
+            }
 
-            _potChipStack.AssignHighDenominations(_potChipSprite100, _potChipSprite500);
-            ApplyPotChipStackSettings();
-            _potChipStack.Clear();
-            stackGo.SetActive(false);
+            var badgeGo = new GameObject(
+                "PotAmountBadge",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image));
+            badgeGo.transform.SetParent(stackRt, false);
+
+            var badgeImg = badgeGo.GetComponent<Image>();
+            Sprite sprite = BetDisplay.ResolveAmountBadgeSprite();
+            badgeImg.sprite         = sprite;
+            badgeImg.type           = sprite != null ? Image.Type.Sliced : Image.Type.Simple;
+            badgeImg.color          = BetDisplay.DefaultAmountBadgeColor;
+            badgeImg.raycastTarget  = false;
+
+            var textGo = new GameObject("AmountText", typeof(RectTransform));
+            textGo.transform.SetParent(badgeGo.transform, false);
+            var textRt = (RectTransform)textGo.transform;
+            textRt.anchorMin = Vector2.zero;
+            textRt.anchorMax = Vector2.one;
+            textRt.offsetMin = Vector2.zero;
+            textRt.offsetMax = Vector2.zero;
+
+            var amountText = textGo.AddComponent<TextMeshProUGUI>();
+            amountText.alignment          = TextAlignmentOptions.Center;
+            amountText.fontStyle          = FontStyles.Bold;
+            amountText.enableWordWrapping = false;
+            amountText.overflowMode       = TextOverflowModes.Ellipsis;
+            amountText.raycastTarget      = false;
+            amountText.color              = UiColors.PotGold;
+            PlayerHudLayout.ApplyStackAmountFontIfMissing(amountText);
+
+            _potAmountBadgeRt   = (RectTransform)badgeGo.transform;
+            _potAmountBadgeText = amountText;
+            badgeGo.SetActive(false);
+        }
+
+        private void LayoutPotAmountBadge()
+        {
+            if (_potAmountBadgeRt == null || _potChipStack == null)
+                return;
+
+            RectTransform stackRt = _potChipStack.StackRoot;
+            float stackHeight = stackRt.sizeDelta.y > 0f ? stackRt.sizeDelta.y : stackRt.rect.height;
+            if (stackHeight <= 0f)
+                stackHeight = ChipStackView.MaxLayoutHeight;
+
+            float badgeGap     = ResolvePotBadgeGap();
+            float badgeCenterY = -(stackHeight + badgeGap) * 0.5f;
+
+            _potAmountBadgeRt.anchorMin        = new Vector2(0.5f, 0.5f);
+            _potAmountBadgeRt.anchorMax        = new Vector2(0.5f, 0.5f);
+            _potAmountBadgeRt.pivot            = new Vector2(0.5f, 0.5f);
+            _potAmountBadgeRt.anchoredPosition = new Vector2(0f, badgeCenterY);
+            _potAmountBadgeRt.sizeDelta        = new Vector2(PotAmountBadgeWidth, PotAmountBadgeHeight);
+        }
+
+        private void ShowPotAmountBadge(int amount)
+        {
+            if (amount <= 0)
+            {
+                HidePotAmountBadge();
+                return;
+            }
+
+            EnsurePotAmountBadge();
+            if (_potAmountBadgeText != null)
+                _potAmountBadgeText.text = amount.ToString("N0", GermanNFI);
+
+            LayoutPotAmountBadge();
+            if (_potAmountBadgeRt != null)
+                _potAmountBadgeRt.gameObject.SetActive(true);
+        }
+
+        private void HidePotAmountBadge()
+        {
+            if (_potAmountBadgeRt != null)
+                _potAmountBadgeRt.gameObject.SetActive(false);
         }
 
         /// <summary>Seat bet stacks use the same 100/500 sprites as the pot chip stack.</summary>
@@ -2979,6 +3086,8 @@ namespace TexasHoldem
                 CompleteWinnerPotCollection();
                 yield break;
             }
+
+            ShowPotAmountBadge(amount);
 
             RectTransform stackRt = _potChipStack.StackRoot;
             var canvasRt = (RectTransform)_rootCanvas.transform;
