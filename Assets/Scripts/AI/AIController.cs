@@ -5,7 +5,7 @@ namespace TexasHoldem
 {
     public class AIController
     {
-        private const float AggressionThreshold   = 0.35f;
+        private const float PostflopStrongRaiseChance  = 0.75f;
         private const float PremiumRaiseChance    = 0.75f;
         private const float StrongRaiseChance       = 0.50f;
         private const float PlayableCallChipFraction = 0.25f;
@@ -42,19 +42,16 @@ namespace TexasHoldem
             var allCards = new List<Card>(player.HoleCards);
             allCards.AddRange(communityCards);
 
-            float strength = EvaluateHandStrength(allCards);
+            HandResult hand = HandEvaluator.Evaluate(allCards);
 
-            if (strength > 0.75f)
+            if (hand.Rank >= HandRank.ThreeOfAKind)
             {
-                if (betting.CanRaise(player) && Random.value < AggressionThreshold)
-                {
-                    int minRaise = betting.GetMinRaiseIncrement();
-                    int maxRaise = betting.GetMaxRaiseIncrement(player);
-                    int raise    = Mathf.Clamp(minRaise, minRaise, maxRaise);
-                    return (BettingAction.Raise, raise);
-                }
+                if (betting.CanRaise(player) && Random.value < PostflopStrongRaiseChance)
+                    return MinRaise(betting, player);
                 return canCheck ? (BettingAction.Check, 0) : (BettingAction.Call, 0);
             }
+
+            float strength = (float)hand.Rank / (float)HandRank.RoyalFlush;
 
             if (strength > 0.4f)
             {
@@ -207,12 +204,6 @@ namespace TexasHoldem
             Suited(12, 8, PreflopHandGroup.Strong);
 
             return chart;
-        }
-
-        private float EvaluateHandStrength(List<Card> cards)
-        {
-            var result = HandEvaluator.Evaluate(cards);
-            return (float)result.Rank / (float)HandRank.RoyalFlush;
         }
     }
 }
