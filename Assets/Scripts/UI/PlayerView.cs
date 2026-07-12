@@ -36,6 +36,7 @@ namespace TexasHoldem
         [SerializeField] private TMP_Text _nameText;
         [SerializeField] private TMP_Text _chipsText;
         [SerializeField] private TMP_Text _statusText;
+        [SerializeField] private TMP_Text _equityText;
         [Tooltip("Character name for this seat — source of truth for game logic and HUD.")]
         [SerializeField] private string _displayName;
 
@@ -78,6 +79,9 @@ namespace TexasHoldem
         [Tooltip("Mirror HUD band: avatar on the right, name/chips on the left (left table seats).")]
         [SerializeField] private bool _hudMirrored;
 
+        [Header("Equity Display")]
+        [SerializeField] private float _equityFontSize = 20f;
+
         [Header("Testing")]
         [SerializeField] private bool _showAvatarImages = true; // disable to hide all avatar photos during testing
         [SerializeField] private bool _showChromeRing   = true; // disable to hide the chrome base ring during testing
@@ -89,6 +93,7 @@ namespace TexasHoldem
         private Sprite    _currentAvatarSprite; // cached so the toggle can restore it without re-calling SetAvatar
 
         public bool HudMirrored => _hudMirrored;
+        public bool IsHuman     => _isHuman;
 
         /// <summary>Resolved display name for this seat (serialized field, then name label).</summary>
         public string DisplayName => ResolveDisplayName();
@@ -182,7 +187,46 @@ namespace TexasHoldem
             ApplyChromeRingVisibility();
             ApplyGoldRingIdle();
             ApplyHudGlowIdle();
+            ApplyEquityTextStyle();
             ApplyHudLayout();
+        }
+
+        private void EnsureEquityText()
+        {
+            if (_equityText != null)
+                return;
+
+            Transform existing = transform.Find("EquityText");
+            if (existing != null)
+            {
+                _equityText = existing.GetComponent<TMP_Text>();
+                ApplyEquityTextStyle();
+                return;
+            }
+
+            var go = new GameObject("EquityText", typeof(RectTransform));
+            go.transform.SetParent(transform, false);
+            _equityText = go.AddComponent<TextMeshProUGUI>();
+            _equityText.raycastTarget = false;
+            _equityText.gameObject.SetActive(false);
+            ApplyEquityTextStyle();
+            ApplyHudLayout();
+        }
+
+        private void ApplyEquityTextStyle()
+        {
+            if (_equityText == null)
+                return;
+
+            PlayerHudLayout.ApplyStackAmountFontIfMissing(_equityText);
+            if (_nameText != null && _nameText.font != null)
+                _equityText.font = _nameText.font;
+
+            _equityText.fontSize           = _equityFontSize;
+            _equityText.color              = UiColors.PotGold;
+            _equityText.alignment          = TextAlignmentOptions.Midline;
+            _equityText.enableWordWrapping = false;
+            _equityText.overflowMode       = TextOverflowModes.Overflow;
         }
 
         private void ApplyNameFontSize()
@@ -332,7 +376,58 @@ namespace TexasHoldem
         public RectTransform ChipsHudRect =>
             _chipsText != null ? _chipsText.transform as RectTransform : null;
 
-        public void SetIsHuman(bool isHuman) => _isHuman = isHuman;
+        public void SetIsHuman(bool isHuman)
+        {
+            _isHuman = isHuman;
+            if (!isHuman)
+                RemoveEquityDisplay();
+        }
+
+        /// <summary>Shows Monte Carlo equity as a whole-number percent left of the avatar.</summary>
+        public void SetEquityDisplay(int equityPercent)
+        {
+            if (!_isHuman)
+                return;
+
+            EnsureEquityText();
+            if (_equityText == null)
+                return;
+
+            equityPercent = Mathf.Clamp(equityPercent, 0, 100);
+            _equityText.text = $"{equityPercent}%";
+            _equityText.gameObject.SetActive(true);
+        }
+
+        public void ClearEquityDisplay()
+        {
+            if (_equityText != null)
+                _equityText.gameObject.SetActive(false);
+        }
+
+        /// <summary>Removes equity UI from AI seats entirely.</summary>
+        public void RemoveEquityDisplay()
+        {
+            if (_equityText == null)
+            {
+                Transform existing = transform.Find("EquityText");
+                if (existing != null)
+                {
+                    if (Application.isPlaying)
+                        Destroy(existing.gameObject);
+                    else
+                        DestroyImmediate(existing.gameObject);
+                }
+
+                return;
+            }
+
+            if (Application.isPlaying)
+                Destroy(_equityText.gameObject);
+            else
+                DestroyImmediate(_equityText.gameObject);
+
+            _equityText = null;
+        }
 
         /// <summary>
         /// Assigns an avatar sprite to the shader-clipped photo image.

@@ -246,6 +246,7 @@ namespace TexasHoldem
         private bool                 _playersRefreshInProgress;
         private Coroutine            _humanHoleRevealCoroutine;
         private Coroutine            _beginTurnCoroutine;
+        private Coroutine            _equityRefreshCoroutine;
         private Coroutine            _timerCoroutine;
         private PlayerView           _activeTimerView;
         private PlayerView           _humanSeatView;
@@ -754,14 +755,11 @@ namespace TexasHoldem
             RaiseInputBuilder.SelectAllText(_raiseInput);
         }
 
-        /// <summary>Human is always seat index 0 in TableLayoutManager.</summary>
+        /// <summary>Resolves the human player's seat view only.</summary>
         private PlayerView ResolveHumanSeatView()
         {
             if (_humanSeatView != null)
                 return _humanSeatView;
-
-            if (_playerViews != null && _playerViews.Count > 0 && _playerViews[0] != null)
-                return _playerViews[0];
 
             if (_humanPlayer != null && _gameManager != null && _playerViews != null)
             {
@@ -799,6 +797,17 @@ namespace TexasHoldem
             if (!ShouldShowActionBadge(player, action)) return;
 
             ShowActionBadgeForPlayer(player, action, amount);
+
+            if (_humanPlayer != null
+                && !_humanPlayer.HasFolded
+                && player != _humanPlayer
+                && action == BettingAction.Fold)
+            {
+                RefreshHumanEquity();
+            }
+
+            if (player == _humanPlayer && action == BettingAction.Fold)
+                ClearHumanEquityDisplay();
 
             _pendingBadgePlayer    = player;
             _pendingBadgeAction    = action;
@@ -1009,6 +1018,7 @@ namespace TexasHoldem
         {
             yield return humanView.RevealHumanHoleCards(humanState);
             _humanHoleRevealCoroutine = null;
+            RefreshHumanEquity();
         }
 
         private void TryScheduleHumanHoleReveal(PlayerView humanView, PlayerState humanState)
@@ -1230,6 +1240,7 @@ namespace TexasHoldem
                 _communityCardSlots[i]?.Hide();
 
             _communityRevealCoroutine = null;
+            RefreshHumanEquity();
             yield break;
         }
 
@@ -1317,6 +1328,9 @@ namespace TexasHoldem
             if (isHumanTurn && CanHumanRaise())
                 yield return RaiseInputBuilder.FocusAndSelectAllWhenReady(_raiseInput);
 
+            if (isHumanTurn)
+                RefreshHumanEquity();
+
             StopTurnTimer();
             int playerIndex = _gameManager.Players.IndexOf(player);
             if (playerIndex >= 0 && playerIndex < _playerViews.Count && _playerViews[playerIndex] != null)
@@ -1369,6 +1383,7 @@ namespace TexasHoldem
                 view.HideBetDisplay();
                 view.HideActionBadge();
                 view.ClearTableCards();
+                view.RemoveEquityDisplay();
             }
 
             _tableLayout?.HideDealerButton();
@@ -1386,6 +1401,7 @@ namespace TexasHoldem
         private void OnRoundEnded()
         {
             StopTurnTimer();
+            ClearHumanEquityDisplay();
             HideBettingControls();
             ClearWinnerCelebration();
 
@@ -1642,6 +1658,89 @@ namespace TexasHoldem
 
         /// <summary>Maximum total chips to put in via raise (full stack).</summary>
         private int GetMaxRaiseTotal() => _humanPlayer?.Chips ?? 0;
+
+        private void RefreshHumanEquity()
+        {
+            if (!Application.isPlaying)
+                return;
+
+            if (_equityRefreshCoroutine != null)
+            {
+                StopCoroutine(_equityRefreshCoroutine);
+                _equityRefreshCoroutine = null;
+            }
+
+            _equityRefreshCoroutine = StartCoroutine(RefreshHumanEquityRoutine());
+        }
+
+        private void ClearHumanEquityDisplay()
+        {
+            if (_equityRefreshCoroutine != null)
+            {
+                StopCoroutine(_equityRefreshCoroutine);
+                _equityRefreshCoroutine = null;
+            }
+
+            ResolveHumanSeatView()?.ClearEquityDisplay();
+        }
+
+        private IEnumerator RefreshHumanEquityRoutine()
+        {
+            PlayerView humanView = ResolveHumanSeatView();
+            if (_gameManager == null || _humanPlayer == null || humanView == null || !humanView.IsHuman || !_gameStarted)
+            {
+                humanView?.ClearEquityDisplay();
+                _equityRefreshCoroutine = null;
+                yield break;
+            }
+
+            if (_humanPlayer.HasFolded
+                || _humanPlayer.HoleCards == null
+                || _humanPlayer.HoleCards.Count < 2
+                || _preflopDealInProgress
+                || _winnerCelebrationActive)
+            {
+                humanView.ClearEquityDisplay();
+                _equityRefreshCoroutine = null;
+                yield break;
+            }
+
+            int opponents = CountActiveOpponents();
+            if (opponents <= 0)
+            {
+                humanView.SetEquityDisplay(100);
+                _equityRefreshCoroutine = null;
+                yield break;
+            }
+
+            yield return null;
+
+            IReadOnlyList<Card> board = _gameManager.CommunityCards ?? System.Array.Empty<Card>();
+            MonteCarloResult result = MonteCarloSimulator.Simulate(
+                _humanPlayer.HoleCards,
+                board,
+                opponents);
+
+            humanView.SetEquityDisplay(Mathf.RoundToInt(result.EquityPercent));
+            _equityRefreshCoroutine = null;
+        }
+
+        private int CountActiveOpponents()
+        {
+            if (_gameManager?.Players == null || _humanPlayer == null)
+                return 0;
+
+            int count = 0;
+            foreach (PlayerState player in _gameManager.Players)
+            {
+                if (player == null || player == _humanPlayer || player.HasFolded)
+                    continue;
+
+                count++;
+            }
+
+            return count;
+        }
 
         private int ParseRaiseIncrement()
         {

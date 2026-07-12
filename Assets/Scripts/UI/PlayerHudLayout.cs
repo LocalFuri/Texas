@@ -29,6 +29,9 @@ namespace TexasHoldem
         public const float NameTextW = TextW;
         public const float NameTextH = 36f;
         public const float TextAvatarPad = 10f; // horizontal gap between text and avatar ring
+        public const float EquityTextW   = 48f;
+        public const float EquityTextH   = 36f;
+        public const float EquityHudGap  = 4f;
         public const float NameChipsGap = 8f; // vertical space between name and chips rows
         public const float HudTextPadPx = 12f; // inset when centering text inside HudPanel
         public const float ChipsTextH   = 26f;
@@ -123,6 +126,15 @@ namespace TexasHoldem
         }
         public static float TextPosX(bool mirrored)
             => mirrored ? -(TextX + TextAvatarPad) : (TextX + TextAvatarPad);
+
+        /// <summary>Centre Y for equity % label directly below the HudPanel bottom edge.</summary>
+        public static float EquityTextPosY(Transform hudPanel)
+        {
+            if (hudPanel == null)
+                return PillY - PillH * 0.5f - EquityHudGap - EquityTextH * 0.5f;
+
+            return GetRectBottomY((RectTransform)hudPanel) - EquityHudGap - EquityTextH * 0.5f;
+        }
 
         /// <summary>
         /// Legacy avatar-side name X — not used for HudPanel name/chips (see ApplyHudPanelTextBlock).
@@ -391,6 +403,14 @@ namespace TexasHoldem
             GetHudPanelLayout(root, out float panelCenterX, out float panelCenterY, out float panelWidth);
             ApplyHudPanelTextBlock(root, panelCenterX, panelCenterY, panelWidth);
 
+            Transform equityText = FindChild(root, "EquityText");
+            if (equityText != null && pv != null && pv.IsHuman)
+            {
+                Transform hudPanel = FindChild(root, "HudPanel");
+                ApplyText(equityText, panelCenterX, EquityTextPosY(hudPanel), EquityTextW, EquityTextH,
+                    TextAlignmentOptions.Midline);
+            }
+
             Transform actionBadge = FindChild(root, "ActionBadge");
             var badgeComp = actionBadge != null ? actionBadge.GetComponent<ActionBadge>() : null;
             if (badgeComp == null || !badgeComp.UsesCustomLayout)
@@ -439,6 +459,7 @@ namespace TexasHoldem
 
             string[] frontOrder =
             {
+                "EquityText",
                 "NameText", "ChipsText", "StatusText",
                 "SeatActionMenu", "ActionBadge", "BetAnchor", "BetDisplay", "DealerButtonAnchor"
             };
