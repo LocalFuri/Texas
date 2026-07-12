@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -27,6 +28,7 @@ namespace TexasHoldem
     public static class MonteCarloSimulator
     {
         public const int DefaultSimulationCount = 10_000;
+        public const int DefaultSimsPerFrame    = 250;
 
         public static MonteCarloResult Simulate(
             IReadOnlyList<Card> heroHoleCards,
@@ -36,80 +38,146 @@ namespace TexasHoldem
         {
             ValidateInputs(heroHoleCards, communityCards, activeOpponentCount, simulationCount);
 
-            var known = new List<Card>(7);
-            known.AddRange(heroHoleCards);
-            known.AddRange(communityCards);
+            var known = BuildKnownCards(heroHoleCards, communityCards);
+            int cardsNeeded = ComputeCardsNeeded(communityCards, activeOpponentCount);
 
-            int boardCardsNeeded = 5 - communityCards.Count;
-            int cardsNeeded      = activeOpponentCount * 2 + boardCardsNeeded;
-
-            int wins      = 0;
-            int ties      = 0;
-            int losses    = 0;
+            int wins   = 0;
+            int ties   = 0;
+            int losses = 0;
             double equitySum = 0d;
 
             for (int sim = 0; sim < simulationCount; sim++)
+                RunOneSimulation(
+                    heroHoleCards, communityCards, activeOpponentCount, known, cardsNeeded,
+                    ref wins, ref ties, ref losses, ref equitySum);
+
+            return BuildResult(wins, ties, losses, equitySum, simulationCount);
+        }
+
+        /// <summary>Spreads simulation work across frames so the main thread stays responsive.</summary>
+        public static IEnumerator SimulateOverFrames(
+            IReadOnlyList<Card> heroHoleCards,
+            IReadOnlyList<Card> communityCards,
+            int activeOpponentCount,
+            Action<MonteCarloResult> onComplete,
+            int simulationCount = DefaultSimulationCount,
+            int simsPerFrame = DefaultSimsPerFrame)
+        {
+            if (onComplete == null)
+                throw new ArgumentNullException(nameof(onComplete));
+
+            ValidateInputs(heroHoleCards, communityCards, activeOpponentCount, simulationCount);
+
+            var known = BuildKnownCards(heroHoleCards, communityCards);
+            int cardsNeeded = ComputeCardsNeeded(communityCards, activeOpponentCount);
+
+            int wins   = 0;
+            int ties   = 0;
+            int losses = 0;
+            double equitySum = 0d;
+
+            int batch = Mathf.Max(1, simsPerFrame);
+
+            for (int sim = 0; sim < simulationCount; sim++)
             {
-                List<Card> remaining = BuildRemainingDeck(known);
-                if (remaining.Count < cardsNeeded)
-                    continue;
+                RunOneSimulation(
+                    heroHoleCards, communityCards, activeOpponentCount, known, cardsNeeded,
+                    ref wins, ref ties, ref losses, ref equitySum);
 
-                Shuffle(remaining);
-
-                int index = 0;
-                var opponentHoles = new List<Card>[activeOpponentCount];
-                for (int o = 0; o < activeOpponentCount; o++)
-                {
-                    opponentHoles[o] = new List<Card>(2)
-                    {
-                        remaining[index++],
-                        remaining[index++]
-                    };
-                }
-
-                var board = new List<Card>(5);
-                board.AddRange(communityCards);
-                while (board.Count < 5)
-                    board.Add(remaining[index++]);
-
-                HandResult heroResult = EvaluateHand(heroHoleCards, board);
-
-                var allResults = new List<HandResult>(1 + activeOpponentCount) { heroResult };
-                for (int o = 0; o < activeOpponentCount; o++)
-                    allResults.Add(EvaluateHand(opponentHoles[o], board));
-
-                HandResult bestResult = heroResult;
-                foreach (HandResult result in allResults)
-                {
-                    if (result.CompareTo(bestResult) > 0)
-                        bestResult = result;
-                }
-
-                int playersAtBest = 0;
-                foreach (HandResult result in allResults)
-                {
-                    if (result.CompareTo(bestResult) == 0)
-                        playersAtBest++;
-                }
-
-                if (heroResult.CompareTo(bestResult) < 0)
-                {
-                    losses++;
-                    continue;
-                }
-
-                if (playersAtBest == 1)
-                {
-                    wins++;
-                    equitySum += 1d;
-                }
-                else
-                {
-                    ties++;
-                    equitySum += 1d / playersAtBest;
-                }
+                if ((sim + 1) % batch == 0)
+                    yield return null;
             }
 
+            onComplete(BuildResult(wins, ties, losses, equitySum, simulationCount));
+        }
+
+        private static List<Card> BuildKnownCards(
+            IReadOnlyList<Card> heroHoleCards,
+            IReadOnlyList<Card> communityCards)
+        {
+            var known = new List<Card>(7);
+            known.AddRange(heroHoleCards);
+            known.AddRange(communityCards);
+            return known;
+        }
+
+        private static int ComputeCardsNeeded(IReadOnlyList<Card> communityCards, int activeOpponentCount)
+            => activeOpponentCount * 2 + (5 - communityCards.Count);
+
+        private static void RunOneSimulation(
+            IReadOnlyList<Card> heroHoleCards,
+            IReadOnlyList<Card> communityCards,
+            int activeOpponentCount,
+            List<Card> known,
+            int cardsNeeded,
+            ref int wins,
+            ref int ties,
+            ref int losses,
+            ref double equitySum)
+        {
+            List<Card> remaining = BuildRemainingDeck(known);
+            if (remaining.Count < cardsNeeded)
+                return;
+
+            Shuffle(remaining);
+
+            int index = 0;
+            var opponentHoles = new List<Card>[activeOpponentCount];
+            for (int o = 0; o < activeOpponentCount; o++)
+            {
+                opponentHoles[o] = new List<Card>(2)
+                {
+                    remaining[index++],
+                    remaining[index++]
+                };
+            }
+
+            var board = new List<Card>(5);
+            board.AddRange(communityCards);
+            while (board.Count < 5)
+                board.Add(remaining[index++]);
+
+            HandResult heroResult = EvaluateHand(heroHoleCards, board);
+
+            var allResults = new List<HandResult>(1 + activeOpponentCount) { heroResult };
+            for (int o = 0; o < activeOpponentCount; o++)
+                allResults.Add(EvaluateHand(opponentHoles[o], board));
+
+            HandResult bestResult = heroResult;
+            foreach (HandResult result in allResults)
+            {
+                if (result.CompareTo(bestResult) > 0)
+                    bestResult = result;
+            }
+
+            int playersAtBest = 0;
+            foreach (HandResult result in allResults)
+            {
+                if (result.CompareTo(bestResult) == 0)
+                    playersAtBest++;
+            }
+
+            if (heroResult.CompareTo(bestResult) < 0)
+            {
+                losses++;
+                return;
+            }
+
+            if (playersAtBest == 1)
+            {
+                wins++;
+                equitySum += 1d;
+            }
+            else
+            {
+                ties++;
+                equitySum += 1d / playersAtBest;
+            }
+        }
+
+        private static MonteCarloResult BuildResult(
+            int wins, int ties, int losses, double equitySum, int simulationCount)
+        {
             float n = simulationCount;
             return new MonteCarloResult(
                 (float)(equitySum / n * 100d),

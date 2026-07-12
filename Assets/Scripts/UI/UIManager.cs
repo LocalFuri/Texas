@@ -247,6 +247,7 @@ namespace TexasHoldem
         private Coroutine            _humanHoleRevealCoroutine;
         private Coroutine            _beginTurnCoroutine;
         private Coroutine            _equityRefreshCoroutine;
+        private int                    _equityRefreshGeneration;
         private Coroutine            _timerCoroutine;
         private PlayerView           _activeTimerView;
         private PlayerView           _humanSeatView;
@@ -798,14 +799,6 @@ namespace TexasHoldem
 
             ShowActionBadgeForPlayer(player, action, amount);
 
-            if (_humanPlayer != null
-                && !_humanPlayer.HasFolded
-                && player != _humanPlayer
-                && action == BettingAction.Fold)
-            {
-                RefreshHumanEquity();
-            }
-
             if (player == _humanPlayer && action == BettingAction.Fold)
                 ClearHumanEquityDisplay();
 
@@ -1325,12 +1318,6 @@ namespace TexasHoldem
 
             UpdateHumanActionButtons(isHumanTurn);
 
-            if (isHumanTurn && CanHumanRaise())
-                yield return RaiseInputBuilder.FocusAndSelectAllWhenReady(_raiseInput);
-
-            if (isHumanTurn)
-                RefreshHumanEquity();
-
             StopTurnTimer();
             int playerIndex = _gameManager.Players.IndexOf(player);
             if (playerIndex >= 0 && playerIndex < _playerViews.Count && _playerViews[playerIndex] != null)
@@ -1338,6 +1325,12 @@ namespace TexasHoldem
                 _activeTimerView = _playerViews[playerIndex];
                 _timerCoroutine  = StartCoroutine(RunTurnTimer(_activeTimerView, duration, isHumanTurn));
             }
+
+            if (isHumanTurn && CanHumanRaise())
+                yield return RaiseInputBuilder.FocusAndSelectAllWhenReady(_raiseInput);
+
+            if (isHumanTurn)
+                RefreshHumanEquity();
 
             _beginTurnCoroutine = null;
         }
@@ -1664,13 +1657,16 @@ namespace TexasHoldem
             if (!Application.isPlaying)
                 return;
 
+            _equityRefreshGeneration++;
+
             if (_equityRefreshCoroutine != null)
             {
                 StopCoroutine(_equityRefreshCoroutine);
                 _equityRefreshCoroutine = null;
             }
 
-            _equityRefreshCoroutine = StartCoroutine(RefreshHumanEquityRoutine());
+            int generation = _equityRefreshGeneration;
+            _equityRefreshCoroutine = StartCoroutine(RefreshHumanEquityRoutine(generation));
         }
 
         private void ClearHumanEquityDisplay()
@@ -1684,7 +1680,7 @@ namespace TexasHoldem
             ResolveHumanSeatView()?.ClearEquityDisplay();
         }
 
-        private IEnumerator RefreshHumanEquityRoutine()
+        private IEnumerator RefreshHumanEquityRoutine(int generation)
         {
             PlayerView humanView = ResolveHumanSeatView();
             if (_gameManager == null || _humanPlayer == null || humanView == null || !humanView.IsHuman || !_gameStarted)
@@ -1715,11 +1711,25 @@ namespace TexasHoldem
 
             yield return null;
 
+            if (generation != _equityRefreshGeneration)
+                yield break;
+
             IReadOnlyList<Card> board = _gameManager.CommunityCards ?? System.Array.Empty<Card>();
-            MonteCarloResult result = MonteCarloSimulator.Simulate(
+            MonteCarloResult result = default;
+            bool completed = false;
+
+            yield return MonteCarloSimulator.SimulateOverFrames(
                 _humanPlayer.HoleCards,
                 board,
-                opponents);
+                opponents,
+                r =>
+                {
+                    result    = r;
+                    completed = true;
+                });
+
+            if (generation != _equityRefreshGeneration || !completed)
+                yield break;
 
             humanView.SetEquityDisplay(Mathf.RoundToInt(result.EquityPercent));
             _equityRefreshCoroutine = null;

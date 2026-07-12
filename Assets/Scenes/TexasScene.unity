@@ -11966,7 +11966,7 @@ MonoBehaviour:
   _smallBlind: 1
   _bigBlind: 2
   _aiPlayerCount: 5
-  _aiActionDelay: 1
+  _aiActionDelay: 0.1
   _humanThinkTime: 20
   _dealDelay: 0.4
   _tableLayout: {fileID: 2125510646}
