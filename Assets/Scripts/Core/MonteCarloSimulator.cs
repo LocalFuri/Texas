@@ -28,7 +28,7 @@ namespace TexasHoldem
     public static class MonteCarloSimulator
     {
         public const int DefaultSimulationCount = 10_000;
-        public const int DefaultSimsPerFrame    = 250;
+        public const int DefaultSimsPerFrame    = 1_000;
 
         public static MonteCarloResult Simulate(
             IReadOnlyList<Card> heroHoleCards,
@@ -38,8 +38,8 @@ namespace TexasHoldem
         {
             ValidateInputs(heroHoleCards, communityCards, activeOpponentCount, simulationCount);
 
-            var known = BuildKnownCards(heroHoleCards, communityCards);
-            int cardsNeeded = ComputeCardsNeeded(communityCards, activeOpponentCount);
+            var workspace = new SimulationWorkspace();
+            workspace.Initialize(heroHoleCards, communityCards);
 
             int wins   = 0;
             int ties   = 0;
@@ -47,9 +47,7 @@ namespace TexasHoldem
             double equitySum = 0d;
 
             for (int sim = 0; sim < simulationCount; sim++)
-                RunOneSimulation(
-                    heroHoleCards, communityCards, activeOpponentCount, known, cardsNeeded,
-                    ref wins, ref ties, ref losses, ref equitySum);
+                workspace.RunOneSimulation(activeOpponentCount, ref wins, ref ties, ref losses, ref equitySum);
 
             return BuildResult(wins, ties, losses, equitySum, simulationCount);
         }
@@ -68,8 +66,8 @@ namespace TexasHoldem
 
             ValidateInputs(heroHoleCards, communityCards, activeOpponentCount, simulationCount);
 
-            var known = BuildKnownCards(heroHoleCards, communityCards);
-            int cardsNeeded = ComputeCardsNeeded(communityCards, activeOpponentCount);
+            var workspace = new SimulationWorkspace();
+            workspace.Initialize(heroHoleCards, communityCards);
 
             int wins   = 0;
             int ties   = 0;
@@ -80,99 +78,13 @@ namespace TexasHoldem
 
             for (int sim = 0; sim < simulationCount; sim++)
             {
-                RunOneSimulation(
-                    heroHoleCards, communityCards, activeOpponentCount, known, cardsNeeded,
-                    ref wins, ref ties, ref losses, ref equitySum);
+                workspace.RunOneSimulation(activeOpponentCount, ref wins, ref ties, ref losses, ref equitySum);
 
                 if ((sim + 1) % batch == 0)
                     yield return null;
             }
 
             onComplete(BuildResult(wins, ties, losses, equitySum, simulationCount));
-        }
-
-        private static List<Card> BuildKnownCards(
-            IReadOnlyList<Card> heroHoleCards,
-            IReadOnlyList<Card> communityCards)
-        {
-            var known = new List<Card>(7);
-            known.AddRange(heroHoleCards);
-            known.AddRange(communityCards);
-            return known;
-        }
-
-        private static int ComputeCardsNeeded(IReadOnlyList<Card> communityCards, int activeOpponentCount)
-            => activeOpponentCount * 2 + (5 - communityCards.Count);
-
-        private static void RunOneSimulation(
-            IReadOnlyList<Card> heroHoleCards,
-            IReadOnlyList<Card> communityCards,
-            int activeOpponentCount,
-            List<Card> known,
-            int cardsNeeded,
-            ref int wins,
-            ref int ties,
-            ref int losses,
-            ref double equitySum)
-        {
-            List<Card> remaining = BuildRemainingDeck(known);
-            if (remaining.Count < cardsNeeded)
-                return;
-
-            Shuffle(remaining);
-
-            int index = 0;
-            var opponentHoles = new List<Card>[activeOpponentCount];
-            for (int o = 0; o < activeOpponentCount; o++)
-            {
-                opponentHoles[o] = new List<Card>(2)
-                {
-                    remaining[index++],
-                    remaining[index++]
-                };
-            }
-
-            var board = new List<Card>(5);
-            board.AddRange(communityCards);
-            while (board.Count < 5)
-                board.Add(remaining[index++]);
-
-            HandResult heroResult = EvaluateHand(heroHoleCards, board);
-
-            var allResults = new List<HandResult>(1 + activeOpponentCount) { heroResult };
-            for (int o = 0; o < activeOpponentCount; o++)
-                allResults.Add(EvaluateHand(opponentHoles[o], board));
-
-            HandResult bestResult = heroResult;
-            foreach (HandResult result in allResults)
-            {
-                if (result.CompareTo(bestResult) > 0)
-                    bestResult = result;
-            }
-
-            int playersAtBest = 0;
-            foreach (HandResult result in allResults)
-            {
-                if (result.CompareTo(bestResult) == 0)
-                    playersAtBest++;
-            }
-
-            if (heroResult.CompareTo(bestResult) < 0)
-            {
-                losses++;
-                return;
-            }
-
-            if (playersAtBest == 1)
-            {
-                wins++;
-                equitySum += 1d;
-            }
-            else
-            {
-                ties++;
-                equitySum += 1d / playersAtBest;
-            }
         }
 
         private static MonteCarloResult BuildResult(
@@ -184,14 +96,6 @@ namespace TexasHoldem
                 wins / n * 100f,
                 ties / n * 100f,
                 simulationCount);
-        }
-
-        private static HandResult EvaluateHand(IReadOnlyList<Card> holeCards, IReadOnlyList<Card> board)
-        {
-            var cards = new List<Card>(7);
-            cards.AddRange(holeCards);
-            cards.AddRange(board);
-            return HandEvaluator.Evaluate(cards);
         }
 
         private static void ValidateInputs(
@@ -230,31 +134,124 @@ namespace TexasHoldem
                 throw new ArgumentException("Not enough unknown cards for the simulation.");
         }
 
-        private static List<Card> BuildRemainingDeck(IReadOnlyList<Card> known)
+        /// <summary>Reused buffers: deck built once, partial shuffle per simulation, no LINQ hand eval.</summary>
+        private sealed class SimulationWorkspace
         {
-            var knownSet = new HashSet<(Suit, Rank)>();
-            foreach (Card card in known)
-                knownSet.Add((card.Suit, card.Rank));
+            private readonly Card[] _deck = new Card[52];
+            private readonly Card[] _board = new Card[5];
+            private readonly Card[] _opponentHoleA = new Card[8];
+            private readonly Card[] _opponentHoleB = new Card[8];
 
-            var remaining = new List<Card>(52 - known.Count);
-            foreach (Suit suit in Enum.GetValues(typeof(Suit)))
+            private Card _hero0;
+            private Card _hero1;
+            private int  _deckCount;
+            private int  _boardKnown;
+            private int  _cardsNeeded;
+
+            public void Initialize(IReadOnlyList<Card> heroHoleCards, IReadOnlyList<Card> communityCards)
             {
-                foreach (Rank rank in Enum.GetValues(typeof(Rank)))
+                _hero0 = heroHoleCards[0];
+                _hero1 = heroHoleCards[1];
+
+                _boardKnown = communityCards.Count;
+                for (int i = 0; i < _boardKnown; i++)
+                    _board[i] = communityCards[i];
+
+                var known = new HashSet<(Suit, Rank)>();
+                known.Add((_hero0.Suit, _hero0.Rank));
+                known.Add((_hero1.Suit, _hero1.Rank));
+                for (int i = 0; i < _boardKnown; i++)
+                    known.Add((_board[i].Suit, _board[i].Rank));
+
+                _deckCount = 0;
+                foreach (Suit suit in Enum.GetValues(typeof(Suit)))
                 {
-                    if (!knownSet.Contains((suit, rank)))
-                        remaining.Add(new Card(suit, rank));
+                    foreach (Rank rank in Enum.GetValues(typeof(Rank)))
+                    {
+                        if (known.Contains((suit, rank)))
+                            continue;
+
+                        _deck[_deckCount++] = new Card(suit, rank);
+                    }
                 }
             }
 
-            return remaining;
-        }
-
-        private static void Shuffle(List<Card> cards)
-        {
-            for (int i = cards.Count - 1; i > 0; i--)
+            public void RunOneSimulation(
+                int activeOpponentCount,
+                ref int wins,
+                ref int ties,
+                ref int losses,
+                ref double equitySum)
             {
-                int j = UnityEngine.Random.Range(0, i + 1);
-                (cards[i], cards[j]) = (cards[j], cards[i]);
+                _cardsNeeded = activeOpponentCount * 2 + (5 - _boardKnown);
+                if (_deckCount < _cardsNeeded)
+                    return;
+
+                PartialShuffle(_cardsNeeded);
+
+                int index = 0;
+                for (int o = 0; o < activeOpponentCount; o++)
+                {
+                    _opponentHoleA[o] = _deck[index++];
+                    _opponentHoleB[o] = _deck[index++];
+                }
+
+                for (int i = _boardKnown; i < 5; i++)
+                    _board[i] = _deck[index++];
+
+                Card b0 = _board[0];
+                Card b1 = _board[1];
+                Card b2 = _board[2];
+                Card b3 = _board[3];
+                Card b4 = _board[4];
+
+                HandScore heroScore = HandEvaluatorFast.EvaluateSeven(_hero0, _hero1, b0, b1, b2, b3, b4);
+                HandScore bestScore = heroScore;
+                int       playersAtBest = 1;
+
+                for (int o = 0; o < activeOpponentCount; o++)
+                {
+                    HandScore score = HandEvaluatorFast.EvaluateSeven(
+                        _opponentHoleA[o], _opponentHoleB[o], b0, b1, b2, b3, b4);
+
+                    int cmp = score.CompareTo(bestScore);
+                    if (cmp > 0)
+                    {
+                        bestScore      = score;
+                        playersAtBest  = 1;
+                    }
+                    else if (cmp == 0)
+                    {
+                        playersAtBest++;
+                    }
+                }
+
+                int heroCmp = heroScore.CompareTo(bestScore);
+                if (heroCmp < 0)
+                {
+                    losses++;
+                    return;
+                }
+
+                if (playersAtBest == 1)
+                {
+                    wins++;
+                    equitySum += 1d;
+                }
+                else
+                {
+                    ties++;
+                    equitySum += 1d / playersAtBest;
+                }
+            }
+
+            private void PartialShuffle(int cardsNeeded)
+            {
+                for (int i = 0; i < cardsNeeded; i++)
+                {
+                    int j = UnityEngine.Random.Range(i, _deckCount);
+                    (_deck[i], _deck[j]) = (_deck[j], _deck[i]);
+                }
             }
         }
     }
