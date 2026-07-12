@@ -29,9 +29,11 @@ namespace TexasHoldem
         public const float NameTextW = TextW;
         public const float NameTextH = 36f;
         public const float TextAvatarPad = 10f; // horizontal gap between text and avatar ring
-        public const float EquityTextW   = 48f;
+        public const float EquityTextW   = 44f;
         public const float EquityTextH   = 36f;
         public const float EquityHudGap  = 4f;
+        public const float EquityAdviceGap = 6f;
+        public const float EquityAdviceTextW = 52f;
         public const float NameChipsGap = 8f; // vertical space between name and chips rows
         public const float HudTextPadPx = 12f; // inset when centering text inside HudPanel
         public const float ChipsTextH   = 26f;
@@ -134,6 +136,21 @@ namespace TexasHoldem
                 return PillY - PillH * 0.5f - EquityHudGap - EquityTextH * 0.5f;
 
             return GetRectBottomY((RectTransform)hudPanel) - EquityHudGap - EquityTextH * 0.5f;
+        }
+
+        public static float EquityRowTotalWidth()
+            => EquityTextW + EquityAdviceGap + EquityAdviceTextW;
+
+        public static float EquityPercentCenterX(float panelCenterX)
+        {
+            float total = EquityRowTotalWidth();
+            return panelCenterX - total * 0.5f + EquityTextW * 0.5f;
+        }
+
+        public static float EquityAdviceCenterX(float panelCenterX)
+        {
+            float total = EquityRowTotalWidth();
+            return panelCenterX - total * 0.5f + EquityTextW + EquityAdviceGap + EquityAdviceTextW * 0.5f;
         }
 
         /// <summary>
@@ -404,11 +421,21 @@ namespace TexasHoldem
             ApplyHudPanelTextBlock(root, panelCenterX, panelCenterY, panelWidth);
 
             Transform equityText = FindChild(root, "EquityText");
+            Transform equityAdvice = FindChild(root, "EquityAdviceText");
             if (equityText != null && pv != null && pv.IsHuman)
             {
                 Transform hudPanel = FindChild(root, "HudPanel");
-                ApplyText(equityText, panelCenterX, EquityTextPosY(hudPanel), EquityTextW, EquityTextH,
-                    TextAlignmentOptions.Midline);
+                float posY = EquityTextPosY(hudPanel);
+                ApplyText(equityText, EquityPercentCenterX(panelCenterX), posY, EquityTextW, EquityTextH,
+                    TextAlignmentOptions.MidlineRight);
+            }
+
+            if (equityAdvice != null && pv != null && pv.IsHuman)
+            {
+                Transform hudPanel = FindChild(root, "HudPanel");
+                float posY = EquityTextPosY(hudPanel);
+                ApplyText(equityAdvice, EquityAdviceCenterX(panelCenterX), posY, EquityAdviceTextW, EquityTextH,
+                    TextAlignmentOptions.MidlineLeft);
             }
 
             Transform actionBadge = FindChild(root, "ActionBadge");
@@ -459,7 +486,7 @@ namespace TexasHoldem
 
             string[] frontOrder =
             {
-                "EquityText",
+                "EquityText", "EquityAdviceText",
                 "NameText", "ChipsText", "StatusText",
                 "SeatActionMenu", "ActionBadge", "BetAnchor", "BetDisplay", "DealerButtonAnchor"
             };

@@ -37,6 +37,7 @@ namespace TexasHoldem
         [SerializeField] private TMP_Text _chipsText;
         [SerializeField] private TMP_Text _statusText;
         [SerializeField] private TMP_Text _equityText;
+        private TMP_Text _equityAdviceText;
         [Tooltip("Character name for this seat — source of truth for game logic and HUD.")]
         [SerializeField] private string _displayName;
 
@@ -383,8 +384,8 @@ namespace TexasHoldem
                 RemoveEquityDisplay();
         }
 
-        /// <summary>Shows Monte Carlo equity as a whole-number percent left of the avatar.</summary>
-        public void SetEquityDisplay(int equityPercent)
+        /// <summary>Shows Monte Carlo equity and optional pot-odds advice to its right.</summary>
+        public void SetEquityDisplay(int equityPercent, string advice = null)
         {
             if (!_isHuman)
                 return;
@@ -396,37 +397,96 @@ namespace TexasHoldem
             equityPercent = Mathf.Clamp(equityPercent, 0, 100);
             _equityText.text = $"{equityPercent}%";
             _equityText.gameObject.SetActive(true);
+
+            EnsureEquityAdviceText();
+            if (_equityAdviceText == null)
+                return;
+
+            if (string.IsNullOrEmpty(advice))
+            {
+                _equityAdviceText.gameObject.SetActive(false);
+                return;
+            }
+
+            _equityAdviceText.text  = advice;
+            _equityAdviceText.color = BettingAdvisor.ColorForLabel(advice);
+            _equityAdviceText.gameObject.SetActive(true);
         }
 
         public void ClearEquityDisplay()
         {
             if (_equityText != null)
                 _equityText.gameObject.SetActive(false);
+
+            if (_equityAdviceText != null)
+                _equityAdviceText.gameObject.SetActive(false);
+        }
+
+        private void EnsureEquityAdviceText()
+        {
+            if (_equityAdviceText != null)
+                return;
+
+            Transform existing = transform.Find("EquityAdviceText");
+            if (existing != null)
+            {
+                _equityAdviceText = existing.GetComponent<TMP_Text>();
+                ApplyEquityAdviceTextStyle();
+                return;
+            }
+
+            var go = new GameObject("EquityAdviceText", typeof(RectTransform));
+            go.transform.SetParent(transform, false);
+            _equityAdviceText = go.AddComponent<TextMeshProUGUI>();
+            _equityAdviceText.raycastTarget = false;
+            _equityAdviceText.gameObject.SetActive(false);
+            ApplyEquityAdviceTextStyle();
+            ApplyHudLayout();
+        }
+
+        private void ApplyEquityAdviceTextStyle()
+        {
+            if (_equityAdviceText == null)
+                return;
+
+            PlayerHudLayout.ApplyStackAmountFontIfMissing(_equityAdviceText);
+            if (_nameText != null && _nameText.font != null)
+                _equityAdviceText.font = _nameText.font;
+
+            _equityAdviceText.fontSize           = _equityFontSize;
+            _equityAdviceText.alignment          = TextAlignmentOptions.MidlineLeft;
+            _equityAdviceText.enableWordWrapping = false;
+            _equityAdviceText.overflowMode       = TextOverflowModes.Overflow;
         }
 
         /// <summary>Removes equity UI from AI seats entirely.</summary>
         public void RemoveEquityDisplay()
         {
-            if (_equityText == null)
-            {
-                Transform existing = transform.Find("EquityText");
-                if (existing != null)
-                {
-                    if (Application.isPlaying)
-                        Destroy(existing.gameObject);
-                    else
-                        DestroyImmediate(existing.gameObject);
-                }
+            DestroyEquityChild("EquityText", ref _equityText);
+            DestroyEquityChild("EquityAdviceText", ref _equityAdviceText);
+        }
 
+        private void DestroyEquityChild(string childName, ref TMP_Text field)
+        {
+            if (field != null)
+            {
+                if (Application.isPlaying)
+                    Destroy(field.gameObject);
+                else
+                    DestroyImmediate(field.gameObject);
+
+                field = null;
                 return;
             }
 
-            if (Application.isPlaying)
-                Destroy(_equityText.gameObject);
-            else
-                DestroyImmediate(_equityText.gameObject);
+            Transform existing = transform.Find(childName);
+            if (existing == null)
+                return;
 
-            _equityText = null;
+            if (Application.isPlaying)
+                Destroy(existing.gameObject);
+            else
+                DestroyImmediate(existing.gameObject);
         }
 
         /// <summary>

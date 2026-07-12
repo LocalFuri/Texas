@@ -28,7 +28,7 @@ namespace TexasHoldem
     public static class MonteCarloSimulator
     {
         public const int DefaultSimulationCount = 10_000;
-        public const int DefaultSimsPerFrame    = 1_000;
+        public const int DefaultSimsPerFrame    = 5_000;
 
         public static MonteCarloResult Simulate(
             IReadOnlyList<Card> heroHoleCards,

@@ -255,6 +255,7 @@ namespace TexasHoldem
         private Coroutine            _beginTurnCoroutine;
         private Coroutine            _equityRefreshCoroutine;
         private int                    _equityRefreshGeneration;
+        private int                    _cachedHumanEquityPercent = -1;
         private Coroutine            _timerCoroutine;
         private PlayerView           _activeTimerView;
         private PlayerView           _humanSeatView;
@@ -269,7 +270,6 @@ namespace TexasHoldem
         private bool          _winnerCelebrationActive;
         private Coroutine     _winnerCelebrationCoroutine;
         private bool          _winnerPotChipsCollected;
-        private bool          _winnerSplitPotActive;
         private int           _winnerDisplayPotAmount;
         private bool          _lastShowBotCardsForTesting;
         private Transform     _potChipStackHomeParent;
@@ -899,7 +899,6 @@ namespace TexasHoldem
         private void OnRoundStarting()
         {
             _winnerCelebrationActive = false;
-            _winnerSplitPotActive    = false;
             _preflopDealInProgress   = false;
             _suppressDealerButton = true;
             _tableLayout?.HideDealerButton();
@@ -1136,14 +1135,7 @@ namespace TexasHoldem
                 bool betIncreased = player.CurrentBet > prevBet;
                 _previousBets[i]  = player.CurrentBet;
 
-                if (_winnerSplitPotActive)
-                {
-                    if (TryGetWinnerSplitShare(player, out int splitShare) && splitShare > 0)
-                        view.ShowBetDisplay(splitShare);
-                    else
-                        view.HideBetDisplay();
-                }
-                else if (player.CurrentBet > 0)
+                if (player.CurrentBet > 0)
                     view.ShowBetDisplay(
                         player.CurrentBet,
                         _animateBetPlace && betIncreased && !_collectInProgress ? view.AvatarRect : null);
@@ -1364,7 +1356,6 @@ namespace TexasHoldem
             _revealedCommunityCount = 0;
             _hasPendingActionBadge    = false;
             _winnerCelebrationActive  = false;
-            _winnerSplitPotActive     = false;
             _suppressDealerButton     = true;
 
             _previousBets.Clear();
@@ -1684,7 +1675,59 @@ namespace TexasHoldem
                 _equityRefreshCoroutine = null;
             }
 
+            _cachedHumanEquityPercent = -1;
             ResolveHumanSeatView()?.ClearEquityDisplay();
+        }
+
+        private bool IsHumanActionPending()
+        {
+            return _gameStarted
+                && !_winnerCelebrationActive
+                && _gameManager != null
+                && _gameManager.IsAwaitingHumanInput
+                && _humanPlayer != null
+                && !_humanPlayer.HasFolded
+                && !_humanPlayer.IsAllIn;
+        }
+
+        private string ResolveHumanBettingAdvice(int equityPercent)
+        {
+            if (!IsHumanActionPending() || _gameManager == null || _humanPlayer == null)
+                return null;
+
+            int callAmount = GetCallAmount();
+            bool canCheck  = callAmount <= 0;
+            bool canCall   = callAmount > 0 && _humanPlayer.Chips > 0;
+            bool canRaise  = CanHumanRaise();
+
+            BettingAdvice advice = BettingAdvisor.Recommend(
+                equityPercent,
+                _gameManager.PotAmount,
+                callAmount,
+                canCheck,
+                canRaise,
+                canCall);
+
+            return BettingAdvisor.LabelFor(advice);
+        }
+
+        private void ApplyHumanEquityDisplay(int equityPercent)
+        {
+            _cachedHumanEquityPercent = equityPercent;
+
+            PlayerView humanView = ResolveHumanSeatView();
+            if (humanView == null || !humanView.IsHuman)
+                return;
+
+            humanView.SetEquityDisplay(equityPercent, ResolveHumanBettingAdvice(equityPercent));
+        }
+
+        private void RefreshHumanEquityAdviceOnly()
+        {
+            if (_cachedHumanEquityPercent < 0)
+                return;
+
+            ApplyHumanEquityDisplay(_cachedHumanEquityPercent);
         }
 
         private IEnumerator RefreshHumanEquityRoutine(int generation)
@@ -1711,7 +1754,7 @@ namespace TexasHoldem
             int opponents = CountActiveOpponents();
             if (opponents <= 0)
             {
-                humanView.SetEquityDisplay(100);
+                ApplyHumanEquityDisplay(100);
                 _equityRefreshCoroutine = null;
                 yield break;
             }
@@ -1739,7 +1782,7 @@ namespace TexasHoldem
             if (generation != _equityRefreshGeneration || !completed)
                 yield break;
 
-            humanView.SetEquityDisplay(Mathf.RoundToInt(result.EquityPercent));
+            ApplyHumanEquityDisplay(Mathf.RoundToInt(result.EquityPercent));
             _equityRefreshCoroutine = null;
         }
 
@@ -3022,12 +3065,14 @@ namespace TexasHoldem
             if (_winnerCelebrationActive)
             {
                 HideBettingControls();
+                RefreshHumanEquityAdviceOnly();
                 return;
             }
 
             if (!isHumanTurn || !_gameStarted || _humanPlayer == null || _humanPlayer.HasFolded || _humanPlayer.IsAllIn)
             {
                 HideBettingControls();
+                RefreshHumanEquityAdviceOnly();
                 return;
             }
 
@@ -3043,6 +3088,7 @@ namespace TexasHoldem
 
             SetStartButtonVisible(false);
             ShowBottomBettingControls(canCheck, canCall, canRaise, canAllIn);
+            RefreshHumanEquityAdviceOnly();
         }
 
         private void EnableRaiseInputForKeyboard(bool enabled)
@@ -3542,12 +3588,10 @@ namespace TexasHoldem
 
             float duration = _gameManager.RoundEndPauseSecs;
             int winnerCount = winners.Count > 0 ? winners.Count : 1;
-            bool splitPot = winnerCount >= 2;
 
             ShowWinningHandDisplay();
             ShowRakeDisplay(_gameManager.LastRakeDisplayText);
 
-            _winnerSplitPotActive    = splitPot;
             _winnerPotChipsCollected = false;
 
             bool bbWalk = _gameManager.LastHandWasBbWalk;
@@ -3555,23 +3599,19 @@ namespace TexasHoldem
                 ? _gameManager.LastBbWalkNetWin
                 : PotAward.ShareForWinnerIndex(_gameManager.LastPotAwarded, winnerCount, 0);
 
-            if (splitPot)
-            {
-                _winnerDisplayPotAmount = 0;
-                HidePotChipStack();
-                HidePotAmountBadge();
-                if (_potText != null)
-                    _potText.text = string.Empty;
-            }
-            else if (bbWalk && displayWinAmount > 0)
+            if (bbWalk && displayWinAmount > 0)
             {
                 _winnerDisplayPotAmount = displayWinAmount;
                 ShowPotDisplayForWinner(displayWinAmount);
             }
-            else
+            else if (_gameManager.LastGrossPot > 0)
             {
                 _winnerDisplayPotAmount = _gameManager.LastGrossPot;
                 ShowPotDisplayForWinner(_winnerDisplayPotAmount);
+            }
+            else
+            {
+                _winnerDisplayPotAmount = 0;
             }
 
             int bigBlind = ResolveBigBlindAmount();
@@ -3593,67 +3633,15 @@ namespace TexasHoldem
 
                 if (bbWalk && winnerNetShare > 0)
                     winnerView.ShowBetDisplay(winnerNetShare);
-                else if (splitPot && winnerNetShare > 0)
-                    winnerView.ShowBetDisplay(winnerNetShare);
             }
 
-            if (splitPot)
-                CompleteInstantSplitPotAward(bigBlind, winners);
-            else if (_winnerDisplayPotAmount <= 0)
+            if (_winnerDisplayPotAmount <= 0)
             {
                 _gameManager.ApplyPendingPotAward();
                 _winnerPotChipsCollected = true;
             }
 
             _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationPrepare());
-        }
-
-        private bool TryGetWinnerSplitShare(PlayerState player, out int share)
-        {
-            share = 0;
-            if (!_winnerSplitPotActive || _gameManager == null || player == null)
-                return false;
-
-            IReadOnlyList<PlayerState> winners = _gameManager.LastRoundWinners;
-            if (winners == null || winners.Count == 0)
-                return false;
-
-            for (int i = 0; i < winners.Count; i++)
-            {
-                if (winners[i] != player)
-                    continue;
-
-                share = PotAward.ShareForWinnerIndex(
-                    _gameManager.LastPotAwarded, winners.Count, i);
-                return true;
-            }
-
-            return false;
-        }
-
-        private void CompleteInstantSplitPotAward(int bigBlind, IReadOnlyList<PlayerState> winners)
-        {
-            PlayWinnerChipSound();
-            _gameManager.ApplyPendingPotAward();
-
-            if (winners != null)
-            {
-                foreach (PlayerState winner in winners)
-                {
-                    if (winner == null)
-                        continue;
-
-                    ResolvePlayerView(winner)?.RefreshHud(winner, bigBlind);
-                }
-            }
-
-            _winnerPotChipsCollected  = true;
-            _winnerDisplayPotAmount   = 0;
-            HidePotChipStack();
-            HidePotAmountBadge();
-
-            if (_potText != null)
-                _potText.text = string.Empty;
         }
 
         private void TryStartWinnerAvatarPulse(PlayerView winnerView)
@@ -3753,7 +3741,7 @@ namespace TexasHoldem
 
         private bool BeginCollectPotToWinner()
         {
-            if (_winnerPotChipsCollected || _winnerSplitPotActive)
+            if (_winnerPotChipsCollected)
                 return false;
 
             ClearWinningCardHighlights();
@@ -3802,7 +3790,6 @@ namespace TexasHoldem
 
             _winnerCelebrationActive  = false;
             _winnerPotChipsCollected    = false;
-            _winnerSplitPotActive       = false;
             _winnerDisplayPotAmount     = 0;
             ClearWinningHandDisplay();
             RestorePotChipStackHome();
@@ -4130,6 +4117,22 @@ namespace TexasHoldem
                 _potText.text = string.Empty;
 
             _gameManager?.ApplyPendingPotAward();
+
+            if (_gameManager != null)
+            {
+                int bigBlind = ResolveBigBlindAmount();
+                IReadOnlyList<PlayerState> winners = _gameManager.LastRoundWinners;
+                if (winners != null)
+                {
+                    foreach (PlayerState winner in winners)
+                    {
+                        if (winner == null)
+                            continue;
+
+                        ResolvePlayerView(winner)?.RefreshHud(winner, bigBlind);
+                    }
+                }
+            }
 
             _winnerPotChipsCollected    = true;
             _winnerCelebrationCoroutine = null;
