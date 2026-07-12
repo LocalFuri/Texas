@@ -13,6 +13,10 @@ namespace TexasHoldem
 
         private PlayerState _lastAggressor;
         private bool        _lastRaiseWasCalled;
+        private int         _streetRaiseCount;
+
+        /// <summary>Raises made this betting street (open, 3-bet, 4-bet, …).</summary>
+        public int StreetRaiseCount => _streetRaiseCount;
 
         public BettingManager(int smallBlind, int bigBlind)
         {
@@ -39,6 +43,7 @@ namespace TexasHoldem
         {
             _lastAggressor       = null;
             _lastRaiseWasCalled  = false;
+            _streetRaiseCount    = 0;
         }
 
         /// <summary>Posts the small blind for the given player.</summary>
@@ -157,6 +162,7 @@ namespace TexasHoldem
         {
             _lastAggressor      = aggressor;
             _lastRaiseWasCalled = false;
+            _streetRaiseCount++;
         }
 
         private void NoteMatchedBet(PlayerState player)
