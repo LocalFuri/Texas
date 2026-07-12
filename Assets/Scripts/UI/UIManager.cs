@@ -1603,6 +1603,9 @@ namespace TexasHoldem
         private int ResolveBigBlindAmount() =>
             _gameManager != null ? _gameManager.BigBlindAmount : 0;
 
+        private void PlayWinnerChipSound() =>
+            _gameManager?.TableSounds?.PlayWinnerChip();
+
         private int GetMaxRaiseIncrement()
         {
             if (_humanPlayer == null || _gameManager == null) return 0;
@@ -3365,6 +3368,7 @@ namespace TexasHoldem
 
         private void CompleteInstantSplitPotAward(int bigBlind, IReadOnlyList<PlayerState> winners)
         {
+            PlayWinnerChipSound();
             _gameManager.ApplyPendingPotAward();
 
             if (winners != null)
@@ -3665,6 +3669,8 @@ namespace TexasHoldem
 
             if (_winnerPotCollectResizeDelay > 0f)
                 yield return new WaitForSecondsRealtime(_winnerPotCollectResizeDelay);
+
+            PlayWinnerChipSound();
 
             RectTransform stackRt = _potChipStack.StackRoot;
             var canvasRt = (RectTransform)_rootCanvas.transform;

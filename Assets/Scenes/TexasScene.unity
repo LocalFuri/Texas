@@ -8396,7 +8396,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "CodeRed Soft \xAE 2026-07-11"
+  m_text: "CodeRed Soft \xAE 2026-07-12"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -10083,7 +10083,7 @@ MonoBehaviour:
   m_lineSpacingMax: 0
   m_paragraphSpacing: 0
   m_charWidthMaxAdj: 0
-  m_TextWrappingMode: 3
+  m_TextWrappingMode: 0
   m_wordWrappingRatios: 0.4
   m_overflowMode: 0
   m_linkedTextComponent: {fileID: 0}
@@ -11552,7 +11552,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -25.999634}
+  m_AnchoredPosition: {x: 0, y: -25.999573}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1332170349
@@ -11927,6 +11927,7 @@ GameObject:
   - component: {fileID: 1476901064}
   - component: {fileID: 1476901065}
   - component: {fileID: 1476901066}
+  - component: {fileID: 1476901067}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -12126,6 +12127,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _escapeClip: {fileID: 8300000, guid: 58a8a640629d54e4c99a29b43455f2c2, type: 3}
   _escapeVolume: 0.35
+--- !u!114 &1476901067
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1476901062}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8f4a2b1c3d5476980abcdef12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _foldClip: {fileID: 8300000, guid: 9e0c3662bd8f78b409bbc5a23af729c9, type: 3}
+  _foldVolume: 0.5
+  _knockKnockClip: {fileID: 8300000, guid: aa2e2e4584086d94aa416853877266c7, type: 3}
+  _knockKnockVolume: 0.5
+  _largeBetClip: {fileID: 8300000, guid: 156235f332683ee48896f9ce5ab38f0f, type: 3}
+  _largeBetVolume: 0.5
+  _smallBetClip: {fileID: 8300000, guid: a0783c100b0430348a921207e0325318, type: 3}
+  _smallBetVolume: 0.5
+  _winnerChipClip: {fileID: 8300000, guid: f22818e187a746c42a2e0599498906c6, type: 3}
+  _winnerChipVolume: 0.5
 --- !u!1 &1492633496
 GameObject:
   m_ObjectHideFlags: 0

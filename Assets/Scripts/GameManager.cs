@@ -68,6 +68,7 @@ namespace TexasHoldem
         public int               CurrentBet   => _bettingManager?.CurrentBet ?? 0;
         public int               BigBlindAmount => _bigBlind;
         public bool              IsAwaitingHumanInput => _awaitingHumanInput;
+        public TableSoundManager TableSounds { get; private set; }
 
         /// <summary>True when the player can make a legal minimum raise (not call-only).</summary>
         public bool CanPlayerRaise(PlayerState player) =>
@@ -181,6 +182,7 @@ namespace TexasHoldem
                 _tableLayout = FindObjectOfType<TableLayoutManager>(includeInactive: true);
 
             ResolveUiManagerReference();
+            EnsureTableSoundManager();
 
             OnPhaseChanged          ??= new UnityEvent<GamePhase>();
             OnPlayersUpdated        ??= new UnityEvent<List<PlayerState>>();
@@ -237,6 +239,13 @@ namespace TexasHoldem
             if (_uiManager == null)
                 _uiManager = FindObjectOfType<UIManager>(true);
 #endif
+        }
+
+        private void EnsureTableSoundManager()
+        {
+            TableSounds = GetComponent<TableSoundManager>();
+            if (TableSounds == null)
+                TableSounds = gameObject.AddComponent<TableSoundManager>();
         }
 
         /// <summary>Called by the UI Start button to begin the game loop.</summary>

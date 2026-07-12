@@ -1,5 +1,3 @@
-using System.Globalization;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,14 +8,6 @@ namespace TexasHoldem
     {
         public const float DisplayDurationSecs    = 3f;
         public const float BotDisplayDurationSecs = 1.5f;
-
-        private static readonly NumberFormatInfo GermanNFI = new NumberFormatInfo
-        {
-            NumberGroupSeparator   = ".",
-            NumberDecimalSeparator = ",",
-            NumberDecimalDigits    = 0,
-            NumberGroupSizes       = new[] { 3 }
-        };
 
         [SerializeField] private Image _badgeImage;
 
@@ -74,14 +64,12 @@ namespace TexasHoldem
         public void ShowWin(int potAmount, float duration)
         {
             PresentSprite(ActionBadgeSprites.Winner, duration);
-            SetWinAmountLabel(potAmount);
         }
 
         /// <summary>Shows the winner badge until <see cref="Hide"/> or the next hand.</summary>
         public void ShowWinPersistent(int potAmount = 0)
         {
             PresentSprite(ActionBadgeSprites.Winner, 0f);
-            SetWinAmountLabel(potAmount);
         }
 
         private void PresentSprite(Sprite sprite, float duration)
@@ -149,53 +137,6 @@ namespace TexasHoldem
             Transform label = transform.Find("Label");
             if (label != null)
                 label.gameObject.SetActive(false);
-        }
-
-        private void SetWinAmountLabel(int potAmount)
-        {
-            Transform labelT = transform.Find("Label");
-            if (labelT == null)
-                return;
-
-            if (potAmount <= 0)
-            {
-                labelT.gameObject.SetActive(false);
-                return;
-            }
-
-            TMP_Text text = ResolveWinAmountLabel(labelT);
-            if (text == null)
-                return;
-
-            text.text               = potAmount.ToString("N0", GermanNFI);
-            text.alignment          = TextAlignmentOptions.Center;
-            text.fontStyle          = FontStyles.Bold;
-            text.color              = Color.white;
-            text.raycastTarget      = false;
-            text.enableWordWrapping = false;
-
-            RectTransform labelRt = labelT as RectTransform;
-            if (labelRt != null)
-            {
-                labelRt.anchorMin = Vector2.zero;
-                labelRt.anchorMax = Vector2.one;
-                labelRt.offsetMin = Vector2.zero;
-                labelRt.offsetMax = Vector2.zero;
-            }
-
-            labelT.gameObject.SetActive(true);
-            labelT.SetAsLastSibling();
-        }
-
-        private static TMP_Text ResolveWinAmountLabel(Transform labelT)
-        {
-            TMP_Text text = labelT.GetComponent<TMP_Text>();
-            if (text != null)
-                return text;
-
-            text = labelT.gameObject.AddComponent<TextMeshProUGUI>();
-            text.fontSize = 18f;
-            return text;
         }
 
         /// <summary>Draws above cards, name, and bet chip display on the seat.</summary>

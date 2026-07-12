@@ -1,0 +1,103 @@
+using UnityEngine;
+
+namespace TexasHoldem
+{
+    /// <summary>Plays table SFX with per-clip volume sliders (Inspector on GameManager).</summary>
+    [RequireComponent(typeof(AudioSource))]
+    public class TableSoundManager : MonoBehaviour
+    {
+      [Header("Fold")]
+      [SerializeField] private AudioClip _foldClip;
+      [SerializeField][Range(0f, 1f)] private float _foldVolume = 1f;
+      
+      [Header("Knock Knock")]
+      [SerializeField] private AudioClip _knockKnockClip;
+      [SerializeField][Range(0f, 1f)] private float _knockKnockVolume = 1f;
+
+      [Header("Large Bet")]
+      [SerializeField] private AudioClip _largeBetClip;
+      [SerializeField][Range(0f, 1f)] private float _largeBetVolume = 1f;
+
+      [Header("Small Bet")]
+      [SerializeField] private AudioClip _smallBetClip;
+      [SerializeField] [Range(0f, 1f)] private float _smallBetVolume = 1f;
+
+      [Header("Winner Chips")]
+      [SerializeField] private AudioClip _winnerChipClip;
+      [SerializeField] [Range(0f, 1f)] private float _winnerChipVolume = 1f;
+
+        private AudioSource  _audioSource;
+        private GameManager  _gameManager;
+
+        private void Awake()
+        {
+            _audioSource = GetComponent<AudioSource>();
+            _audioSource.playOnAwake = false;
+            _gameManager ??= GetComponent<GameManager>();
+        }
+
+        private void OnEnable()
+        {
+            _gameManager ??= GetComponent<GameManager>();
+        }
+
+        private void Start()
+        {
+            _gameManager ??= GetComponent<GameManager>();
+            if (_gameManager != null)
+                _gameManager.OnPlayerAction.AddListener(OnPlayerAction);
+        }
+
+        private void OnDestroy()
+        {
+            if (_gameManager != null)
+                _gameManager.OnPlayerAction.RemoveListener(OnPlayerAction);
+        }
+
+    
+        public void PlayKnockKnock() => PlayClip(_knockKnockClip, _knockKnockVolume);
+        public void PlaySmallBet() => PlayClip(_smallBetClip, _smallBetVolume);
+
+        public void PlayLargeBet() => PlayClip(_largeBetClip, _largeBetVolume);
+
+        public void PlayFold() => PlayClip(_foldClip, _foldVolume);
+
+        public void PlayWinnerChip() => PlayClip(_winnerChipClip, _winnerChipVolume);
+
+        private void OnPlayerAction(PlayerState player, BettingAction action, int amount)
+        {
+            if (_gameManager == null)
+                return;
+
+            switch (action)
+            {
+                case BettingAction.Fold:
+                    PlayFold();
+                    break;
+
+                case BettingAction.Raise:
+                    PlayLargeBet();
+                    break;
+
+                case BettingAction.Call:
+                case BettingAction.AllIn:
+                    if (amount <= 0)
+                        break;
+
+                    if (amount >= _gameManager.BigBlindAmount)
+                        PlayLargeBet();
+                    else
+                        PlaySmallBet();
+                    break;
+            }
+        }
+
+        private void PlayClip(AudioClip clip, float volume)
+        {
+            if (clip == null || _audioSource == null)
+                return;
+
+            _audioSource.PlayOneShot(clip, Mathf.Clamp01(volume));
+        }
+    }
+}
