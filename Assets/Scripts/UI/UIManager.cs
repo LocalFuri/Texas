@@ -2270,6 +2270,46 @@ namespace TexasHoldem
             FinishStreetBetCollect(views);
         }
 
+        /// <summary>
+        /// Clears seat bets on a BB walk without showing the full blind pot at center.
+        /// Only the small-blind chip is animated to the BB at showdown.
+        /// </summary>
+        public IEnumerator CollectBbWalkBlinds(PlayerState sbPlayer)
+        {
+            if (!Application.isPlaying || _gameManager == null)
+                yield break;
+
+            if (_playersRefreshCoroutine != null)
+            {
+                StopCoroutine(_playersRefreshCoroutine);
+                _playersRefreshCoroutine  = null;
+                _playersRefreshInProgress = false;
+            }
+
+            IReadOnlyList<PlayerView> views = ResolvePlayerViews();
+            if (views != null)
+            {
+                foreach (PlayerView view in views)
+                    view?.HideBetDisplay();
+            }
+
+            _previousBets.Clear();
+
+            if (_potText != null)
+                _potText.text = string.Empty;
+
+            HidePotChipStack();
+            HidePotAmountBadge();
+
+            if (sbPlayer != null)
+            {
+                PlayerView sbView = ResolvePlayerView(sbPlayer);
+                sbView?.RefreshHud(sbPlayer, ResolveBigBlindAmount());
+            }
+
+            yield return null;
+        }
+
         /// <summary>Hides the winner's seat stack after an uncalled raise is returned to their chips.</summary>
         public IEnumerator PlayUncalledBetReturn(PlayerState winner)
         {
@@ -3384,6 +3424,11 @@ namespace TexasHoldem
             _winnerSplitPotActive    = splitPot;
             _winnerPotChipsCollected = false;
 
+            bool bbWalk = _gameManager.LastHandWasBbWalk;
+            int displayWinAmount = bbWalk
+                ? _gameManager.LastBbWalkNetWin
+                : PotAward.ShareForWinnerIndex(_gameManager.LastPotAwarded, winnerCount, 0);
+
             if (splitPot)
             {
                 _winnerDisplayPotAmount = 0;
@@ -3391,6 +3436,11 @@ namespace TexasHoldem
                 HidePotAmountBadge();
                 if (_potText != null)
                     _potText.text = string.Empty;
+            }
+            else if (bbWalk && displayWinAmount > 0)
+            {
+                _winnerDisplayPotAmount = displayWinAmount;
+                ShowPotDisplayForWinner(displayWinAmount);
             }
             else
             {
@@ -3406,14 +3456,18 @@ namespace TexasHoldem
                 if (winnerView == null)
                     continue;
 
-                int winnerNetShare = PotAward.ShareForWinnerIndex(
-                    _gameManager.LastPotAwarded, winnerCount, i);
+                int winnerNetShare = bbWalk
+                    ? _gameManager.LastBbWalkNetWin
+                    : PotAward.ShareForWinnerIndex(
+                        _gameManager.LastPotAwarded, winnerCount, i);
 
                 winnerView.RefreshHud(roundWinner, bigBlind);
                 winnerView.StartWinnerHighlight(winnerNetShare, duration);
                 TryStartWinnerAvatarPulse(winnerView);
 
-                if (splitPot && winnerNetShare > 0)
+                if (bbWalk && winnerNetShare > 0)
+                    winnerView.ShowBetDisplay(winnerNetShare);
+                else if (splitPot && winnerNetShare > 0)
                     winnerView.ShowBetDisplay(winnerNetShare);
             }
 
@@ -3511,6 +3565,7 @@ namespace TexasHoldem
 
             int winnerCount = winners.Count;
             int netPot      = _gameManager.LastPotAwarded;
+            bool bbWalk     = _gameManager.LastHandWasBbWalk;
 
             for (int i = 0; i < winners.Count; i++)
             {
@@ -3522,7 +3577,9 @@ namespace TexasHoldem
                 if (view == null)
                     continue;
 
-                int share = PotAward.ShareForWinnerIndex(netPot, winnerCount, i);
+                int share = bbWalk
+                    ? _gameManager.LastBbWalkNetWin
+                    : PotAward.ShareForWinnerIndex(netPot, winnerCount, i);
                 if (share <= 0)
                     continue;
 
@@ -3593,7 +3650,17 @@ namespace TexasHoldem
                 _winnerCelebrationCoroutine = null;
             }
 
-            _winnerCelebrationCoroutine = StartCoroutine(AnimatePotChipsToAllWinners(legs));
+            if (_gameManager.LastHandWasBbWalk && _gameManager.LastBbWalkSbPlayer != null)
+            {
+                PlayerView sbView = ResolvePlayerView(_gameManager.LastBbWalkSbPlayer);
+                _winnerCelebrationCoroutine = StartCoroutine(
+                    AnimateBbWalkBlindToWinner(sbView, legs[0].View, legs[0].NetShare));
+            }
+            else
+            {
+                _winnerCelebrationCoroutine = StartCoroutine(AnimatePotChipsToAllWinners(legs));
+            }
+
             return true;
         }
 
@@ -3720,6 +3787,115 @@ namespace TexasHoldem
             stackRt.pivot            = new Vector2(0.5f, 0.5f);
             stackRt.anchoredPosition = canvasAnchoredPosition;
             stackRt.localScale       = Vector3.one;
+        }
+
+        private IEnumerator AnimateBbWalkBlindToWinner(
+            PlayerView sbView, PlayerView winnerView, int amount)
+        {
+            ForceEndPlayersRefresh();
+
+            if (winnerView == null || amount <= 0)
+            {
+                CompleteWinnerPotCollection();
+                yield break;
+            }
+
+            if (ResolveRootCanvas() == null)
+            {
+                Debug.LogError("[UIManager] BB walk collect FAILED — root canvas not found.", this);
+                CompleteWinnerPotCollection();
+                yield break;
+            }
+
+            EnsurePotChipStack();
+            if (_potChipStack == null)
+            {
+                CompleteWinnerPotCollection();
+                yield break;
+            }
+
+            ApplyNetPotToCenterDisplay(amount);
+            ShowPotAmountBadge(amount);
+
+            if (_winnerPotCollectResizeDelay > 0f)
+                yield return new WaitForSecondsRealtime(_winnerPotCollectResizeDelay);
+
+            PlayWinnerChipSound();
+
+            RectTransform stackRt = _potChipStack.StackRoot;
+            var canvasRt = (RectTransform)_rootCanvas.transform;
+
+            Vector2 startPos;
+            if (sbView != null
+                && TryResolveWinnerBetStackCanvasPosition(sbView, canvasRt, amount, out startPos))
+            {
+                // Start at the small-blind seat.
+            }
+            else if (!TryResolvePotCollectCanvasPosition(out startPos))
+            {
+                startPos = canvasRt.anchoredPosition;
+            }
+
+            if (!TryResolveWinnerBetStackCanvasPosition(winnerView, canvasRt, amount, out Vector2 betPos))
+            {
+                Debug.LogError(
+                    $"[UIManager] BB walk collect FAILED — could not resolve winner bet stack (amount={amount}).",
+                    this);
+                CompleteWinnerPotCollection();
+                yield break;
+            }
+
+            AttachStackToCanvasForFly(stackRt, canvasRt, out _);
+            stackRt.anchoredPosition = startPos;
+            stackRt.gameObject.SetActive(true);
+
+            float flyDuration = Mathf.Max(0.05f, _winnerPotCollectFlyDuration);
+            float elapsed     = 0f;
+
+            while (elapsed < flyDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / flyDuration));
+                stackRt.anchoredPosition = Vector2.Lerp(startPos, betPos, t);
+                yield return null;
+            }
+
+            stackRt.anchoredPosition = betPos;
+
+            if (_potText != null)
+                _potText.text = string.Empty;
+
+            winnerView.ShowBetDisplay(amount);
+
+            if (_winnerPotCollectHoldDuration > 0f)
+                yield return new WaitForSecondsRealtime(_winnerPotCollectHoldDuration);
+
+            Vector2 avatarPos = betPos;
+            TryResolveWinnerAvatarCanvasPosition(winnerView, canvasRt, out avatarPos);
+
+            float vanishDuration = Mathf.Max(0.05f, _winnerPotCollectVanishDuration);
+            elapsed              = 0f;
+            Vector2 vanishStart  = stackRt.anchoredPosition;
+            Vector3 scaleStart   = stackRt.localScale;
+
+            while (elapsed < vanishDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / vanishDuration));
+
+                stackRt.anchoredPosition = Vector2.Lerp(vanishStart, avatarPos, t);
+                stackRt.localScale       = Vector3.Lerp(scaleStart, Vector3.zero, t);
+                SetPotCollectVisualAlpha(1f - t);
+
+                yield return null;
+            }
+
+            HidePotAmountBadge();
+            RestorePotChipStackHome();
+            HidePotChipStack();
+            winnerView.HideBetDisplay();
+
+            CompleteWinnerPotCollection();
         }
 
         private IEnumerator AnimatePotChipsToWinnerLeg(PlayerView winnerView, int amount)
@@ -3928,6 +4104,22 @@ namespace TexasHoldem
             }
 
             WinningHandEvaluation evaluation = _gameManager?.LastWinningHand;
+            bool bbWalk = _gameManager != null && _gameManager.LastHandWasBbWalk;
+
+            if (bbWalk && names.Count == 1)
+            {
+                string walkMessage = HandDisplayNames.FormatBbWalkWin(
+                    names[0], _gameManager.LastBbWalkNetWin);
+                if (!string.IsNullOrEmpty(walkMessage))
+                {
+                    _winningHandText.text = walkMessage;
+                    _winningHandText.gameObject.SetActive(true);
+                    _winningHandText.transform.SetAsLastSibling();
+                    ClearWinningCardHighlights();
+                    return;
+                }
+            }
+
             bool tiebreakerDecisive = evaluation?.Result != null
                 && HandDisplayNames.WasTiebreakerDecisive(
                     evaluation.Result,

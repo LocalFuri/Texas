@@ -156,6 +156,14 @@ namespace TexasHoldem
             return $"{string.Join(" & ", playerNames)} win";
         }
 
+        public static string FormatBbWalkWin(string playerName, int netWin)
+        {
+            if (string.IsNullOrEmpty(playerName) || netWin <= 0)
+                return FormatFoldWin(new[] { playerName });
+
+            return $"{playerName} wins the blinds (+{netWin})";
+        }
+
         public static string RankName(int rankValue)
         {
             if (!System.Enum.IsDefined(typeof(Rank), rankValue))

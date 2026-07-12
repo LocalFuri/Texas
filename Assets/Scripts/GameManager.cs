@@ -140,6 +140,13 @@ namespace TexasHoldem
         public IReadOnlyList<(PlayerState Player, WinningHandEvaluation Evaluation)> LastShowdownEvaluations { get; private set; }
         public IReadOnlyList<Card> CommunityCards        => _boardManager?.CommunityCards;
 
+        /// <summary>True when everyone folded to the big blind preflop (no flop, no raises).</summary>
+        public bool        LastHandWasBbWalk    { get; private set; }
+        /// <summary>Net chips the BB wins on a walk (the small blind).</summary>
+        public int         LastBbWalkNetWin     { get; private set; }
+        /// <summary>Small-blind player who posted the chip awarded to the BB on a walk.</summary>
+        public PlayerState LastBbWalkSbPlayer   { get; private set; }
+
         /// <summary>Seat index (0-based) of the current dealer among <see cref="Players"/>.</summary>
         public int GetDealerSeatIndex()
         {
@@ -315,6 +322,9 @@ namespace TexasHoldem
             foreach (var p in Players) p.ResetForNewRound();
             _bettingManager.ResetRound();
             _boardManager.NewDeck();
+            LastHandWasBbWalk  = false;
+            LastBbWalkNetWin   = 0;
+            LastBbWalkSbPlayer = null;
 
             // Reset the board display at the start of every round.
             OnCommunityCardsUpdated?.Invoke(_boardManager.CommunityCards);
@@ -562,9 +572,26 @@ namespace TexasHoldem
                         yield return ui.PlayUncalledBetReturn(soleWinner);
                     NotifyPlayersUpdated();
                 }
+
+                if (TryDetectBbWalk(active, soleWinner, out PlayerState sbPlayer))
+                {
+                    LastHandWasBbWalk  = true;
+                    LastBbWalkNetWin   = _smallBlind;
+                    LastBbWalkSbPlayer = sbPlayer;
+                }
             }
 
-            yield return CollectStreetBetsBeforeNextStreet(active);
+            if (LastHandWasBbWalk)
+            {
+                UIManager walkUi = ResolveUiManager();
+                if (walkUi != null)
+                    yield return walkUi.CollectBbWalkBlinds(LastBbWalkSbPlayer);
+                ResetBetsForNewPhase(active);
+            }
+            else
+            {
+                yield return CollectStreetBetsBeforeNextStreet(active);
+            }
 
             SetPhase(GamePhase.Showdown);
 
@@ -590,7 +617,7 @@ namespace TexasHoldem
             _potAwardPending = true;
 
             OnGameMessage?.Invoke(BuildRoundEndMessage(
-                LastRoundWinners, LastPotAwarded, LastRakeAmount, LastRakeDisplayText));
+                LastRoundWinners, LastPotAwarded, LastRakeAmount, LastRakeDisplayText, LastHandWasBbWalk, LastBbWalkNetWin));
             _awaitingWinnerDismiss = true;
             OnWinnerDetermined?.Invoke(LastRoundWinners[0]);
             NotifyPlayersUpdated();
@@ -668,7 +695,12 @@ namespace TexasHoldem
         }
 
         private static string BuildRoundEndMessage(
-            IReadOnlyList<PlayerState> winners, int netPot, int rakeAmount, string rakeDisplay)
+            IReadOnlyList<PlayerState> winners,
+            int netPot,
+            int rakeAmount,
+            string rakeDisplay,
+            bool bbWalk = false,
+            int bbWalkNetWin = 0)
         {
             if (winners == null || winners.Count == 0)
                 return string.Empty;
@@ -681,10 +713,38 @@ namespace TexasHoldem
                 ? $" (rake {rakeDisplay})"
                 : string.Empty;
 
+            if (winners.Count == 1 && bbWalk && bbWalkNetWin > 0)
+                return $"{names} wins the blinds (+${bbWalkNetWin}){rakeNote}!";
+
             if (winners.Count == 1)
                 return $"{names} wins the pot of ${netPot}{rakeNote}!";
 
             return $"{names} split the pot of ${netPot}{rakeNote}!";
+        }
+
+        private bool TryDetectBbWalk(List<PlayerState> active, PlayerState winner, out PlayerState sbPlayer)
+        {
+            sbPlayer = null;
+            if (winner == null || active == null || active.Count < 2)
+                return false;
+
+            if (_boardManager.CommunityCards.Count >= 3)
+                return false;
+
+            if (_bettingManager.StreetRaiseCount > 0)
+                return false;
+
+            if (_bettingManager.Pot != _smallBlind + _bigBlind)
+                return false;
+
+            int n       = active.Count;
+            int bbIndex = (DealerIndex + 2) % n;
+            if (active[bbIndex] != winner)
+                return false;
+
+            int sbIndex = (DealerIndex + 1) % n;
+            sbPlayer    = active[sbIndex];
+            return sbPlayer != null;
         }
 
         /// <summary>Called by the UI to submit the human player's chosen betting action.</summary>
