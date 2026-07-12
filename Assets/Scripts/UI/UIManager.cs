@@ -2404,6 +2404,7 @@ namespace TexasHoldem
 
             view.SetIsHuman(player.Type == PlayerType.Human);
             view.PlaceHoleCardFaceDown(slotIndex);
+            _gameManager?.TableSounds?.PlayLoop();
         }
 
         /// <summary>Shows every dealt hole card face-down instantly (used when deal stagger is off).</summary>

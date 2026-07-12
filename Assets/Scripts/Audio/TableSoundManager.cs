@@ -22,7 +22,11 @@ namespace TexasHoldem
       [SerializeField] private AudioClip _largeBetClip;
       [SerializeField][Range(0f, 1f)] private float _largeBetVolume = 1f;
 
-      [Header("Small Bet")]
+     [Header("Loop")]
+     [SerializeField] private AudioClip _loopClip;
+     [SerializeField][Range(0f, 1f)] private float _loopVolume = 1f;
+
+    [Header("Small Bet")]
       [SerializeField] private AudioClip _smallBetClip;
       [SerializeField] [Range(0f, 1f)] private float _smallBetVolume = 1f;
 
@@ -59,6 +63,7 @@ namespace TexasHoldem
         }
 
     
+        public void PlayLoop() => PlayClip(_loopClip, _loopVolume);
         public void PlayBlind() => PlayClip(_blindClip, _blindVolume);
         public void PlayKnockKnock() => PlayClip(_knockKnockClip, _knockKnockVolume);
         public void PlaySmallBet() => PlayClip(_smallBetClip, _smallBetVolume);
