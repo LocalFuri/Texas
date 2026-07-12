@@ -446,6 +446,7 @@ namespace TexasHoldem
 
                 int  betBeforeAction = _bettingManager.CurrentBet;
                 bool actionApplied   = false;
+                BettingAction appliedAction = default;
 
                 _awaitingHumanInput = player.Type == PlayerType.Human;
                 OnPlayerTurn?.Invoke(player);
@@ -459,6 +460,7 @@ namespace TexasHoldem
                     if (_bettingManager.ProcessAction(player, action, raise))
                     {
                         actionApplied = true;
+                        appliedAction = action;
                         int displayAmount = GetActionDisplayAmount(player, action, raise, playerBetBefore);
                         OnPlayerAction?.Invoke(player, action, displayAmount);
                         string detail = action == BettingAction.Raise ? $" +${raise}" : "";
@@ -479,6 +481,7 @@ namespace TexasHoldem
                     if (_bettingManager.ProcessAction(player, _humanAction, _humanRaiseAmount))
                     {
                         actionApplied = true;
+                        appliedAction = _humanAction;
                         int displayAmount = GetActionDisplayAmount(player, _humanAction, _humanRaiseAmount, humanBetBefore);
                         OnPlayerAction?.Invoke(player, _humanAction, displayAmount);
                         string detail = _humanAction == BettingAction.Raise ? $" +${_humanRaiseAmount}" : "";
@@ -497,7 +500,9 @@ namespace TexasHoldem
 
                 NotifyPlayersUpdated();
 
-                if (player.Type == PlayerType.AI && _aiActionDelay <= 0f)
+                if (appliedAction == BettingAction.Check && TableSounds != null && TableSounds.KnockKnockDuration > 0f)
+                    yield return DelaySeconds(TableSounds.KnockKnockDuration);
+                else if (player.Type == PlayerType.AI && _aiActionDelay <= 0f)
                     yield return null;
 
                 hasActed[currentIndex] = true;

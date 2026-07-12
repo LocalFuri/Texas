@@ -66,6 +66,10 @@ namespace TexasHoldem
         public void PlayLoop() => PlayClip(_loopClip, _loopVolume);
         public void PlayBlind() => PlayClip(_blindClip, _blindVolume);
         public void PlayKnockKnock() => PlayClip(_knockKnockClip, _knockKnockVolume);
+
+        /// <summary>Length of the check SFX in seconds (0 if unassigned).</summary>
+        public float KnockKnockDuration => _knockKnockClip != null ? _knockKnockClip.length : 0f;
+
         public void PlaySmallBet() => PlayClip(_smallBetClip, _smallBetVolume);
 
         public void PlayLargeBet() => PlayClip(_largeBetClip, _largeBetVolume);
