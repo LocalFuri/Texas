@@ -1700,13 +1700,35 @@ namespace TexasHoldem
             bool canCall   = callAmount > 0 && _humanPlayer.Chips > 0;
             bool canRaise  = CanHumanRaise();
 
+            bool isPreflop = _gameManager.CurrentPhase == GamePhase.PreFlop;
+            PreflopHandGroup preflopGroup = PreflopHandGroup.Weak;
+            PreflopSeatBucket preflopSeat = PreflopSeatBucket.Early;
+            bool facingRaise = false;
+            int streetRaiseCount = 0;
+
+            if (isPreflop
+                && _humanPlayer.HoleCards != null
+                && _humanPlayer.HoleCards.Count >= 2)
+            {
+                preflopGroup     = PreflopStrategy.ClassifyHand(_humanPlayer.HoleCards);
+                preflopSeat      = _gameManager.GetPreflopSeatBucket(_humanPlayer);
+                facingRaise      = _gameManager.CurrentBet > _gameManager.BigBlindAmount;
+                streetRaiseCount = _gameManager.StreetRaiseCount;
+            }
+
             BettingAdvice advice = BettingAdvisor.Recommend(
                 equityPercent,
                 _gameManager.PotAmount,
                 callAmount,
                 canCheck,
                 canRaise,
-                canCall);
+                canCall,
+                isPreflop,
+                preflopGroup,
+                preflopSeat,
+                facingRaise,
+                streetRaiseCount,
+                _humanPlayer.Chips);
 
             return BettingAdvisor.LabelFor(advice);
         }

@@ -67,6 +67,7 @@ namespace TexasHoldem
         public int               PotAmount    => _bettingManager?.Pot ?? 0;
         public int               CurrentBet   => _bettingManager?.CurrentBet ?? 0;
         public int               BigBlindAmount => _bigBlind;
+        public int               StreetRaiseCount => _bettingManager?.StreetRaiseCount ?? 0;
         public bool              IsAwaitingHumanInput => _awaitingHumanInput;
         public TableSoundManager TableSounds { get; private set; }
 
@@ -159,6 +160,28 @@ namespace TexasHoldem
 
             int dealerActiveIndex = ((DealerIndex % active.Count) + active.Count) % active.Count;
             return Players.IndexOf(active[dealerActiveIndex]);
+        }
+
+        /// <summary>Preflop seat bucket (BTN/SB/BB/UTG/…) for a player still seated with chips.</summary>
+        public PreflopSeatBucket GetPreflopSeatBucket(PlayerState player)
+        {
+            if (player == null || Players == null || Players.Count == 0)
+                return PreflopSeatBucket.Early;
+
+            var active = Players.Where(p => p.Chips > 0).ToList();
+            if (active.Count == 0)
+                return PreflopSeatBucket.Early;
+
+            int dealerSeat = GetDealerSeatIndex();
+            if (dealerSeat < 0 || dealerSeat >= Players.Count)
+                return PreflopSeatBucket.Early;
+
+            PlayerState dealer = Players[dealerSeat];
+            int dealerInActive = active.IndexOf(dealer);
+            if (dealerInActive < 0)
+                dealerInActive = 0;
+
+            return PreflopStrategy.ResolveSeatBucket(active, dealerInActive, player);
         }
 
         /// <summary>Wait time after dealing — flip animations removed; only base deal delay when clearing.</summary>

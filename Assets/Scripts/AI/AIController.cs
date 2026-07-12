@@ -7,12 +7,10 @@ namespace TexasHoldem
     {
         private const int MaxStreetRaises = 4;
 
-        // Open-raise frequencies (unopened pot / facing blinds only).
         private const float PremiumOpenRaiseChance = 0.82f;
         private const float StrongOpenRaiseChance  = 0.58f;
         private const float PlayableOpenRaiseChance = 0.18f;
 
-        // Re-raise frequencies when already facing a raise above the big blind.
         private const float PremiumThreeBetChance = 0.28f;
         private const float StrongThreeBetChance  = 0.12f;
 
@@ -21,16 +19,6 @@ namespace TexasHoldem
 
         private const float PostflopValueBetChance   = 0.55f;
         private const float PostflopRaiseFacingBetChance = 0.22f;
-
-        private static readonly PreflopHandGroup[,] PreflopChart = BuildPreflopChart();
-
-        private enum PreflopHandGroup
-        {
-            Premium,
-            Strong,
-            Playable,
-            Weak
-        }
 
         private enum RaiseSizeIntent
         {
@@ -54,7 +42,7 @@ namespace TexasHoldem
 
             if (communityCards.Count == 0 && player.HoleCards.Count >= 2)
             {
-                PreflopHandGroup group = ClassifyPreflopHand(player.HoleCards);
+                PreflopHandGroup group = PreflopStrategy.ClassifyHand(player.HoleCards);
                 return DecidePreflopAction(group, canCheck, callAmount, player.Chips, betting, player);
             }
 
@@ -77,7 +65,6 @@ namespace TexasHoldem
             return DecidePreflopUnopened(group, canCheck, callAmount, playerChips, betting, player);
         }
 
-        /// <summary>First-in or facing blinds/limpers only — open-raise or complete/check.</summary>
         private static (BettingAction action, int raiseAmount) DecidePreflopUnopened(
             PreflopHandGroup group,
             bool canCheck,
@@ -114,7 +101,6 @@ namespace TexasHoldem
             return (BettingAction.Fold, 0);
         }
 
-        /// <summary>Facing a raise — mostly call; selective 3-bets; fold weak holdings.</summary>
         private static (BettingAction action, int raiseAmount) DecidePreflopFacingRaise(
             PreflopHandGroup group,
             int callAmount,
@@ -255,7 +241,6 @@ namespace TexasHoldem
             return (BettingAction.Raise, increment);
         }
 
-        /// <summary>True when the bot holds top pair, an overpair, or any made hand stronger than one pair.</summary>
         private static bool IsTopPairOrBetter(
             IReadOnlyList<Card> holeCards,
             IReadOnlyList<Card> communityCards,
@@ -292,106 +277,6 @@ namespace TexasHoldem
                 return true;
 
             return pairRank >= maxBoardRank;
-        }
-
-        private static PreflopHandGroup ClassifyPreflopHand(IReadOnlyList<Card> holeCards)
-        {
-            if (holeCards.Count < 2)
-                return PreflopHandGroup.Weak;
-
-            int hi = RankIndex(holeCards[0].Rank);
-            int lo = RankIndex(holeCards[1].Rank);
-            if (lo > hi)
-                (hi, lo) = (lo, hi);
-
-            bool suited = holeCards[0].Suit == holeCards[1].Suit;
-            return suited || hi == lo
-                ? PreflopChart[hi, lo]
-                : PreflopChart[lo, hi];
-        }
-
-        private static int RankIndex(Rank rank) => (int)rank - 2;
-
-        /// <summary>
-        /// 13×13 starting-hand chart (index 0 = Two, 12 = Ace).
-        /// Pairs on diagonal; suited above diagonal [hi, lo]; offsuit below [lo, hi].
-        /// </summary>
-        private static PreflopHandGroup[,] BuildPreflopChart()
-        {
-            var chart = new PreflopHandGroup[13, 13];
-
-            for (int i = 0; i < 13; i++)
-            {
-                for (int j = 0; j < 13; j++)
-                    chart[i, j] = PreflopHandGroup.Weak;
-            }
-
-            void Pair(int idx, PreflopHandGroup group) => chart[idx, idx] = group;
-            void Suited(int hi, int lo, PreflopHandGroup group) => chart[hi, lo] = group;
-            void Offsuit(int hi, int lo, PreflopHandGroup group) => chart[lo, hi] = group;
-
-            // Pairs
-            Pair(12, PreflopHandGroup.Premium);
-            Pair(11, PreflopHandGroup.Premium);
-            Pair(10, PreflopHandGroup.Premium);
-            Pair(9, PreflopHandGroup.Premium);
-            Pair(8, PreflopHandGroup.Strong);
-            Pair(7, PreflopHandGroup.Strong);
-            Pair(6, PreflopHandGroup.Strong);
-            Pair(5, PreflopHandGroup.Playable);
-            Pair(4, PreflopHandGroup.Playable);
-            Pair(3, PreflopHandGroup.Playable);
-            Pair(2, PreflopHandGroup.Playable);
-            Pair(1, PreflopHandGroup.Playable);
-            Pair(0, PreflopHandGroup.Playable);
-
-            // Suited
-            Suited(12, 11, PreflopHandGroup.Premium);
-            Suited(12, 10, PreflopHandGroup.Premium);
-            Suited(12, 9, PreflopHandGroup.Strong);
-            Suited(12, 8, PreflopHandGroup.Strong);
-            Suited(11, 10, PreflopHandGroup.Strong);
-            Suited(11, 9, PreflopHandGroup.Strong);
-            Suited(10, 9, PreflopHandGroup.Strong);
-            Suited(9, 8, PreflopHandGroup.Strong);
-
-            for (int lo = 0; lo <= 7; lo++)
-                Suited(12, lo, PreflopHandGroup.Playable);
-
-            Suited(11, 8, PreflopHandGroup.Playable);
-            Suited(11, 7, PreflopHandGroup.Playable);
-            Suited(11, 6, PreflopHandGroup.Playable);
-            Suited(10, 8, PreflopHandGroup.Playable);
-            Suited(10, 7, PreflopHandGroup.Playable);
-            Suited(9, 7, PreflopHandGroup.Playable);
-            Suited(8, 7, PreflopHandGroup.Playable);
-            Suited(7, 6, PreflopHandGroup.Playable);
-            Suited(6, 5, PreflopHandGroup.Playable);
-            Suited(5, 4, PreflopHandGroup.Playable);
-            Suited(4, 3, PreflopHandGroup.Playable);
-            Suited(3, 2, PreflopHandGroup.Playable);
-            Suited(2, 1, PreflopHandGroup.Playable);
-
-            // Offsuit
-            Offsuit(12, 11, PreflopHandGroup.Premium);
-            Offsuit(12, 10, PreflopHandGroup.Strong);
-            Offsuit(11, 10, PreflopHandGroup.Strong);
-            Offsuit(12, 9, PreflopHandGroup.Playable);
-            Offsuit(12, 8, PreflopHandGroup.Playable);
-            Offsuit(12, 7, PreflopHandGroup.Playable);
-            Offsuit(11, 9, PreflopHandGroup.Playable);
-            Offsuit(11, 8, PreflopHandGroup.Playable);
-            Offsuit(10, 9, PreflopHandGroup.Playable);
-            Offsuit(10, 8, PreflopHandGroup.Playable);
-            Offsuit(9, 8, PreflopHandGroup.Playable);
-
-            // Restore premium/strong suited aces overwritten by playable loop
-            Suited(12, 11, PreflopHandGroup.Premium);
-            Suited(12, 10, PreflopHandGroup.Premium);
-            Suited(12, 9, PreflopHandGroup.Strong);
-            Suited(12, 8, PreflopHandGroup.Strong);
-
-            return chart;
         }
     }
 }

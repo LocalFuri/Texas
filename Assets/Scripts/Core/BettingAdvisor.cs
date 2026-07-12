@@ -11,7 +11,7 @@ namespace TexasHoldem
         Raise,
     }
 
-    /// <summary>Pot-odds hint from Monte Carlo equity vs current action (human turn only).</summary>
+    /// <summary>Pot-odds and preflop chart hints for the human HUD (human turn only).</summary>
     public static class BettingAdvisor
     {
         public const string LabelFold  = "FOLD";
@@ -53,6 +53,37 @@ namespace TexasHoldem
         }
 
         public static BettingAdvice Recommend(
+            float equityPercent,
+            int potBeforeAction,
+            int callAmount,
+            bool canCheck,
+            bool canRaise,
+            bool canCall,
+            bool isPreflop,
+            PreflopHandGroup preflopGroup,
+            PreflopSeatBucket preflopSeat,
+            bool facingRaise,
+            int streetRaiseCount,
+            int playerChips)
+        {
+            if (isPreflop)
+            {
+                return PreflopStrategy.RecommendAdvice(
+                    preflopGroup,
+                    preflopSeat,
+                    facingRaise,
+                    callAmount,
+                    playerChips,
+                    canCheck,
+                    canRaise,
+                    canCall,
+                    streetRaiseCount);
+            }
+
+            return RecommendPostflop(equityPercent, potBeforeAction, callAmount, canCheck, canRaise, canCall);
+        }
+
+        private static BettingAdvice RecommendPostflop(
             float equityPercent,
             int potBeforeAction,
             int callAmount,
