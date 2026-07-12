@@ -76,6 +76,10 @@ namespace TexasHoldem
 
             switch (action)
             {
+                case BettingAction.Check:
+                    PlayKnockKnock();
+                    break;
+
                 case BettingAction.Fold:
                     PlayFold();
                     break;
