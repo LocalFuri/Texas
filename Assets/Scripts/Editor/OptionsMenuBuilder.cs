@@ -16,10 +16,6 @@ public static class OptionsMenuBuilder
     private const float CheckboxSize  = 15f;
     private const float PanelPadding  = 10f;
     private const int   BotThinkRowIndex = 1;
-
-    private const float BotThinkMin     = 0f;
-    private const float BotThinkMax     = 30f;
-    private const float BotThinkDefault = 1f;
     private const float SliderTrackHeight = 10f;
     private const float SliderHandleSize  = 16f;
 
@@ -168,7 +164,7 @@ public static class OptionsMenuBuilder
     }
 
     private static Slider AddBotThinkSliderRow(Transform parent, string label)
-        => OptionsMenuRowFactory.CreateBotThinkSliderRow(parent, BotThinkDefault);
+        => OptionsMenuRowFactory.CreateBotThinkSliderRow(parent, OptionsMenu.SecondsToSliderValue(OptionsMenu.BotThinkDefaultSeconds));
 
     private static Toggle AddToggleRow(Transform parent, string label)
     {

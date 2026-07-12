@@ -15,9 +15,15 @@ namespace TexasHoldem
         public const int OptionCount = 6;
 
         public const int BotThinkSliderRowIndex = 1;
-        public const float BotThinkMinSeconds   = 0f;
-        public const float BotThinkMaxSeconds   = 30f;
-        public const float BotThinkDefaultSeconds = 1f;
+        public const int BotThinkMinMs          = 0;
+        public const int BotThinkMaxMs          = 30000;
+        public const int BotThinkStepMs         = 10;
+        public const int BotThinkDefaultMs      = 1000;
+        public const int BotThinkSliderMaxStep  = BotThinkMaxMs / BotThinkStepMs;
+
+        public const float BotThinkMinSeconds        = BotThinkMinMs / 1000f;
+        public const float BotThinkMaxSeconds        = BotThinkMaxMs / 1000f;
+        public const float BotThinkDefaultSeconds    = BotThinkDefaultMs / 1000f;
 
         /// <summary>Shared label size for all options-menu rows (Restart, toggles, bot slider).</summary>
         public const float MenuRowFontSize = 20f;
@@ -49,11 +55,44 @@ namespace TexasHoldem
         /// <summary>Fired after the menu closes and bot-think delay is committed to gameplay.</summary>
         public event Action OnMenuClosed;
 
-        /// <summary>Slider value clamped to the configured bot-think range.</summary>
-        public float CurrentBotThinkDelaySeconds =>
+        /// <summary>Bot-think delay in milliseconds (slider snaps to <see cref="BotThinkStepMs"/> steps).</summary>
+        public int CurrentBotThinkDelayMs =>
             _botThinkSlider != null
-                ? Mathf.Clamp(_botThinkSlider.value, BotThinkMinSeconds, BotThinkMaxSeconds)
-                : BotThinkDefaultSeconds;
+                ? SliderValueToMs(_botThinkSlider.value)
+                : BotThinkDefaultMs;
+
+        /// <summary>Bot-think delay in seconds for gameplay systems.</summary>
+        public float CurrentBotThinkDelaySeconds => MsToSeconds(CurrentBotThinkDelayMs);
+
+        public static int SliderValueToMs(float sliderValue)
+        {
+            int step = Mathf.Clamp(Mathf.RoundToInt(sliderValue), 0, BotThinkSliderMaxStep);
+            return step * BotThinkStepMs;
+        }
+
+        public static float MsToSeconds(int ms) => ms / 1000f;
+
+        public static int SecondsToMs(float seconds)
+            => Mathf.Clamp(Mathf.RoundToInt(seconds * 1000f), BotThinkMinMs, BotThinkMaxMs);
+
+        public static float SecondsToSliderValue(float seconds)
+            => SnapMsToStep(SecondsToMs(seconds)) / (float)BotThinkStepMs;
+
+        public static int SnapMsToStep(int ms)
+        {
+            ms = Mathf.Clamp(ms, BotThinkMinMs, BotThinkMaxMs);
+            return Mathf.RoundToInt(ms / (float)BotThinkStepMs) * BotThinkStepMs;
+        }
+
+        public static void ApplyBotThinkSliderRange(Slider slider)
+        {
+            if (slider == null)
+                return;
+
+            slider.minValue     = 0f;
+            slider.maxValue     = BotThinkSliderMaxStep;
+            slider.wholeNumbers = true;
+        }
 
         // ── Serialized references (wired by OptionsMenuBuilder) ───────────
         [SerializeField] private CanvasGroup _canvasGroup;
@@ -434,12 +473,12 @@ namespace TexasHoldem
                     legacyNonSliderRow = child;
             }
 
-            float initial = BotThinkDefaultSeconds;
+            float initialSlider = SecondsToSliderValue(BotThinkDefaultSeconds);
             GameManager gm = FindObjectOfType<GameManager>();
             if (gm != null)
-                initial = gm.AiActionDelay;
+                initialSlider = SecondsToSliderValue(gm.AiActionDelay);
             if (_botThinkSlider != null)
-                initial = _botThinkSlider.value;
+                initialSlider = _botThinkSlider.value;
 
             Transform keepRow = null;
             if (_botThinkSlider != null)
@@ -464,7 +503,7 @@ namespace TexasHoldem
             if (keepRow == null)
             {
                 int insertAt = Mathf.Min(BotThinkSliderRowIndex, transform.childCount);
-                _botThinkSlider = OptionsMenuRowFactory.CreateBotThinkSliderRow(transform, initial);
+                _botThinkSlider = OptionsMenuRowFactory.CreateBotThinkSliderRow(transform, initialSlider);
                 keepRow = _botThinkSlider.transform.parent;
                 keepRow.SetSiblingIndex(insertAt);
             }
@@ -474,7 +513,7 @@ namespace TexasHoldem
                 if (keepRow.name != expectedRowName)
                 {
                     int insertIndex = keepRow.GetSiblingIndex();
-                    float value     = _botThinkSlider != null ? _botThinkSlider.value : initial;
+                    float value     = _botThinkSlider != null ? _botThinkSlider.value : initialSlider;
                     DestroyObject(keepRow.gameObject);
                     _botThinkSlider      = null;
                     _botThinkHandleLabel = null;
@@ -487,8 +526,7 @@ namespace TexasHoldem
 
             keepRow.SetSiblingIndex(BotThinkSliderRowIndex);
 
-            _botThinkSlider.minValue = BotThinkMinSeconds;
-            _botThinkSlider.maxValue = BotThinkMaxSeconds;
+            ApplyBotThinkSliderRange(_botThinkSlider);
 
             if (_toggles != null && BotThinkSliderRowIndex < _toggles.Length)
                 _toggles[BotThinkSliderRowIndex] = null;
@@ -499,7 +537,7 @@ namespace TexasHoldem
 
             ResolveBotThinkHandleLabel();
             OptionsMenuSliderStyle.Apply(_botThinkSlider, _botThinkHandleLabel);
-            UpdateBotThinkHandleLabel(_botThinkSlider.value);
+            UpdateBotThinkHandleLabel(SliderValueToMs(_botThinkSlider.value));
 
 #if UNITY_EDITOR
             if (!Application.isPlaying)
@@ -533,30 +571,28 @@ namespace TexasHoldem
 
             ResolveBotThinkHandleLabel();
 
-            float delay = BotThinkDefaultSeconds;
+            float sliderValue = SecondsToSliderValue(BotThinkDefaultSeconds);
             GameManager gm = FindObjectOfType<GameManager>();
             if (gm != null)
-                delay = gm.AiActionDelay;
+                sliderValue = SecondsToSliderValue(gm.AiActionDelay);
 
-            delay = Mathf.Clamp(delay, BotThinkMinSeconds, BotThinkMaxSeconds);
-            _botThinkSlider.SetValueWithoutNotify(delay);
-            UpdateBotThinkHandleLabel(delay);
+            _botThinkSlider.SetValueWithoutNotify(sliderValue);
+            UpdateBotThinkHandleLabel(SliderValueToMs(sliderValue));
         }
 
         private void OnBotThinkSliderChanged(float value)
         {
-            float delay = Mathf.Clamp(value, BotThinkMinSeconds, BotThinkMaxSeconds);
-            UpdateBotThinkHandleLabel(delay);
+            UpdateBotThinkHandleLabel(SliderValueToMs(value));
         }
 
         /// <summary>Commits slider value to GameManager (called when the menu closes).</summary>
         public void ApplyBotThinkDelayToGame()
         {
-            float delay = CurrentBotThinkDelaySeconds;
-            UpdateBotThinkHandleLabel(delay);
+            int delayMs = CurrentBotThinkDelayMs;
+            UpdateBotThinkHandleLabel(delayMs);
 
             GameManager gm = FindObjectOfType<GameManager>();
-            gm?.SetAiActionDelay(delay);
+            gm?.SetAiActionDelay(MsToSeconds(delayMs));
         }
 
         private void CommitAndSaveSettings()
@@ -568,15 +604,15 @@ namespace TexasHoldem
         /// <summary>Restores bot-think slider and GameManager from saved preferences.</summary>
         public void ApplyLoadedBotThinkDelay(float delay)
         {
-            delay = Mathf.Clamp(delay, BotThinkMinSeconds, BotThinkMaxSeconds);
+            float sliderValue = SecondsToSliderValue(delay);
 
             if (_botThinkSlider != null)
             {
-                _botThinkSlider.SetValueWithoutNotify(delay);
-                UpdateBotThinkHandleLabel(delay);
+                _botThinkSlider.SetValueWithoutNotify(sliderValue);
+                UpdateBotThinkHandleLabel(SliderValueToMs(sliderValue));
             }
 
-            FindObjectOfType<GameManager>()?.SetAiActionDelay(delay);
+            FindObjectOfType<GameManager>()?.SetAiActionDelay(MsToSeconds(SliderValueToMs(sliderValue)));
         }
 
         /// <summary>Restores persistent toggle rows (indices 2–5).</summary>
@@ -612,11 +648,11 @@ namespace TexasHoldem
                 _botThinkHandleLabel = handle.GetComponent<TMP_Text>();
         }
 
-        private void UpdateBotThinkHandleLabel(float seconds)
+        private void UpdateBotThinkHandleLabel(int milliseconds)
         {
             ResolveBotThinkHandleLabel();
             if (_botThinkHandleLabel != null)
-                _botThinkHandleLabel.text = OptionsMenuSliderStyle.FormatHandleValue(seconds);
+                _botThinkHandleLabel.text = OptionsMenuSliderStyle.FormatHandleValueMs(milliseconds);
         }
 
         private void ApplySliderStyles()

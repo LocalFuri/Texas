@@ -9,7 +9,7 @@ namespace TexasHoldem
     {
         public const string BotThinkLabelText = "Bots think";
         public const float  TrackHeight       = 14f;
-        public const float  HandleWidth       = 40f;
+        public const float  HandleWidth       = 58f;
         public const float  HandleHeight      = 19f;
         public const float  LabelWidth        = 102f;
         public const float  SliderMinWidth    = 120f;
@@ -163,12 +163,12 @@ namespace TexasHoldem
                 target.fontSharedMaterial = from.font.material;
         }
 
-        public static string FormatHandleValue(float seconds)
+        public static string FormatHandleValueMs(int milliseconds)
         {
-            if (seconds <= 0.05f)
+            if (milliseconds <= 0)
                 return "0";
 
-            return Mathf.RoundToInt(seconds).ToString();
+            return milliseconds + "ms";
         }
 
         private static void SetCenteredBar(RectTransform rt, float height)

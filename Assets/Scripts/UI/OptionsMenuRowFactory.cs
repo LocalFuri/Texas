@@ -11,9 +11,10 @@ namespace TexasHoldem
         private const float CheckboxSize = 15f;
         private static readonly Color LabelColor = UiColors.PotGold;
 
-        public static Slider CreateBotThinkSliderRow(Transform panel, float initialValue)
+        public static Slider CreateBotThinkSliderRow(Transform panel, float initialSliderValue)
         {
             string labelText = OptionsMenuSliderStyle.BotThinkLabelText;
+            int initialMs = OptionsMenu.SliderValueToMs(initialSliderValue);
             var row = CreateRect("Row_" + labelText, panel);
             AddRowLayout(row);
 
@@ -64,7 +65,7 @@ namespace TexasHoldem
             var handleLabelGo = CreateRect("HandleLabel", handleGo.transform);
             Stretch((RectTransform)handleLabelGo.transform);
             var handleTmp = handleLabelGo.AddComponent<TextMeshProUGUI>();
-            handleTmp.text               = OptionsMenuSliderStyle.FormatHandleValue(initialValue);
+            handleTmp.text               = OptionsMenuSliderStyle.FormatHandleValueMs(initialMs);
             handleTmp.raycastTarget      = false;
             handleTmp.enableWordWrapping = false;
 
@@ -74,10 +75,8 @@ namespace TexasHoldem
             slider.fillRect     = (RectTransform)fillGo.transform;
             slider.handleRect   = (RectTransform)handleGo.transform;
             slider.direction    = Slider.Direction.LeftToRight;
-            slider.minValue     = OptionsMenu.BotThinkMinSeconds;
-            slider.maxValue     = OptionsMenu.BotThinkMaxSeconds;
-            slider.wholeNumbers = false;
-            slider.value        = Mathf.Clamp(initialValue, OptionsMenu.BotThinkMinSeconds, OptionsMenu.BotThinkMaxSeconds);
+            OptionsMenu.ApplyBotThinkSliderRange(slider);
+            slider.value = Mathf.Clamp(initialSliderValue, 0f, OptionsMenu.BotThinkSliderMaxStep);
 
             OptionsMenuSliderStyle.Apply(slider, handleTmp);
 
