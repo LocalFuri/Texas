@@ -16,6 +16,7 @@ public static class OptionsMenuBuilder
     private const float CheckboxSize  = 15f;
     private const float PanelPadding  = 10f;
     private const int   BotThinkRowIndex = 1;
+    private const int   EquitySimsRowIndex = 6;
     private const float SliderTrackHeight = 10f;
     private const float SliderHandleSize  = 16f;
 
@@ -30,6 +31,7 @@ public static class OptionsMenuBuilder
         "Blackjack Test",
         "BJ All Test",
         "Double Down Test",
+        "Equity sims",
     };
 
     private static float PanelHeight(float rowSpacing) =>
@@ -130,11 +132,17 @@ public static class OptionsMenuBuilder
         togglesProp.arraySize = OptionLabels.Length;
 
         Slider botThinkSlider = null;
+        Slider equitySimsSlider = null;
         for (int i = 0; i < OptionLabels.Length; i++)
         {
             if (i == BotThinkRowIndex)
             {
                 botThinkSlider = AddBotThinkSliderRow(panel.transform, OptionLabels[i]);
+                togglesProp.GetArrayElementAtIndex(i).objectReferenceValue = null;
+            }
+            else if (i == EquitySimsRowIndex)
+            {
+                equitySimsSlider = AddEquitySimsSliderRow(panel.transform, OptionLabels[i]);
                 togglesProp.GetArrayElementAtIndex(i).objectReferenceValue = null;
             }
             else
@@ -145,13 +153,14 @@ public static class OptionsMenuBuilder
         }
 
         so.FindProperty("_botThinkSlider").objectReferenceValue = botThinkSlider;
+        so.FindProperty("_equitySimsSlider").objectReferenceValue = equitySimsSlider;
         so.ApplyModifiedProperties();
 
         EditorUtility.SetDirty(menuComp);
         EditorUtility.SetDirty(panel);
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 
-        Debug.Log("[OptionsMenuBuilder] Compact centered options menu built (6 rows).");
+        Debug.Log("[OptionsMenuBuilder] Compact centered options menu built (7 rows).");
     }
 
     /// <summary>Batch-mode entry point for rebuilding TexasScene without opening the Editor UI.</summary>
@@ -165,6 +174,9 @@ public static class OptionsMenuBuilder
 
     private static Slider AddBotThinkSliderRow(Transform parent, string label)
         => OptionsMenuRowFactory.CreateBotThinkSliderRow(parent, OptionsMenu.SecondsToSliderValue(OptionsMenu.BotThinkDefaultSeconds));
+
+    private static Slider AddEquitySimsSliderRow(Transform parent, string label)
+        => OptionsMenuRowFactory.CreateEquitySimsSliderRow(parent, OptionsMenu.EquitySimsToSliderValue(OptionsMenu.EquitySimsDefault));
 
     private static Toggle AddToggleRow(Transform parent, string label)
     {

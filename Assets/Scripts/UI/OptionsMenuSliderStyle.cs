@@ -8,6 +8,7 @@ namespace TexasHoldem
     public static class OptionsMenuSliderStyle
     {
         public const string BotThinkLabelText = "Bots think";
+        public const string EquitySimsLabelText = "Equity sims";
         public const float  TrackHeight       = 14f;
         public const float  HandleWidth       = 58f;
         public const float  HandleHeight      = 19f;
@@ -169,6 +170,29 @@ namespace TexasHoldem
                 return "0";
 
             return milliseconds + "ms";
+        }
+
+        public static string FormatHandleValueSims(int simulations)
+        {
+            if (simulations >= 10_000 && simulations % 1_000 == 0)
+                return simulations / 1_000 + "k";
+
+            return simulations.ToString();
+        }
+
+        public static void ApplyEquityRowLabelStyle(TMP_Text tmp, TMP_Text fontSource = null)
+        {
+            if (tmp == null)
+                return;
+
+            tmp.text               = EquitySimsLabelText;
+            tmp.fontSize           = LabelFontSize;
+            tmp.fontStyle          = FontStyles.Normal;
+            tmp.color              = UiColors.PotGold;
+            tmp.alignment          = TextAlignmentOptions.MidlineLeft;
+            tmp.enableWordWrapping = false;
+            tmp.overflowMode       = TextOverflowModes.Overflow;
+            ApplyMenuFont(fontSource, tmp);
         }
 
         private static void SetCenteredBar(RectTransform rt, float height)

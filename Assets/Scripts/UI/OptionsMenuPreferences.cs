@@ -6,6 +6,7 @@ namespace TexasHoldem
     public static class OptionsMenuPreferences
     {
         private const string KeyBotThinkDelay = "TexasHoldem.Options.BotThinkDelay";
+        private const string KeyEquitySims    = "TexasHoldem.Options.EquitySimulationCount";
         private const string KeyShowBotCards  = "TexasHoldem.Options.ShowBotCards";
         private const string KeyTestMode      = "TexasHoldem.Options.TestMode";
         private const string KeyGodMode       = "TexasHoldem.Options.GodMode";
@@ -18,6 +19,7 @@ namespace TexasHoldem
 
             float botDelay = menu.CurrentBotThinkDelaySeconds;
             PlayerPrefs.SetFloat(KeyBotThinkDelay, botDelay);
+            PlayerPrefs.SetInt(KeyEquitySims, menu.CurrentEquitySimulationCount);
             PlayerPrefs.SetInt(KeyShowBotCards, menu.ShowBotCards ? 1 : 0);
             PlayerPrefs.SetInt(KeyTestMode,     menu.TestMode ? 1 : 0);
             PlayerPrefs.SetInt(KeyGodMode,      menu.GodMode ? 1 : 0);
@@ -34,6 +36,16 @@ namespace TexasHoldem
             {
                 float delay = PlayerPrefs.GetFloat(KeyBotThinkDelay, OptionsMenu.BotThinkDefaultSeconds);
                 menu.ApplyLoadedBotThinkDelay(delay);
+            }
+
+            if (PlayerPrefs.HasKey(KeyEquitySims))
+            {
+                int sims = PlayerPrefs.GetInt(KeyEquitySims, OptionsMenu.EquitySimsDefault);
+                menu.ApplyLoadedEquitySimulationCount(sims);
+            }
+            else
+            {
+                menu.ApplyLoadedEquitySimulationCount(OptionsMenu.ResolveSceneDefaultEquitySims());
             }
 
             if (HasAnyToggleKey())

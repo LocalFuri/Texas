@@ -12,9 +12,10 @@ namespace TexasHoldem
     /// </summary>
     public class OptionsMenu : MonoBehaviour
     {
-        public const int OptionCount = 6;
+        public const int OptionCount = 7;
 
         public const int BotThinkSliderRowIndex = 1;
+        public const int EquitySimsSliderRowIndex = 6;
         public const int BotThinkMinMs          = 0;
         public const int BotThinkMaxMs          = 30000;
         public const int BotThinkStepMs         = 10;
@@ -24,6 +25,12 @@ namespace TexasHoldem
         public const float BotThinkMinSeconds        = BotThinkMinMs / 1000f;
         public const float BotThinkMaxSeconds        = BotThinkMaxMs / 1000f;
         public const float BotThinkDefaultSeconds    = BotThinkDefaultMs / 1000f;
+
+        public const int EquitySimsMin           = 1_000;
+        public const int EquitySimsMax           = 100_000;
+        public const int EquitySimsStep          = 1_000;
+        public const int EquitySimsDefault       = MonteCarloSimulator.DefaultSimulationCount;
+        public const int EquitySimsSliderMaxStep = (EquitySimsMax - EquitySimsMin) / EquitySimsStep;
 
         /// <summary>Shared label size for all options-menu rows (Restart, toggles, bot slider).</summary>
         public const float MenuRowFontSize = 20f;
@@ -64,6 +71,44 @@ namespace TexasHoldem
         /// <summary>Bot-think delay in seconds for gameplay systems.</summary>
         public float CurrentBotThinkDelaySeconds => MsToSeconds(CurrentBotThinkDelayMs);
 
+        /// <summary>Monte Carlo simulation count for human equity display.</summary>
+        public int CurrentEquitySimulationCount =>
+            _equitySimsSlider != null
+                ? SliderValueToEquitySims(_equitySimsSlider.value)
+                : ResolveSceneDefaultEquitySims();
+
+        public static int ResolveSceneDefaultEquitySims()
+        {
+            var ui = FindObjectOfType<UIManager>();
+            return ui != null ? ui.EquitySimulationCount : EquitySimsDefault;
+        }
+
+        public static int SliderValueToEquitySims(float sliderValue)
+        {
+            int step = Mathf.Clamp(Mathf.RoundToInt(sliderValue), 0, EquitySimsSliderMaxStep);
+            return EquitySimsMin + step * EquitySimsStep;
+        }
+
+        public static float EquitySimsToSliderValue(int simulations)
+            => (SnapEquitySimsToStep(simulations) - EquitySimsMin) / (float)EquitySimsStep;
+
+        public static int SnapEquitySimsToStep(int simulations)
+        {
+            simulations = Mathf.Clamp(simulations, EquitySimsMin, EquitySimsMax);
+            return EquitySimsMin
+                   + Mathf.RoundToInt((simulations - EquitySimsMin) / (float)EquitySimsStep) * EquitySimsStep;
+        }
+
+        public static void ApplyEquitySimsSliderRange(Slider slider)
+        {
+            if (slider == null)
+                return;
+
+            slider.minValue     = 0f;
+            slider.maxValue     = EquitySimsSliderMaxStep;
+            slider.wholeNumbers = true;
+        }
+
         public static int SliderValueToMs(float sliderValue)
         {
             int step = Mathf.Clamp(Mathf.RoundToInt(sliderValue), 0, BotThinkSliderMaxStep);
@@ -98,6 +143,7 @@ namespace TexasHoldem
         [SerializeField] private CanvasGroup _canvasGroup;
         [SerializeField] private Toggle[]    _toggles = new Toggle[OptionCount];
         [SerializeField] private Slider      _botThinkSlider;
+        [SerializeField] private Slider      _equitySimsSlider;
 
         [Header("Layout")]
         [Tooltip("AnchoredPosition of the panel (canvas center anchor). Synced with Rect Transform in edit mode.")]
@@ -131,6 +177,8 @@ namespace TexasHoldem
         private Coroutine       _quitCoroutine;
         private TMP_Text        _botThinkHandleLabel;
         private bool            _botThinkSliderBound;
+        private TMP_Text        _equitySimsHandleLabel;
+        private bool            _equitySimsSliderBound;
 
         // ── Unity Callbacks ───────────────────────────────────────────────
 
@@ -155,12 +203,14 @@ namespace TexasHoldem
 
             SetVisible(false);
             BindBotThinkSlider();
+            BindEquitySimsSlider();
         }
 
         private void Start()
         {
             OptionsMenuToggleStyle.ResetRuntimeSprites();
             EnsureBotThinkSliderRow();
+            EnsureEquitySimsSliderRow();
             ApplyCompactLayout();
             ApplyToggleStyles();
             ApplySliderStyles();
@@ -176,7 +226,10 @@ namespace TexasHoldem
         private void OnValidate()
         {
             if (!Application.isPlaying)
+            {
                 EnsureBotThinkSliderRow();
+                EnsureEquitySimsSliderRow();
+            }
             SyncPanelPositionInEditor();
             ApplyCompactLayout();
             ApplySliderStyles();
@@ -284,6 +337,7 @@ namespace TexasHoldem
                 _timeScaleBeforePause = Time.timeScale;
                 Time.timeScale         = 0f;
                 SyncBotThinkSliderFromGame();
+                SyncEquitySimsSliderFromPreferences();
             }
             else
             {
@@ -552,6 +606,130 @@ namespace TexasHoldem
                 || rowName == "Row_Bot think";
         }
 
+        private void BindEquitySimsSlider()
+        {
+            if (_equitySimsSlider == null || _equitySimsSliderBound)
+                return;
+
+            _equitySimsSlider.onValueChanged.AddListener(OnEquitySimsSliderChanged);
+            _equitySimsSliderBound = true;
+        }
+
+        private void EnsureEquitySimsSliderRow()
+        {
+            string expectedRowName = "Row_" + OptionsMenuSliderStyle.EquitySimsLabelText;
+            Transform keepRow = null;
+
+            if (_equitySimsSlider != null)
+            {
+                Transform parent = _equitySimsSlider.transform.parent;
+                if (parent != null && parent.Find("EquitySimsSlider") == _equitySimsSlider.transform)
+                    keepRow = parent;
+            }
+
+            if (keepRow == null)
+            {
+                foreach (Transform child in transform)
+                {
+                    if (child.name.StartsWith("Row_") && child.Find("EquitySimsSlider") != null)
+                    {
+                        keepRow = child;
+                        break;
+                    }
+                }
+            }
+
+            float initialSlider = EquitySimsToSliderValue(ResolveSceneDefaultEquitySims());
+            if (_equitySimsSlider != null)
+                initialSlider = _equitySimsSlider.value;
+
+            if (keepRow == null)
+            {
+                int insertAt = Mathf.Min(EquitySimsSliderRowIndex, transform.childCount);
+                _equitySimsSlider = OptionsMenuRowFactory.CreateEquitySimsSliderRow(transform, initialSlider);
+                keepRow = _equitySimsSlider.transform.parent;
+                keepRow.SetSiblingIndex(insertAt);
+            }
+            else
+            {
+                _equitySimsSlider = keepRow.GetComponentInChildren<Slider>(true);
+                if (keepRow.name != expectedRowName)
+                {
+                    int insertIndex = keepRow.GetSiblingIndex();
+                    float value     = _equitySimsSlider != null ? _equitySimsSlider.value : initialSlider;
+                    DestroyObject(keepRow.gameObject);
+                    _equitySimsSlider         = null;
+                    _equitySimsHandleLabel    = null;
+                    _equitySimsSliderBound    = false;
+                    _equitySimsSlider = OptionsMenuRowFactory.CreateEquitySimsSliderRow(transform, value);
+                    keepRow = _equitySimsSlider.transform.parent;
+                    keepRow.SetSiblingIndex(insertIndex);
+                }
+            }
+
+            keepRow.SetSiblingIndex(EquitySimsSliderRowIndex);
+
+            ApplyEquitySimsSliderRange(_equitySimsSlider);
+
+            if (_toggles != null && EquitySimsSliderRowIndex < _toggles.Length)
+                _toggles[EquitySimsSliderRowIndex] = null;
+
+            _equitySimsHandleLabel = null;
+            _equitySimsSliderBound = false;
+            BindEquitySimsSlider();
+
+            ResolveEquitySimsHandleLabel();
+            OptionsMenuSliderStyle.Apply(_equitySimsSlider, _equitySimsHandleLabel);
+            UpdateEquitySimsHandleLabel(SliderValueToEquitySims(_equitySimsSlider.value));
+
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                UnityEditor.EditorUtility.SetDirty(this);
+#endif
+        }
+
+        private void SyncEquitySimsSliderFromPreferences()
+        {
+            if (_equitySimsSlider == null)
+                return;
+
+            ResolveEquitySimsHandleLabel();
+            UpdateEquitySimsHandleLabel(SliderValueToEquitySims(_equitySimsSlider.value));
+        }
+
+        private void OnEquitySimsSliderChanged(float value)
+        {
+            UpdateEquitySimsHandleLabel(SliderValueToEquitySims(value));
+        }
+
+        public void ApplyLoadedEquitySimulationCount(int simulations)
+        {
+            float sliderValue = EquitySimsToSliderValue(simulations);
+
+            if (_equitySimsSlider != null)
+            {
+                _equitySimsSlider.SetValueWithoutNotify(sliderValue);
+                UpdateEquitySimsHandleLabel(SliderValueToEquitySims(sliderValue));
+            }
+        }
+
+        private void ResolveEquitySimsHandleLabel()
+        {
+            if (_equitySimsHandleLabel != null || _equitySimsSlider == null)
+                return;
+
+            Transform handle = _equitySimsSlider.transform.Find("Handle Slide Area/Handle/HandleLabel");
+            if (handle != null)
+                _equitySimsHandleLabel = handle.GetComponent<TMP_Text>();
+        }
+
+        private void UpdateEquitySimsHandleLabel(int simulations)
+        {
+            ResolveEquitySimsHandleLabel();
+            if (_equitySimsHandleLabel != null)
+                _equitySimsHandleLabel.text = OptionsMenuSliderStyle.FormatHandleValueSims(simulations);
+        }
+
         private void DestroyObject(UnityEngine.Object obj)
         {
 #if UNITY_EDITOR
@@ -657,11 +835,17 @@ namespace TexasHoldem
 
         private void ApplySliderStyles()
         {
-            if (_botThinkSlider == null)
-                return;
+            if (_botThinkSlider != null)
+            {
+                ResolveBotThinkHandleLabel();
+                OptionsMenuSliderStyle.Apply(_botThinkSlider, _botThinkHandleLabel);
+            }
 
-            ResolveBotThinkHandleLabel();
-            OptionsMenuSliderStyle.Apply(_botThinkSlider, _botThinkHandleLabel);
+            if (_equitySimsSlider != null)
+            {
+                ResolveEquitySimsHandleLabel();
+                OptionsMenuSliderStyle.Apply(_equitySimsSlider, _equitySimsHandleLabel);
+            }
         }
 
         private static void ApplyBotThinkIcon(Image icon)
@@ -774,6 +958,9 @@ namespace TexasHoldem
                 }
 
                 Transform sliderT = child.Find("BotThinkSlider");
+                if (sliderT == null)
+                    sliderT = child.Find("EquitySimsSlider");
+
                 if (sliderT != null)
                 {
                     rowLe.preferredHeight = OptionsMenuRowFactory.RowHeight;
@@ -791,7 +978,12 @@ namespace TexasHoldem
                     {
                         var tmp = sliderLabel.GetComponent<TMP_Text>();
                         if (tmp != null)
-                            OptionsMenuSliderStyle.ApplyRowLabelStyle(tmp, FindMenuFontReference());
+                        {
+                            if (sliderT.name == "EquitySimsSlider")
+                                OptionsMenuSliderStyle.ApplyEquityRowLabelStyle(tmp, FindMenuFontReference());
+                            else
+                                OptionsMenuSliderStyle.ApplyRowLabelStyle(tmp, FindMenuFontReference());
+                        }
 
                         var labelLe = sliderLabel.GetComponent<LayoutElement>();
                         if (labelLe == null)

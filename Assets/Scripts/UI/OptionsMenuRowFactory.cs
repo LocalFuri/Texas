@@ -83,6 +83,78 @@ namespace TexasHoldem
             return slider;
         }
 
+        public static Slider CreateEquitySimsSliderRow(Transform panel, float initialSliderValue)
+        {
+            string labelText = OptionsMenuSliderStyle.EquitySimsLabelText;
+            int initialSims = OptionsMenu.SliderValueToEquitySims(initialSliderValue);
+            var row = CreateRect("Row_" + labelText, panel);
+            AddRowLayout(row);
+
+            var iconGo = CreateRect("Icon", row.transform);
+            var iconLe = iconGo.AddComponent<LayoutElement>();
+            iconLe.minWidth = iconLe.preferredWidth = CheckboxSize;
+            iconLe.minHeight = iconLe.preferredHeight = CheckboxSize;
+            var iconImg = iconGo.AddComponent<Image>();
+            iconImg.sprite        = OptionsMenuToggleStyle.GetCheckboxSprite();
+            iconImg.color         = Color.white;
+            iconImg.raycastTarget = false;
+
+            var labelGo = CreateRect("Label", row.transform);
+            var labelLe = labelGo.AddComponent<LayoutElement>();
+            labelLe.flexibleWidth   = 0f;
+            labelLe.minWidth        = OptionsMenuSliderStyle.LabelWidth;
+            labelLe.preferredWidth  = OptionsMenuSliderStyle.LabelWidth;
+            labelLe.minHeight       = RowHeight;
+            labelLe.preferredHeight = RowHeight;
+            var labelTmp = labelGo.AddComponent<TextMeshProUGUI>();
+            StyleRowLabel(labelTmp, labelText, ResolveMenuFont(panel));
+
+            var sliderGo = CreateRect("EquitySimsSlider", row.transform);
+            var sliderLe = sliderGo.AddComponent<LayoutElement>();
+            sliderLe.flexibleWidth   = 1f;
+            sliderLe.minWidth        = OptionsMenuSliderStyle.SliderMinWidth;
+            sliderLe.minHeight       = OptionsMenuSliderStyle.HandleHeight;
+            sliderLe.preferredHeight = OptionsMenuSliderStyle.HandleHeight;
+
+            var slider = sliderGo.AddComponent<Slider>();
+
+            var bgGo = CreateRect("Background", sliderGo.transform);
+            bgGo.AddComponent<Image>();
+
+            var fillAreaGo = CreateRect("Fill Area", sliderGo.transform);
+            Stretch((RectTransform)fillAreaGo.transform);
+
+            var fillGo = CreateRect("Fill", fillAreaGo.transform);
+            Stretch((RectTransform)fillGo.transform);
+            fillGo.AddComponent<Image>();
+
+            var handleAreaGo = CreateRect("Handle Slide Area", sliderGo.transform);
+            Stretch((RectTransform)handleAreaGo.transform);
+
+            var handleGo = CreateRect("Handle", handleAreaGo.transform);
+            handleGo.AddComponent<Image>();
+
+            var handleLabelGo = CreateRect("HandleLabel", handleGo.transform);
+            Stretch((RectTransform)handleLabelGo.transform);
+            var handleTmp = handleLabelGo.AddComponent<TextMeshProUGUI>();
+            handleTmp.text               = OptionsMenuSliderStyle.FormatHandleValueSims(initialSims);
+            handleTmp.raycastTarget      = false;
+            handleTmp.enableWordWrapping = false;
+
+            OptionsMenuSliderStyle.ApplyMenuFont(labelTmp, handleTmp, copySharedMaterial: false);
+            OptionsMenuSliderStyle.ApplyHandleLabelStyle(handleTmp);
+
+            slider.fillRect     = (RectTransform)fillGo.transform;
+            slider.handleRect   = (RectTransform)handleGo.transform;
+            slider.direction    = Slider.Direction.LeftToRight;
+            OptionsMenu.ApplyEquitySimsSliderRange(slider);
+            slider.value = Mathf.Clamp(initialSliderValue, 0f, OptionsMenu.EquitySimsSliderMaxStep);
+
+            OptionsMenuSliderStyle.Apply(slider, handleTmp);
+
+            return slider;
+        }
+
         private static void AddRowLayout(GameObject row)
         {
             var rowLe = row.AddComponent<LayoutElement>();

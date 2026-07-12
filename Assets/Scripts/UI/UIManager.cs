@@ -96,6 +96,13 @@ namespace TexasHoldem
         [Tooltip("When on, bot hole cards stay face-up during the hand so you can watch AI decisions. Also available via Options menu (Show Bot Cards).")]
         [SerializeField] private bool _showBotCardsForTesting;
 
+        [Header("Equity Display")]
+        [Tooltip("Default Monte Carlo simulation count for the human equity % (1k–100k, 1k steps). Overridden by Options → Equity sims after the menu is saved once.")]
+        [SerializeField] private int _equitySimulationCount = MonteCarloSimulator.DefaultSimulationCount;
+
+        /// <summary>Scene default equity sim count (Inspector), snapped to valid steps.</summary>
+        public int EquitySimulationCount => OptionsMenu.SnapEquitySimsToStep(_equitySimulationCount);
+
         [Header("Seat Bet Place")]
         [Tooltip("When off, bet chips appear instantly under the seat (GGPoker / PokerStars style).")]
         [SerializeField] private bool _animateBetPlace;
@@ -1726,7 +1733,8 @@ namespace TexasHoldem
                 {
                     result    = r;
                     completed = true;
-                });
+                },
+                ResolveEquitySimulationCount());
 
             if (generation != _equityRefreshGeneration || !completed)
                 yield break;
@@ -1750,6 +1758,14 @@ namespace TexasHoldem
             }
 
             return count;
+        }
+
+        private int ResolveEquitySimulationCount()
+        {
+            if (OptionsMenu.Instance != null)
+                return OptionsMenu.Instance.CurrentEquitySimulationCount;
+
+            return EquitySimulationCount;
         }
 
         private int ParseRaiseIncrement()
@@ -3380,6 +3396,7 @@ namespace TexasHoldem
 
         private void OnValidate()
         {
+            _equitySimulationCount = OptionsMenu.SnapEquitySimsToStep(_equitySimulationCount);
             SyncSeatActionBadgeOffset();
             ApplyActionPanelPosition();
             RebuildActionButtonRowLayout();
