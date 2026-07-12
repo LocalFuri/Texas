@@ -6,7 +6,11 @@ namespace TexasHoldem
     [RequireComponent(typeof(AudioSource))]
     public class TableSoundManager : MonoBehaviour
     {
-      [Header("Fold")]
+      [Header("Blinds")]
+      [SerializeField] private AudioClip _blindClip;
+      [SerializeField][Range(0f, 1f)] private float _blindVolume = 1f;
+
+     [Header("Fold")]
       [SerializeField] private AudioClip _foldClip;
       [SerializeField][Range(0f, 1f)] private float _foldVolume = 1f;
       
@@ -55,6 +59,7 @@ namespace TexasHoldem
         }
 
     
+        public void PlayBlind() => PlayClip(_blindClip, _blindVolume);
         public void PlayKnockKnock() => PlayClip(_knockKnockClip, _knockKnockVolume);
         public void PlaySmallBet() => PlayClip(_smallBetClip, _smallBetVolume);
 

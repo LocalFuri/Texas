@@ -333,18 +333,21 @@ namespace TexasHoldem
             NotifyPlayersUpdated();
 
             yield return DelaySeconds(_blindPostDelay);
+            yield return DealPreflopHoleCards(active, sbIndex);
+            NotifyPlayersUpdated();
+            yield return DelaySeconds(GetCommunityRevealDuration(2));
+
+            yield return DelaySeconds(_blindPostDelay);
             _bettingManager.PostSmallBlind(active[sbIndex]);
+            TableSounds?.PlayBlind();
             OnGameMessage?.Invoke($"{active[sbIndex].Name} posts small blind (${_smallBlind}).");
             NotifyPlayersUpdated();
 
             yield return DelaySeconds(_blindPostDelay);
             _bettingManager.PostBigBlind(active[bbIndex]);
+            TableSounds?.PlayBlind();
             OnGameMessage?.Invoke($"{active[bbIndex].Name} posts big blind (${_bigBlind}).");
             NotifyPlayersUpdated();
-
-            yield return DealPreflopHoleCards(active, sbIndex);
-            NotifyPlayersUpdated();
-            yield return DelaySeconds(GetCommunityRevealDuration(2));
 
             // ── Pre-Flop ──────────────────────────────────────────────────
             SetPhase(GamePhase.PreFlop);

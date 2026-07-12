@@ -12139,6 +12139,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8f4a2b1c3d5476980abcdef12345678, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _blindClip: {fileID: 8300000, guid: ed69919bf362677448c23d6e4cd5f335, type: 3}
+  _blindVolume: 0.5
   _foldClip: {fileID: 8300000, guid: 9e0c3662bd8f78b409bbc5a23af729c9, type: 3}
   _foldVolume: 0.5
   _knockKnockClip: {fileID: 8300000, guid: aa2e2e4584086d94aa416853877266c7, type: 3}
