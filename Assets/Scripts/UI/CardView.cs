@@ -165,6 +165,30 @@ namespace TexasHoldem
             onComplete?.Invoke();
         }
 
+        /// <summary>Scale flip from face-down to the given card face.</summary>
+        public IEnumerator AnimateFlipToFace(Card card)
+        {
+            if (card == null)
+                yield break;
+
+            if (_isFaceUp)
+                yield break;
+
+            if (_cardBackground == null)
+            {
+                Show(card);
+                yield break;
+            }
+
+            StopWinnerPulse();
+            StopFlip();
+            gameObject.SetActive(true);
+            ShowFaceDown();
+
+            _faceSprite = _spriteLibrary != null ? _spriteLibrary.GetSprite(card) : null;
+            yield return FlipRoutine(toFaceUp: true, onComplete: null);
+        }
+
         /// <summary>Shows the slot as a dark empty placeholder — visible but no card assigned.</summary>
         public void ShowEmpty()
         {
@@ -443,7 +467,7 @@ namespace TexasHoldem
             float   half  = flipDuration * 0.5f;
             float   elapsed;
 
-            for (elapsed = 0f; elapsed < half; elapsed += Time.deltaTime)
+            for (elapsed = 0f; elapsed < half; elapsed += Time.unscaledDeltaTime)
             {
                 float t = Mathf.Clamp01(elapsed / half);
                 rt.localScale = new Vector3(orig.x * (1f - t), orig.y, orig.z);
@@ -455,7 +479,7 @@ namespace TexasHoldem
             _cardBackground.color  = Color.white;
             _cardBackground.sprite = toFaceUp ? _faceSprite : _spriteLibrary?.CardBack;
 
-            for (elapsed = 0f; elapsed < half; elapsed += Time.deltaTime)
+            for (elapsed = 0f; elapsed < half; elapsed += Time.unscaledDeltaTime)
             {
                 float t = Mathf.Clamp01(elapsed / half);
                 rt.localScale = new Vector3(orig.x * t, orig.y, orig.z);

@@ -109,7 +109,7 @@ namespace TexasHoldem
         [SerializeField, Min(0f)] private float _collectPotUpdateDelay = 0.1f;
 
         [Header("Preflop Deal")]
-        [Tooltip("When on, hole cards fly from the dealer area with motion trails (GGPoker style).")]
+        [Tooltip("When on, hole cards appear one at a time (SB clockwise) with deal stagger; no fly-in.")]
         [SerializeField] private bool _animatePreflopDeal = true;
         [Tooltip("Optional anchor for deal origin. When unset, uses community-board centre plus Deal Origin Offset.")]
         [SerializeField] private RectTransform _dealOriginAnchor;
@@ -983,8 +983,39 @@ namespace TexasHoldem
             _humanSeatView?.CancelHoleCardFlips();
         }
 
+        /// <summary>Animated flip reveal for the human after all hole cards are dealt.</summary>
+        public IEnumerator RevealHumanHoleCardsAfterDeal(PlayerState human)
+        {
+            if (human == null)
+                yield break;
+
+            PlayerView view = ResolvePlayerView(human);
+            if (view == null)
+                yield break;
+
+            view.SetIsHuman(true);
+
+            if (_humanHoleRevealCoroutine != null)
+            {
+                StopCoroutine(_humanHoleRevealCoroutine);
+                _humanHoleRevealCoroutine = null;
+            }
+
+            _humanHoleRevealCoroutine = StartCoroutine(HumanHoleRevealWorker(view, human));
+            yield return _humanHoleRevealCoroutine;
+        }
+
+        private IEnumerator HumanHoleRevealWorker(PlayerView humanView, PlayerState humanState)
+        {
+            yield return humanView.RevealHumanHoleCards(humanState);
+            _humanHoleRevealCoroutine = null;
+        }
+
         private void TryScheduleHumanHoleReveal(PlayerView humanView, PlayerState humanState)
         {
+            if (_preflopDealInProgress)
+                return;
+
             if (humanView == null || humanState == null)
                 return;
             if (humanState.HoleCards.Count == 0)
@@ -994,13 +1025,7 @@ namespace TexasHoldem
             if (_humanHoleRevealCoroutine != null)
                 return;
 
-            _humanHoleRevealCoroutine = StartCoroutine(HumanHoleRevealRoutine(humanView, humanState));
-        }
-
-        private IEnumerator HumanHoleRevealRoutine(PlayerView humanView, PlayerState humanState)
-        {
-            yield return humanView.RevealHumanHoleCards(humanState);
-            _humanHoleRevealCoroutine = null;
+            _humanHoleRevealCoroutine = StartCoroutine(HumanHoleRevealWorker(humanView, humanState));
         }
 
         private IEnumerator WaitForTableUiIdle(bool waitForHoleReveal)
@@ -2356,13 +2381,49 @@ namespace TexasHoldem
         public void BeginPreflopDealAnimation()
         {
             _preflopDealInProgress = true;
-            ShowDealDeckGhost();
         }
 
         public void EndPreflopDealAnimation()
         {
             _preflopDealInProgress = false;
-            HideDealDeckGhost();
+        }
+
+        /// <summary>Places one hole card face-down at the seat (no fly-in).</summary>
+        public void PlacePreflopHoleCard(int seatIndex, int slotIndex, PlayerState player)
+        {
+            if (player == null)
+                return;
+
+            IReadOnlyList<PlayerView> views = ResolvePlayerViews();
+            if (views == null || seatIndex < 0 || seatIndex >= views.Count)
+                return;
+
+            PlayerView view = views[seatIndex];
+            if (view == null)
+                return;
+
+            view.SetIsHuman(player.Type == PlayerType.Human);
+            view.PlaceHoleCardFaceDown(slotIndex);
+        }
+
+        /// <summary>Shows every dealt hole card face-down instantly (used when deal stagger is off).</summary>
+        public void ShowAllPreflopHoleCardsFaceDown(IReadOnlyList<PlayerState> active)
+        {
+            if (active == null)
+                return;
+
+            foreach (PlayerState player in active)
+            {
+                if (player == null)
+                    continue;
+
+                int seatIndex = _gameManager != null ? _gameManager.Players.IndexOf(player) : -1;
+                if (seatIndex < 0)
+                    continue;
+
+                for (int slot = 0; slot < player.HoleCards.Count; slot++)
+                    PlacePreflopHoleCard(seatIndex, slot, player);
+            }
         }
 
         private void ShowDealDeckGhost()

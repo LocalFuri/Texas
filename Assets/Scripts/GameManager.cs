@@ -800,53 +800,44 @@ namespace TexasHoldem
                 yield break;
 
             UIManager ui = ResolveUiManager();
-            if (ui == null || !ui.AnimatePreflopDeal)
-            {
-                _boardManager.DealHoleCards(active, sbIndex);
-                yield break;
-            }
+            PlayerState human = active.Find(p => p.Type == PlayerType.Human);
 
             sbIndex = ((sbIndex % playerCount) + playerCount) % playerCount;
-            ui.BeginPreflopDealAnimation();
 
-            int inFlight = 0;
+            if (ui != null)
+                ui.BeginPreflopDealAnimation();
 
             try
             {
-                for (int round = 0; round < 2; round++)
+                if (ui != null && ui.AnimatePreflopDeal)
                 {
-                    for (int i = 0; i < playerCount; i++)
+                    for (int round = 0; round < 2; round++)
                     {
-                        PlayerState player = active[(sbIndex + i) % playerCount];
-                        Card card = _boardManager.DealHoleCardTo(player);
-                        int seatIndex = Players.IndexOf(player);
-                        bool faceUp = player.Type == PlayerType.Human;
+                        for (int i = 0; i < playerCount; i++)
+                        {
+                            PlayerState player = active[(sbIndex + i) % playerCount];
+                            _boardManager.DealHoleCardTo(player);
+                            int seatIndex = Players.IndexOf(player);
+                            ui.PlacePreflopHoleCard(seatIndex, round, player);
 
-                        inFlight++;
-                        StartCoroutine(TrackHoleCardDeal(
-                            ui.AnimateHoleCardDeal(seatIndex, round, card, faceUp),
-                            () => inFlight--));
-
-                        if (ui.HoleCardDealStagger > 0f)
-                            yield return DelaySeconds(ui.HoleCardDealStagger);
+                            if (ui.HoleCardDealStagger > 0f)
+                                yield return DelaySeconds(ui.HoleCardDealStagger);
+                        }
                     }
                 }
+                else
+                {
+                    _boardManager.DealHoleCards(active, sbIndex);
+                    ui?.ShowAllPreflopHoleCardsFaceDown(active);
+                }
 
-                while (inFlight > 0)
-                    yield return null;
+                if (human != null && ui != null)
+                    yield return ui.RevealHumanHoleCardsAfterDeal(human);
             }
             finally
             {
-                ui.EndPreflopDealAnimation();
+                ui?.EndPreflopDealAnimation();
             }
-        }
-
-        private IEnumerator TrackHoleCardDeal(IEnumerator routine, System.Action onComplete)
-        {
-            if (routine != null)
-                yield return routine;
-
-            onComplete?.Invoke();
         }
 
         private void NotifyPlayersUpdated() => OnPlayersUpdated?.Invoke(Players);
