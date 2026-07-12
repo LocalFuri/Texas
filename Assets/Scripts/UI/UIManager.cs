@@ -2245,6 +2245,29 @@ namespace TexasHoldem
             FinishStreetBetCollect(views);
         }
 
+        /// <summary>Hides the winner's seat stack after an uncalled raise is returned to their chips.</summary>
+        public IEnumerator PlayUncalledBetReturn(PlayerState winner)
+        {
+            if (!Application.isPlaying || winner == null)
+                yield break;
+
+            if (_playersRefreshCoroutine != null)
+            {
+                StopCoroutine(_playersRefreshCoroutine);
+                _playersRefreshCoroutine  = null;
+                _playersRefreshInProgress = false;
+            }
+
+            PlayerView winnerView = ResolvePlayerView(winner);
+            winnerView?.HideBetDisplay();
+
+            if (winnerView != null)
+                winnerView.RefreshHud(winner, ResolveBigBlindAmount());
+
+            UpdatePotLabel();
+            yield return null;
+        }
+
         private void FinishStreetBetCollect(IReadOnlyList<PlayerView> views)
         {
             foreach (PlayerView view in views)

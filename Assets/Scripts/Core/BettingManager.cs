@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace TexasHoldem
@@ -9,6 +10,9 @@ namespace TexasHoldem
         public int CurrentBet { get; private set; }
         public int SmallBlind { get; }
         public int BigBlind   { get; }
+
+        private PlayerState _lastAggressor;
+        private bool        _lastRaiseWasCalled;
 
         public BettingManager(int smallBlind, int bigBlind)
         {
@@ -21,10 +25,21 @@ namespace TexasHoldem
         {
             Pot        = 0;
             CurrentBet = 0;
+            ResetAggressionTracking();
         }
 
         /// <summary>Resets only the current bet for a new betting phase.</summary>
-        public void ResetPhase() => CurrentBet = 0;
+        public void ResetPhase()
+        {
+            CurrentBet = 0;
+            ResetAggressionTracking();
+        }
+
+        private void ResetAggressionTracking()
+        {
+            _lastAggressor       = null;
+            _lastRaiseWasCalled  = false;
+        }
 
         /// <summary>Posts the small blind for the given player.</summary>
         public void PostSmallBlind(PlayerState player) => PlaceForcedBet(player, SmallBlind);
@@ -55,6 +70,7 @@ namespace TexasHoldem
 
                 case BettingAction.Call:
                     PlaceBet(player, CurrentBet - player.CurrentBet);
+                    NoteMatchedBet(player);
                     return true;
 
                 case BettingAction.Raise:
@@ -69,12 +85,20 @@ namespace TexasHoldem
                     int totalAfterRaise = CurrentBet + raiseAmount;
                     PlaceBet(player, totalAfterRaise - player.CurrentBet);
                     CurrentBet = player.CurrentBet;
+                    NoteRaise(player);
                     return true;
 
                 case BettingAction.AllIn:
+                    int tableBetBefore = CurrentBet;
                     PlaceBet(player, player.Chips);
                     if (player.CurrentBet > CurrentBet)
+                    {
                         CurrentBet = player.CurrentBet;
+                        NoteRaise(player);
+                    }
+                    else if (player.CurrentBet >= tableBetBefore && player.CurrentBet >= CurrentBet)
+                        NoteMatchedBet(player);
+
                     player.IsAllIn = true;
                     return true;
 
@@ -127,6 +151,66 @@ namespace TexasHoldem
             player.CurrentBet += amount;
             Pot           += amount;
             if (player.Chips == 0) player.IsAllIn = true;
+        }
+
+        private void NoteRaise(PlayerState aggressor)
+        {
+            _lastAggressor      = aggressor;
+            _lastRaiseWasCalled = false;
+        }
+
+        private void NoteMatchedBet(PlayerState player)
+        {
+            if (_lastAggressor != null
+                && player != _lastAggressor
+                && player.CurrentBet >= CurrentBet)
+            {
+                _lastRaiseWasCalled = true;
+            }
+        }
+
+        /// <summary>
+        /// Returns uncalled raise chips to the last aggressor when everyone folded without calling.
+        /// SB/BB-only pots keep blinds collected; the full uncalled raise stack goes back to the raiser.
+        /// </summary>
+        public int ReturnUncalledBet(PlayerState winner, IReadOnlyList<PlayerState> players)
+        {
+            if (winner == null || winner.CurrentBet <= 0 || winner != _lastAggressor)
+                return 0;
+
+            foreach (PlayerState player in players)
+            {
+                if (player != winner && player.CurrentBet >= winner.CurrentBet)
+                    return 0;
+            }
+
+            int maxOtherBet  = 0;
+            int sumOtherBets = 0;
+            foreach (PlayerState player in players)
+            {
+                if (player == winner)
+                    continue;
+
+                sumOtherBets += player.CurrentBet;
+                if (player.CurrentBet > maxOtherBet)
+                    maxOtherBet = player.CurrentBet;
+            }
+
+            int blindCap = SmallBlind + BigBlind;
+            int returnAmount;
+            if (!_lastRaiseWasCalled && sumOtherBets <= blindCap)
+                returnAmount = winner.CurrentBet;
+            else
+                returnAmount = winner.CurrentBet - maxOtherBet;
+
+            returnAmount = Math.Min(returnAmount, winner.CurrentBet);
+            if (returnAmount <= 0)
+                return 0;
+
+            winner.Chips      += returnAmount;
+            winner.CurrentBet -= returnAmount;
+            Pot               -= returnAmount;
+            return returnAmount;
         }
     }
 }

@@ -545,6 +545,22 @@ namespace TexasHoldem
 
         private IEnumerator EndRound(List<PlayerState> active)
         {
+            List<PlayerState> remaining = GetNonFolded(active);
+            if (remaining.Count == 1)
+            {
+                PlayerState soleWinner = remaining[0];
+                int returned = _bettingManager.ReturnUncalledBet(soleWinner, active);
+                if (returned > 0)
+                {
+                    OnGameMessage?.Invoke(
+                        $"{soleWinner.Name}'s uncalled raise (${returned}) is returned.");
+                    UIManager ui = ResolveUiManager();
+                    if (ui != null)
+                        yield return ui.PlayUncalledBetReturn(soleWinner);
+                    NotifyPlayersUpdated();
+                }
+            }
+
             yield return CollectStreetBetsBeforeNextStreet(active);
 
             SetPhase(GamePhase.Showdown);
