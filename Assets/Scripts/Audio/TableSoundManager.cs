@@ -81,7 +81,7 @@ namespace TexasHoldem
                     break;
 
                 case BettingAction.Raise:
-                    PlayLargeBet();
+                    PlayActionBetSound(action, amount);
                     break;
 
                 case BettingAction.Call:
@@ -89,6 +89,42 @@ namespace TexasHoldem
                     if (amount <= 0)
                         break;
 
+                    PlayActionBetSound(action, amount);
+                    break;
+            }
+        }
+
+        /// <summary>Preflop limp / complete-blind call (table still at BB) uses chip sound; raises use small bet.</summary>
+        private bool IsPreflopCallMatchingBigBlind()
+        {
+            return _gameManager.CurrentPhase == GamePhase.PreFlop
+                && _gameManager.CurrentBet <= _gameManager.BigBlindAmount;
+        }
+
+        private void PlayActionBetSound(BettingAction action, int amount)
+        {
+            if (_gameManager.CurrentPhase == GamePhase.PreFlop)
+            {
+                if ((action == BettingAction.Call || action == BettingAction.AllIn)
+                    && IsPreflopCallMatchingBigBlind())
+                {
+                    PlayBlind();
+                }
+                else
+                {
+                    PlaySmallBet();
+                }
+
+                return;
+            }
+
+            switch (action)
+            {
+                case BettingAction.Raise:
+                    PlayLargeBet();
+                    break;
+
+                default:
                     if (amount >= _gameManager.BigBlindAmount)
                         PlayLargeBet();
                     else
