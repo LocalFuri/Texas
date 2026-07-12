@@ -1062,7 +1062,6 @@ namespace TexasHoldem
             PlayerView humanView = null;
             PlayerState humanState = null;
             bool holeRevealRunning = _humanHoleRevealCoroutine != null;
-            bool anyBetIncreased   = false;
 
             for (int i = 0; i < views.Count && i < players.Count; i++)
             {
@@ -1100,8 +1099,6 @@ namespace TexasHoldem
                 // Update BetDisplay — animate chip only when the player's bet increases.
                 _previousBets.TryGetValue(i, out int prevBet);
                 bool betIncreased = player.CurrentBet > prevBet;
-                if (betIncreased)
-                    anyBetIncreased = true;
                 _previousBets[i]  = player.CurrentBet;
 
                 if (_winnerSplitPotActive)
@@ -1127,8 +1124,6 @@ namespace TexasHoldem
             TryScheduleHumanHoleReveal(humanView, humanState);
 
             UpdatePotLabel();
-            if (anyBetIncreased && !_collectInProgress && !_winnerCelebrationActive)
-                HidePotChipStack();
             RefreshDealerButton();
             }
             finally
@@ -1768,23 +1763,26 @@ namespace TexasHoldem
                 return;
 
             int pot = _gameManager.PotAmount;
+            if (pot <= 0)
+            {
+                _potText.text = string.Empty;
+                HidePotChipStack();
+                return;
+            }
+
             _potText.text = "Pot: " + pot.ToString("N0", GermanNFI);
 
             if (_potChipStack == null || !IsPotChipStackAtHome())
                 return;
 
-            bool stackActive = _potChipStack.StackRoot.gameObject.activeSelf;
-            if (!stackActive)
-                return;
-
-            if (pot <= 0)
+            // Preflop: blinds/bets stay on seats until street collect; center stack from flop onward.
+            if (_gameManager.CurrentPhase == GamePhase.PreFlop)
             {
                 HidePotChipStack();
                 return;
             }
 
-            _potChipStack.SetExactAmount(pot);
-            PositionPotChipStack(showStack: true);
+            ShowPotChipStack(pot);
         }
 
         private Transform ResolvePotChipStackHomeParent()
