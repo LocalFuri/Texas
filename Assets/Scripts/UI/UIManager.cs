@@ -147,11 +147,11 @@ namespace TexasHoldem
         [Header("Winner Celebration")]
         [Tooltip("Pause at center after resizing the pot to the net amount, before chips fly to the winner.")]
         [SerializeField, Min(0f)] private float _winnerPotCollectResizeDelay = 0.25f;
-        [Tooltip("Duration for pot chips flying to the winner HUD (Backspace or B).")]
+        [Tooltip("Duration for pot chips flying from center to the winner's bet stack position.")]
         [SerializeField, Min(0.05f)] private float _winnerPotCollectFlyDuration = 0.5f;
-        [Tooltip("Pause after chips land at the winner before they vanish into the avatar.")]
+        [Tooltip("Pause after chips land at the winner's bet position before they move into the avatar.")]
         [SerializeField, Min(0f)] private float _winnerPotCollectHoldDuration = 0.5f;
-        [Tooltip("Duration for chips shrinking and fading into the avatar center.")]
+        [Tooltip("Duration for chips flying from the bet position into the avatar center while shrinking.")]
         [SerializeField, Min(0.05f)] private float _winnerPotCollectVanishDuration = 0.35f;
         [Tooltip("Avatar frame scale (photo + rings) at win — peak scale (1.2 = 20% bigger).")]
         [SerializeField, Min(1f)] private float _winnerAvatarPulseScale = 1.4f;
@@ -3584,20 +3584,40 @@ namespace TexasHoldem
             CompleteWinnerPotCollection();
         }
 
-        private bool TryResolveWinnerCollectCanvasPosition(
+        private bool TryResolveWinnerBetStackCanvasPosition(
+            PlayerView winnerView, RectTransform canvasRt, int amount, out Vector2 canvasPosition)
+        {
+            canvasPosition = Vector2.zero;
+            if (winnerView == null || canvasRt == null)
+                return false;
+
+            if (_tableLayout != null
+                && _tableLayout.TryGetBetChipStackCanvasPosition(
+                    winnerView, canvasRt, amount, out canvasPosition))
+            {
+                return true;
+            }
+
+            RectTransform betAnchor = winnerView.BetAnchorRect;
+            if (betAnchor == null)
+                return false;
+
+            canvasPosition = CanvasPointFromRect(canvasRt, betAnchor);
+            return true;
+        }
+
+        private static bool TryResolveWinnerAvatarCanvasPosition(
             PlayerView winnerView, RectTransform canvasRt, out Vector2 canvasPosition)
         {
             canvasPosition = Vector2.zero;
             if (winnerView == null || canvasRt == null)
                 return false;
 
-            RectTransform target = winnerView.AvatarRect
-                                   ?? winnerView.ChipsHudRect
-                                   ?? winnerView.BetAnchorRect;
-            if (target == null)
+            RectTransform avatarRt = winnerView.AvatarRect;
+            if (avatarRt == null)
                 return false;
 
-            canvasPosition = CanvasPointFromRect(canvasRt, target);
+            canvasPosition = CanvasPointFromRect(canvasRt, avatarRt);
             return true;
         }
 
@@ -3649,10 +3669,10 @@ namespace TexasHoldem
             RectTransform stackRt = _potChipStack.StackRoot;
             var canvasRt = (RectTransform)_rootCanvas.transform;
 
-            if (!TryResolveWinnerCollectCanvasPosition(winnerView, canvasRt, out Vector2 endPos))
+            if (!TryResolveWinnerBetStackCanvasPosition(winnerView, canvasRt, amount, out Vector2 betPos))
             {
                 Debug.LogError(
-                    $"[UIManager] Pot collect FAILED — could not resolve winner collect position (amount={amount}).",
+                    $"[UIManager] Pot collect FAILED — could not resolve winner bet stack position (amount={amount}).",
                     this);
                 yield break;
             }
@@ -3673,11 +3693,11 @@ namespace TexasHoldem
             {
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / flyDuration));
-                stackRt.anchoredPosition = Vector2.Lerp(startPos, endPos, t);
+                stackRt.anchoredPosition = Vector2.Lerp(startPos, betPos, t);
                 yield return null;
             }
 
-            stackRt.anchoredPosition = endPos;
+            stackRt.anchoredPosition = betPos;
             stackRt.localScale       = Vector3.one;
 
             if (_potText != null)
@@ -3686,8 +3706,12 @@ namespace TexasHoldem
             if (_winnerPotCollectHoldDuration > 0f)
                 yield return new WaitForSecondsRealtime(_winnerPotCollectHoldDuration);
 
+            Vector2 avatarPos = betPos;
+            TryResolveWinnerAvatarCanvasPosition(winnerView, canvasRt, out avatarPos);
+
             float vanishDuration = Mathf.Max(0.05f, _winnerPotCollectVanishDuration);
             elapsed              = 0f;
+            Vector2 vanishStart  = stackRt.anchoredPosition;
             Vector3 scaleStart   = stackRt.localScale;
 
             while (elapsed < vanishDuration)
@@ -3695,7 +3719,8 @@ namespace TexasHoldem
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / vanishDuration));
 
-                stackRt.localScale = Vector3.Lerp(scaleStart, Vector3.zero, t);
+                stackRt.anchoredPosition = Vector2.Lerp(vanishStart, avatarPos, t);
+                stackRt.localScale       = Vector3.Lerp(scaleStart, Vector3.zero, t);
                 SetPotCollectVisualAlpha(1f - t);
 
                 yield return null;
