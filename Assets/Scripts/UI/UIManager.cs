@@ -145,6 +145,8 @@ namespace TexasHoldem
         public float HoleCardFlyDuration => _holeCardFlyDuration;
 
         [Header("Winner Celebration")]
+        [Tooltip("Pause at center after resizing the pot to the net amount, before chips fly to the winner.")]
+        [SerializeField, Min(0f)] private float _winnerPotCollectResizeDelay = 0.25f;
         [Tooltip("Duration for pot chips flying to the winner HUD (Backspace or B).")]
         [SerializeField, Min(0.05f)] private float _winnerPotCollectFlyDuration = 0.5f;
         [Tooltip("Pause after chips land at the winner before they vanish into the avatar.")]
@@ -3639,6 +3641,9 @@ namespace TexasHoldem
             RestorePotChipStackHome();
             ApplyNetPotToCenterDisplay(amount);
             ShowPotAmountBadge(amount);
+
+            if (_winnerPotCollectResizeDelay > 0f)
+                yield return new WaitForSecondsRealtime(_winnerPotCollectResizeDelay);
 
             RectTransform stackRt = _potChipStack.StackRoot;
             var canvasRt = (RectTransform)_rootCanvas.transform;

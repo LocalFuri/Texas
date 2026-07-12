@@ -8737,6 +8737,7 @@ MonoBehaviour:
   _holeCardSmearAlpha: 0.4
   _holeCardSmearSpawnInterval: 0.02
   _holeCardSmearFadeDuration: 0.24
+  _winnerPotCollectResizeDelay: 0.25
   _winnerPotCollectFlyDuration: 0.5
   _winnerPotCollectHoldDuration: 1
   _winnerPotCollectVanishDuration: 0.5
@@ -10082,7 +10083,7 @@ MonoBehaviour:
   m_lineSpacingMax: 0
   m_paragraphSpacing: 0
   m_charWidthMaxAdj: 0
-  m_TextWrappingMode: 0
+  m_TextWrappingMode: 3
   m_wordWrappingRatios: 0.4
   m_overflowMode: 0
   m_linkedTextComponent: {fileID: 0}
