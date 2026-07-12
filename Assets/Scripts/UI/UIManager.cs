@@ -97,7 +97,7 @@ namespace TexasHoldem
         [SerializeField] private bool _showBotCardsForTesting;
 
         [Header("Equity Display")]
-        [Tooltip("Default Monte Carlo simulation count for the human equity % (1k–100k, 1k steps). Overridden by Options → Equity sims after the menu is saved once.")]
+        [Tooltip("Default Monte Carlo simulation count for the human equity % (1k–1M, 1k steps). Overridden by Options → Equity sims after the menu is saved once.")]
         [SerializeField] private int _equitySimulationCount = MonteCarloSimulator.DefaultSimulationCount;
 
         /// <summary>Scene default equity sim count (Inspector), snapped to valid steps.</summary>

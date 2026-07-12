@@ -174,6 +174,9 @@ namespace TexasHoldem
 
         public static string FormatHandleValueSims(int simulations)
         {
+            if (simulations >= 1_000_000 && simulations % 1_000_000 == 0)
+                return simulations / 1_000_000 + "M";
+
             if (simulations >= 10_000 && simulations % 1_000 == 0)
                 return simulations / 1_000 + "k";
 

@@ -27,7 +27,7 @@ namespace TexasHoldem
         public const float BotThinkDefaultSeconds    = BotThinkDefaultMs / 1000f;
 
         public const int EquitySimsMin           = 1_000;
-        public const int EquitySimsMax           = 100_000;
+        public const int EquitySimsMax           = 1_000_000;
         public const int EquitySimsStep          = 1_000;
         public const int EquitySimsDefault       = MonteCarloSimulator.DefaultSimulationCount;
         public const int EquitySimsSliderMaxStep = (EquitySimsMax - EquitySimsMin) / EquitySimsStep;
