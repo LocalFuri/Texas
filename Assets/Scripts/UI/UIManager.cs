@@ -1270,6 +1270,8 @@ namespace TexasHoldem
             bool isHumanTurn = player.Type == PlayerType.Human;
             yield return WaitForTableUiIdle(isHumanTurn);
 
+            UpdatePotLabel();
+
             if (isHumanTurn)
                 _humanPlayer = player;
 
@@ -1775,8 +1777,9 @@ namespace TexasHoldem
             if (_potChipStack == null || !IsPotChipStackAtHome())
                 return;
 
-            // Preflop: blinds/bets stay on seats until street collect; center stack from flop onward.
-            if (_gameManager.CurrentPhase == GamePhase.PreFlop)
+            // Preflop + blind/deal setup: bets stay on seats until street collect; center stack from flop onward.
+            GamePhase phase = _gameManager.CurrentPhase;
+            if (phase == GamePhase.PreFlop || phase == GamePhase.RoundOver)
             {
                 HidePotChipStack();
                 return;
