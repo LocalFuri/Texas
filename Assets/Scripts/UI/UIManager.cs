@@ -1669,6 +1669,8 @@ namespace TexasHoldem
 
         private void ClearHumanEquityDisplay()
         {
+            _equityRefreshGeneration++;
+
             if (_equityRefreshCoroutine != null)
             {
                 StopCoroutine(_equityRefreshCoroutine);
@@ -1735,6 +1737,9 @@ namespace TexasHoldem
 
         private void ApplyHumanEquityDisplay(int equityPercent)
         {
+            if (_winnerCelebrationActive)
+                return;
+
             _cachedHumanEquityPercent = equityPercent;
 
             PlayerView humanView = ResolveHumanSeatView();
@@ -1802,6 +1807,9 @@ namespace TexasHoldem
                 ResolveEquitySimulationCount());
 
             if (generation != _equityRefreshGeneration || !completed)
+                yield break;
+
+            if (_winnerCelebrationActive)
                 yield break;
 
             ApplyHumanEquityDisplay(Mathf.RoundToInt(result.EquityPercent));
@@ -3604,6 +3612,7 @@ namespace TexasHoldem
             }
 
             _winnerCelebrationActive = true;
+            ClearHumanEquityDisplay();
             ClearPendingActionBadge();
             HideAllActionBadges();
             DismissBettingUiForWinnerCelebration();
