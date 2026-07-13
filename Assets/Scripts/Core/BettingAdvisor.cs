@@ -118,5 +118,78 @@ namespace TexasHoldem
 
             return BettingAdvice.Fold;
         }
+
+        /// <summary>Maps HUD advice into a legal table action (same rules the human follows).</summary>
+        public static (BettingAction action, int raiseAmount) ResolveAction(
+            BettingAdvice advice,
+            BettingManager betting,
+            PlayerState player)
+        {
+            if (betting == null || player == null)
+                return (BettingAction.Fold, 0);
+
+            int callAmount = betting.GetCallAmount(player);
+
+            switch (advice)
+            {
+                case BettingAdvice.Fold:
+                    return (BettingAction.Fold, 0);
+
+                case BettingAdvice.Check:
+                    return callAmount <= 0
+                        ? (BettingAction.Check, 0)
+                        : ResolveAction(BettingAdvice.Fold, betting, player);
+
+                case BettingAdvice.Call:
+                    if (callAmount <= 0)
+                        return (BettingAction.Check, 0);
+
+                    if (callAmount >= player.Chips)
+                        return (BettingAction.AllIn, 0);
+
+                    if (callAmount > player.Chips)
+                        return (BettingAction.Fold, 0);
+
+                    return (BettingAction.Call, 0);
+
+                case BettingAdvice.Raise:
+                    if (!betting.CanRaise(player))
+                        return ResolveActionWhenCannotRaise(callAmount, betting, player);
+
+                    int minIncrement = betting.GetMinRaiseIncrement();
+                    int maxIncrement = betting.GetMaxRaiseIncrement(player);
+                    if (maxIncrement < minIncrement)
+                        return ResolveActionWhenCannotRaise(callAmount, betting, player);
+
+                    int increment = minIncrement;
+                    if (callAmount + increment >= player.Chips)
+                        return (BettingAction.AllIn, 0);
+
+                    increment = Mathf.Clamp(increment, minIncrement, maxIncrement);
+                    return (BettingAction.Raise, increment);
+
+                default:
+                    return callAmount <= 0
+                        ? (BettingAction.Check, 0)
+                        : (BettingAction.Fold, 0);
+            }
+        }
+
+        private static (BettingAction action, int raiseAmount) ResolveActionWhenCannotRaise(
+            int callAmount,
+            BettingManager betting,
+            PlayerState player)
+        {
+            if (callAmount <= 0)
+                return (BettingAction.Check, 0);
+
+            if (callAmount >= player.Chips)
+                return (BettingAction.AllIn, 0);
+
+            if (callAmount < player.Chips)
+                return (BettingAction.Call, 0);
+
+            return (BettingAction.Fold, 0);
+        }
     }
 }

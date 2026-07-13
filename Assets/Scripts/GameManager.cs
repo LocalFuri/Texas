@@ -478,7 +478,17 @@ namespace TexasHoldem
                 {
                     yield return DelayForAiAction();
                     var (action, raise) = _aiController.DecideAction(
-                        player, _boardManager.CommunityCards, _bettingManager, IsTestMode);
+                        player,
+                        _boardManager.CommunityCards,
+                        _bettingManager,
+                        Players,
+                        CurrentPhase,
+                        PotAmount,
+                        CurrentBet,
+                        BigBlindAmount,
+                        StreetRaiseCount,
+                        GetPreflopSeatBucket(player),
+                        IsTestMode);
                     int playerBetBefore = player.CurrentBet;
                     if (_bettingManager.ProcessAction(player, action, raise))
                     {
