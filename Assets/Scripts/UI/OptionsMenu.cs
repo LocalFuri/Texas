@@ -26,8 +26,8 @@ namespace TexasHoldem
         public const float BotThinkMaxSeconds        = BotThinkMaxMs / 1000f;
         public const float BotThinkDefaultSeconds    = BotThinkDefaultMs / 1000f;
 
-        public const int EquitySimsMin           = 1_000;
-        public const int EquitySimsMax           = 1_000_000;
+        public const int EquitySimsMin           = MonteCarloSimulator.DefaultSimulationCount;
+        public const int EquitySimsMax           = MonteCarloSimulator.DefaultSimulationCount;
         public const int EquitySimsStep          = 1_000;
         public const int EquitySimsDefault       = MonteCarloSimulator.DefaultSimulationCount;
         public const int EquitySimsSliderMaxStep = (EquitySimsMax - EquitySimsMin) / EquitySimsStep;
@@ -71,11 +71,8 @@ namespace TexasHoldem
         /// <summary>Bot-think delay in seconds for gameplay systems.</summary>
         public float CurrentBotThinkDelaySeconds => MsToSeconds(CurrentBotThinkDelayMs);
 
-        /// <summary>Monte Carlo simulation count for human equity display.</summary>
-        public int CurrentEquitySimulationCount =>
-            _equitySimsSlider != null
-                ? SliderValueToEquitySims(_equitySimsSlider.value)
-                : ResolveSceneDefaultEquitySims();
+        /// <summary>Monte Carlo simulation count for human equity display (fixed at default).</summary>
+        public int CurrentEquitySimulationCount => EquitySimsDefault;
 
         public static int ResolveSceneDefaultEquitySims()
         {

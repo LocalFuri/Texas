@@ -40,13 +40,11 @@ namespace TexasHoldem
 
             if (PlayerPrefs.HasKey(KeyEquitySims))
             {
-                int sims = PlayerPrefs.GetInt(KeyEquitySims, OptionsMenu.EquitySimsDefault);
-                menu.ApplyLoadedEquitySimulationCount(sims);
+                PlayerPrefs.DeleteKey(KeyEquitySims);
+                PlayerPrefs.Save();
             }
-            else
-            {
-                menu.ApplyLoadedEquitySimulationCount(OptionsMenu.ResolveSceneDefaultEquitySims());
-            }
+
+            menu.ApplyLoadedEquitySimulationCount(OptionsMenu.EquitySimsDefault);
 
             if (HasAnyToggleKey())
                 menu.ApplyLoadedToggleStates(
