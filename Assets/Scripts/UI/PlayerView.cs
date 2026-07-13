@@ -93,6 +93,7 @@ namespace TexasHoldem
         private Coroutine _ringCountdown;
         private Coroutine _winnerAvatarScaleCoroutine;
         private bool      _winnerGlowHeld;
+        private bool      _winnerGoldRingActive;
         private Sprite    _currentAvatarSprite; // cached so the toggle can restore it without re-calling SetAvatar
 
         public bool HudMirrored => _hudMirrored;
@@ -554,11 +555,38 @@ namespace TexasHoldem
         /// <summary>Hides the gold overlay when this seat is not on an active countdown.</summary>
         private void ApplyGoldRingIdle()
         {
-            if (_avatarRingGold == null || _ringCountdown != null) return;
+            if (_avatarRingGold == null || _ringCountdown != null || _winnerGoldRingActive)
+                return;
             _avatarRingGold.RestoreDefaultGoldColors();
             _avatarRingGold.Look       = AvatarRingSdfGraphic.RingLook.Gold;
             _avatarRingGold.FillAmount = 1f;
             _avatarRingGold.color      = Color.clear;
+        }
+
+        /// <summary>Solid gold ring for winner scale — hides chrome, no pulse or countdown.</summary>
+        private void ApplyWinnerGoldRingSolid()
+        {
+            EnsureRingRefs();
+            SyncRingGeometry();
+            _winnerGoldRingActive = true;
+
+            if (_avatarRingChrome != null)
+                _avatarRingChrome.color = Color.clear;
+
+            if (_avatarRingGold != null)
+            {
+                _avatarRingGold.SetGoldColors(UiColors.PotGold, UiColors.PotGoldDark);
+                _avatarRingGold.Look       = AvatarRingSdfGraphic.RingLook.Gold;
+                _avatarRingGold.FillAmount = 1f;
+                _avatarRingGold.color      = Color.white;
+            }
+        }
+
+        private void RestoreRingsAfterWin()
+        {
+            _winnerGoldRingActive = false;
+            ApplyChromeRingVisibility();
+            ApplyGoldRingIdle();
         }
 
         private void ApplyGoldRingUrgency(float remaining, float duration)
@@ -981,10 +1009,7 @@ namespace TexasHoldem
                 slot?.SetWinnerHighlight(false);
         }
 
-        /// <summary>
-        /// Triggers the winner celebration: shimmering gold ring, HUD glow pulse, and persistent WIN badge.
-        /// Ring/glow run for <paramref name="duration"/>; badge stays until the next hand.
-        /// </summary>
+        /// <summary>Shows persistent WIN badge and HUD glow for the winner pause.</summary>
         public void StartWinnerHighlight(int potAmount, float duration)
         {
             if (_ringCountdown != null)
@@ -993,45 +1018,7 @@ namespace TexasHoldem
                 _ringCountdown = null;
             }
 
-            SyncRingGeometry();
-            ApplyChromeRingVisibility();
-
-            if (_avatarRingGold != null)
-            {
-                // Bright, fully-saturated gold for the win moment.
-                _avatarRingGold.SetGoldColors(UiColors.PotGold, UiColors.PotGoldDark);
-                _avatarRingGold.Look       = AvatarRingSdfGraphic.RingLook.Gold;
-                _avatarRingGold.FillAmount = 1f;
-                _avatarRingGold.color      = Color.white;
-            }
-
             ResolveActionBadge()?.ShowWinPersistent(potAmount);
-            _ringCountdown = StartCoroutine(RunWinnerHighlight(duration));
-        }
-
-        /// <summary>Pulses the gold ring alpha and HUD glow for the winner celebration window.</summary>
-        private IEnumerator RunWinnerHighlight(float duration)
-        {
-            float elapsed = 0f;
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-
-                // Fast shimmer on the gold ring.
-                if (_avatarRingGold != null)
-                {
-                    float pulse = 0.70f + 0.30f * Mathf.Sin(elapsed * Mathf.PI * 5f);
-                    _avatarRingGold.color = new Color(1f, 1f, 1f, pulse);
-                }
-
-                if (_hudGlow != null)
-                    _hudGlow.GlowIntensity = SampleHudGlowBreath(elapsed);
-
-                yield return null;
-            }
-
-            _ringCountdown = null;
-            ApplyGoldRingIdle();
             ApplyHudGlowWinnerHold();
         }
 
@@ -1052,6 +1039,7 @@ namespace TexasHoldem
             }
 
             ResetAvatarFrameScale();
+            RestoreRingsAfterWin();
         }
 
         private void ResetAvatarFrameScale()
@@ -1063,11 +1051,14 @@ namespace TexasHoldem
 
         public IEnumerator AnimateWinnerAvatarScale(float peakScale, float holdSeconds, float transitionSeconds)
         {
-            SyncRingGeometry();
+            ApplyWinnerGoldRingSolid();
 
             RectTransform rt = ResolveAvatarPulseTarget();
             if (rt == null)
+            {
+                RestoreRingsAfterWin();
                 yield break;
+            }
 
             Vector3 normal = Vector3.one;
             Vector3 peak   = normal * Mathf.Max(1f, peakScale);
@@ -1094,6 +1085,7 @@ namespace TexasHoldem
             {
                 rt.localScale = normal;
                 _winnerAvatarScaleCoroutine = null;
+                RestoreRingsAfterWin();
             }
         }
 
