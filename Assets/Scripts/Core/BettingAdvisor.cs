@@ -123,7 +123,9 @@ namespace TexasHoldem
         public static (BettingAction action, int raiseAmount) ResolveAction(
             BettingAdvice advice,
             BettingManager betting,
-            PlayerState player)
+            PlayerState player,
+            bool isPreflop = false,
+            int streetRaiseCount = 0)
         {
             if (betting == null || player == null)
                 return (BettingAction.Fold, 0);
@@ -161,7 +163,9 @@ namespace TexasHoldem
                     if (maxIncrement < minIncrement)
                         return ResolveActionWhenCannotRaise(callAmount, betting, player);
 
-                    int increment = minIncrement;
+                    int increment = isPreflop
+                        ? ResolvePreflopRaiseIncrement(betting, minIncrement, streetRaiseCount)
+                        : minIncrement;
                     if (callAmount + increment >= player.Chips)
                         return (BettingAction.AllIn, 0);
 
@@ -173,6 +177,36 @@ namespace TexasHoldem
                         ? (BettingAction.Check, 0)
                         : (BettingAction.Fold, 0);
             }
+        }
+
+        private static int ResolvePreflopRaiseIncrement(
+            BettingManager betting,
+            int minIncrement,
+            int streetRaiseCount)
+        {
+            int currentBet = betting.CurrentBet;
+            int bigBlind   = betting.BigBlind;
+
+            // Targets are TOTAL bet sizes. Convert to increment above current bet.
+            int targetTotal;
+            if (streetRaiseCount <= 0)
+            {
+                // Open raise: target 2.5× BB total.
+                targetTotal = Mathf.RoundToInt(bigBlind * 2.5f);
+            }
+            else if (streetRaiseCount == 1)
+            {
+                // Facing one raise: target 3× current table bet total.
+                targetTotal = currentBet * 3;
+            }
+            else
+            {
+                // Facing 2+ raises: target 2.5× current table bet total.
+                targetTotal = Mathf.RoundToInt(currentBet * 2.5f);
+            }
+
+            int increment = targetTotal - currentBet;
+            return Mathf.Max(minIncrement, increment);
         }
 
         private static (BettingAction action, int raiseAmount) ResolveActionWhenCannotRaise(
