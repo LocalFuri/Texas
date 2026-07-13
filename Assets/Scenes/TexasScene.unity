@@ -9138,9 +9138,9 @@ MonoBehaviour:
   _winnerPotCollectFlyDuration: 0.5
   _winnerPotCollectHoldDuration: 1
   _winnerPotCollectVanishDuration: 0.5
-  _winnerAvatarPulseScale: 1.4
-  _winnerAvatarPulseCount: 3
-  _winnerAvatarPulseHalfDuration: 0.25
+  _winnerAvatarScale: 3
+  _winnerAvatarHoldSeconds: 3
+  _winnerAvatarScaleTransitionSeconds: 0.25
   _winnerCardPulseHz: 1
   _winnerCardPulseMinBlend: 0.5
   _winnerCardPulseMaxBlend: 0.85

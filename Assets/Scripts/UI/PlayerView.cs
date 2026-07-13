@@ -91,6 +91,7 @@ namespace TexasHoldem
         private bool      _isHuman;
         private int       _revealedHoleCount;
         private Coroutine _ringCountdown;
+        private Coroutine _winnerAvatarScaleCoroutine;
         private bool      _winnerGlowHeld;
         private Sprite    _currentAvatarSprite; // cached so the toggle can restore it without re-calling SetAvatar
 
@@ -624,6 +625,8 @@ namespace TexasHoldem
             }
 
             _winnerGlowHeld = false;
+            StopWinnerAvatarScale();
+
             if (_hudGlow == null)
                 return;
 
@@ -1032,28 +1035,65 @@ namespace TexasHoldem
             ApplyHudGlowWinnerHold();
         }
 
-        /// <summary>Scales the avatar frame (photo + rings) when a player wins.</summary>
-        public IEnumerator PulseAvatarImage(int pulseCount, float peakScale, float halfPulseDuration)
+        /// <summary>Scales AvatarFrame (photo + chrome/gold rings) up, holds, then returns to normal size.</summary>
+        public void StartWinnerAvatarScale(float peakScale, float holdSeconds, float transitionSeconds)
+        {
+            StopWinnerAvatarScale();
+            _winnerAvatarScaleCoroutine = StartCoroutine(
+                AnimateWinnerAvatarScale(peakScale, holdSeconds, transitionSeconds));
+        }
+
+        public void StopWinnerAvatarScale()
+        {
+            if (_winnerAvatarScaleCoroutine != null)
+            {
+                StopCoroutine(_winnerAvatarScaleCoroutine);
+                _winnerAvatarScaleCoroutine = null;
+            }
+
+            ResetAvatarFrameScale();
+        }
+
+        private void ResetAvatarFrameScale()
         {
             RectTransform rt = ResolveAvatarPulseTarget();
-            if (rt == null || pulseCount <= 0)
+            if (rt != null)
+                rt.localScale = Vector3.one;
+        }
+
+        public IEnumerator AnimateWinnerAvatarScale(float peakScale, float holdSeconds, float transitionSeconds)
+        {
+            SyncRingGeometry();
+
+            RectTransform rt = ResolveAvatarPulseTarget();
+            if (rt == null)
                 yield break;
 
-            Vector3 baseScale = Vector3.one;
-            Vector3 peak        = baseScale * Mathf.Max(1f, peakScale);
-            halfPulseDuration   = Mathf.Max(0.03f, halfPulseDuration);
+            Vector3 normal = Vector3.one;
+            Vector3 peak   = normal * Mathf.Max(1f, peakScale);
+            transitionSeconds = Mathf.Max(0.03f, transitionSeconds);
+            holdSeconds       = Mathf.Max(0f, holdSeconds);
 
             try
             {
-                for (int i = 0; i < pulseCount; i++)
+                yield return LerpAvatarImageScale(rt, normal, peak, transitionSeconds);
+
+                if (holdSeconds > 0f)
                 {
-                    yield return LerpAvatarImageScale(rt, baseScale, peak, halfPulseDuration);
-                    yield return LerpAvatarImageScale(rt, peak, baseScale, halfPulseDuration);
+                    float elapsed = 0f;
+                    while (elapsed < holdSeconds)
+                    {
+                        elapsed += Time.unscaledDeltaTime;
+                        yield return null;
+                    }
                 }
+
+                yield return LerpAvatarImageScale(rt, peak, normal, transitionSeconds);
             }
             finally
             {
-                rt.localScale = baseScale;
+                rt.localScale = normal;
+                _winnerAvatarScaleCoroutine = null;
             }
         }
 

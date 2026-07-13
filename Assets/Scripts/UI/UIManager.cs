@@ -160,12 +160,12 @@ namespace TexasHoldem
         [SerializeField, Min(0f)] private float _winnerPotCollectHoldDuration = 0.5f;
         [Tooltip("Duration for chips flying from the bet position into the avatar center while shrinking.")]
         [SerializeField, Min(0.05f)] private float _winnerPotCollectVanishDuration = 0.35f;
-        [Tooltip("Avatar frame scale (photo + rings) at win — peak scale (1.2 = 20% bigger).")]
-        [SerializeField, Min(1f)] private float _winnerAvatarPulseScale = 1.4f;
-        [Tooltip("Number of avatar frame scale pulses when a player wins.")]
-        [SerializeField, Range(0, 6)] private int _winnerAvatarPulseCount = 3;
-        [Tooltip("Duration of each half pulse (scale up or down). Full pulse = 2× this (0.25 = 0.5s per pulse).")]
-        [SerializeField, Min(0.03f)] private float _winnerAvatarPulseHalfDuration = 0.25f;
+        [Tooltip("AvatarFrame scale at win (photo + chrome/gold rings). 3 = triple size.")]
+        [SerializeField, Min(1f)] private float _winnerAvatarScale = 3f;
+        [Tooltip("Seconds AvatarFrame stays at peak scale before shrinking back.")]
+        [SerializeField, Min(0f)] private float _winnerAvatarHoldSeconds = 3f;
+        [Tooltip("Seconds to scale up or down between normal and peak size.")]
+        [SerializeField, Min(0.03f)] private float _winnerAvatarScaleTransitionSeconds = 0.25f;
 
         [Header("Winner Card Highlight")]
         [Tooltip("Gold pulse rate in Hz while waiting for Space (1 = one pulse per second).")]
@@ -3663,7 +3663,7 @@ namespace TexasHoldem
 
                 winnerView.RefreshHud(roundWinner, bigBlind);
                 winnerView.StartWinnerHighlight(winnerNetShare, duration);
-                TryStartWinnerAvatarPulse(winnerView);
+                TryStartWinnerAvatarScale(winnerView);
 
                 if (bbWalk && winnerNetShare > 0)
                     winnerView.ShowBetDisplay(winnerNetShare);
@@ -3678,15 +3678,15 @@ namespace TexasHoldem
             _winnerCelebrationCoroutine = StartCoroutine(RunWinnerCelebrationPrepare());
         }
 
-        private void TryStartWinnerAvatarPulse(PlayerView winnerView)
+        private void TryStartWinnerAvatarScale(PlayerView winnerView)
         {
-            if (winnerView == null || _winnerAvatarPulseCount <= 0)
+            if (winnerView == null || _winnerAvatarScale < 1f)
                 return;
 
-            winnerView.StartCoroutine(winnerView.PulseAvatarImage(
-                _winnerAvatarPulseCount,
-                _winnerAvatarPulseScale,
-                _winnerAvatarPulseHalfDuration));
+            winnerView.StartWinnerAvatarScale(
+                _winnerAvatarScale,
+                _winnerAvatarHoldSeconds,
+                _winnerAvatarScaleTransitionSeconds);
         }
 
         private readonly struct WinnerCollectLeg
