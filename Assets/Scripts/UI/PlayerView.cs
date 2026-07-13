@@ -91,6 +91,7 @@ namespace TexasHoldem
         private bool      _isHuman;
         private int       _revealedHoleCount;
         private Coroutine _ringCountdown;
+        private bool      _winnerGlowHeld;
         private Sprite    _currentAvatarSprite; // cached so the toggle can restore it without re-calling SetAvatar
 
         public bool HudMirrored => _hudMirrored;
@@ -587,11 +588,45 @@ namespace TexasHoldem
         /// <summary>Hides the HUD glow when this seat is not on an active countdown.</summary>
         private void ApplyHudGlowIdle()
         {
-            if (_hudGlow == null || _ringCountdown != null) return;
+            if (_hudGlow == null || _ringCountdown != null || _winnerGlowHeld) return;
 #if UNITY_EDITOR
             // Edit mode: keep HudGlow intensity as set in the Inspector (layout/preview).
             if (!Application.isPlaying) return;
 #endif
+            _hudGlow.GlowIntensity = 0f;
+        }
+
+        private float ResolveHudGlowPeak()
+        {
+            float min = Mathf.Clamp(_hudGlowMinIntensity, 0f, 1.5f);
+            float peak = _hudGlow != null ? _hudGlow.PeakGlowIntensity : 0f;
+            if (peak < 0.01f) peak = 1.1f;
+            return Mathf.Clamp(peak, min + 0.01f, 1.5f);
+        }
+
+        private void ApplyHudGlowWinnerHold()
+        {
+            if (_hudGlow == null)
+                return;
+
+            _winnerGlowHeld          = true;
+            _hudGlow.GlowIntensity = ResolveHudGlowPeak();
+        }
+
+        /// <summary>Clears post-win HUD glow held at peak brightness (e.g. when pot is collected).</summary>
+        public void ReleaseWinnerGlowHold()
+        {
+            if (_ringCountdown != null)
+            {
+                StopCoroutine(_ringCountdown);
+                _ringCountdown = null;
+                ApplyGoldRingIdle();
+            }
+
+            _winnerGlowHeld = false;
+            if (_hudGlow == null)
+                return;
+
             _hudGlow.GlowIntensity = 0f;
         }
 
@@ -994,7 +1029,7 @@ namespace TexasHoldem
 
             _ringCountdown = null;
             ApplyGoldRingIdle();
-            ApplyHudGlowIdle();
+            ApplyHudGlowWinnerHold();
         }
 
         /// <summary>Scales the avatar frame (photo + rings) when a player wins.</summary>
