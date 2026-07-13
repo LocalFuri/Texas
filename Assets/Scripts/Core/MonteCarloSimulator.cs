@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace TexasHoldem
 {
@@ -28,7 +30,11 @@ namespace TexasHoldem
     public static class MonteCarloSimulator
     {
         public const int DefaultSimulationCount = 10_000;
-        public const int DefaultSimsPerFrame    = 5_000;
+        /// <summary>Above default sim count so 10k runs without a trailing frame yield.</summary>
+        public const int DefaultSimsPerFrame    = 15_000;
+
+        private static readonly int[] PerformanceBenchmarkSimulationCounts = { 10_000, 100_000, 1_000_000 };
+        private const int PerformanceBenchmarkOpponentCount = 2;
 
         public static MonteCarloResult Simulate(
             IReadOnlyList<Card> heroHoleCards,
@@ -59,10 +65,15 @@ namespace TexasHoldem
             int activeOpponentCount,
             Action<MonteCarloResult> onComplete,
             int simulationCount = DefaultSimulationCount,
-            int simsPerFrame = DefaultSimsPerFrame)
+            int simsPerFrame = DefaultSimsPerFrame,
+            bool logPerformance = false,
+            string performanceLogContext = null)
         {
             if (onComplete == null)
                 throw new ArgumentNullException(nameof(onComplete));
+
+            var stopwatch = Stopwatch.StartNew();
+            int startFrame = Time.frameCount;
 
             ValidateInputs(heroHoleCards, communityCards, activeOpponentCount, simulationCount);
 
@@ -84,7 +95,65 @@ namespace TexasHoldem
                     yield return null;
             }
 
+            stopwatch.Stop();
+            int renderedFrames = Time.frameCount - startFrame + 1;
+
+            if (logPerformance)
+            {
+                string prefix = string.IsNullOrEmpty(performanceLogContext)
+                    ? "[MonteCarlo]"
+                    : $"[MonteCarlo] {performanceLogContext}";
+
+                Debug.Log(
+                    $"{prefix} simulations={simulationCount:N0} " +
+                    $"elapsedMs={stopwatch.Elapsed.TotalMilliseconds:F2} " +
+                    $"renderedFrames={renderedFrames} " +
+                    $"simsPerFrame={batch} " +
+                    $"activeOpponents={activeOpponentCount}");
+            }
+
             onComplete(BuildResult(wins, ties, losses, equitySum, simulationCount));
+        }
+
+        /// <summary>Runs 10k / 100k / 1M simulation timing passes and logs results to the Console.</summary>
+        public static IEnumerator RunPerformanceBenchmark()
+        {
+            var heroHoleCards = new Card[]
+            {
+                new Card(Suit.Spades, Rank.Ace),
+                new Card(Suit.Hearts, Rank.King)
+            };
+
+            var communityCards = new Card[]
+            {
+                new Card(Suit.Diamonds, Rank.Ten),
+                new Card(Suit.Clubs, Rank.Jack),
+                new Card(Suit.Hearts, Rank.Two)
+            };
+
+            Debug.Log(
+                $"[MonteCarlo] Starting performance benchmark " +
+                $"(simsPerFrame={DefaultSimsPerFrame}, activeOpponents={PerformanceBenchmarkOpponentCount}).");
+
+            foreach (int simulationCount in PerformanceBenchmarkSimulationCounts)
+            {
+                MonteCarloResult result = default;
+
+                yield return SimulateOverFrames(
+                    heroHoleCards,
+                    communityCards,
+                    PerformanceBenchmarkOpponentCount,
+                    r => result = r,
+                    simulationCount,
+                    DefaultSimsPerFrame,
+                    logPerformance: true);
+
+                Debug.Log(
+                    $"[MonteCarlo] benchmark result equity={result.EquityPercent:F2}% " +
+                    $"simulations={result.Simulations:N0}");
+            }
+
+            Debug.Log("[MonteCarlo] Performance benchmark complete.");
         }
 
         private static MonteCarloResult BuildResult(

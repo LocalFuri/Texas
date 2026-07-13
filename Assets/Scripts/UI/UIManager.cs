@@ -1325,11 +1325,11 @@ namespace TexasHoldem
                 _timerCoroutine  = StartCoroutine(RunTurnTimer(_activeTimerView, duration, isHumanTurn));
             }
 
-            if (isHumanTurn && CanHumanRaise())
-                yield return RaiseInputBuilder.FocusAndSelectAllWhenReady(_raiseInput);
-
             if (isHumanTurn)
                 RefreshHumanEquity();
+
+            if (isHumanTurn && CanHumanRaise())
+                yield return RaiseInputBuilder.FocusAndSelectAllWhenReady(_raiseInput);
 
             _beginTurnCoroutine = null;
         }
@@ -1786,14 +1786,19 @@ namespace TexasHoldem
                 yield break;
             }
 
-            yield return null;
-
             if (generation != _equityRefreshGeneration)
                 yield break;
 
             IReadOnlyList<Card> board = _gameManager.CommunityCards ?? System.Array.Empty<Card>();
+            int simulationCount = ResolveEquitySimulationCount();
             MonteCarloResult result = default;
             bool completed = false;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            const bool logLiveEquityPerformance = true;
+#else
+            const bool logLiveEquityPerformance = false;
+#endif
 
             yield return MonteCarloSimulator.SimulateOverFrames(
                 _humanPlayer.HoleCards,
@@ -1804,7 +1809,10 @@ namespace TexasHoldem
                     result    = r;
                     completed = true;
                 },
-                ResolveEquitySimulationCount());
+                simulationCount,
+                MonteCarloSimulator.DefaultSimsPerFrame,
+                logLiveEquityPerformance,
+                logLiveEquityPerformance ? "live refresh" : null);
 
             if (generation != _equityRefreshGeneration || !completed)
                 yield break;
