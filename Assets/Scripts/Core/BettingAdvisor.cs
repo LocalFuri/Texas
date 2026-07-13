@@ -72,6 +72,7 @@ namespace TexasHoldem
                     preflopGroup,
                     preflopSeat,
                     facingRaise,
+                    potBeforeAction,
                     callAmount,
                     playerChips,
                     canCheck,

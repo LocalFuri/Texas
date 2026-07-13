@@ -86,6 +86,7 @@ namespace TexasHoldem
             PreflopHandGroup group,
             PreflopSeatBucket seat,
             bool facingRaise,
+            int potBeforeAction,
             int callAmount,
             int playerChips,
             bool canCheck,
@@ -94,7 +95,7 @@ namespace TexasHoldem
             int streetRaiseCount)
         {
             if (facingRaise)
-                return RecommendFacingRaise(group, callAmount, playerChips, canRaise, canCall, streetRaiseCount);
+                return RecommendFacingRaise(group, potBeforeAction, callAmount, playerChips, canRaise, canCall, streetRaiseCount);
 
             return RecommendUnopened(group, seat, callAmount, playerChips, canCheck, canRaise, canCall, streetRaiseCount);
         }
@@ -142,6 +143,7 @@ namespace TexasHoldem
 
         private static BettingAdvice RecommendFacingRaise(
             PreflopHandGroup group,
+            int potBeforeAction,
             int callAmount,
             int playerChips,
             bool canRaise,
@@ -152,7 +154,7 @@ namespace TexasHoldem
                 return BettingAdvice.Fold;
 
             if (streetRaiseCount >= MaxStreetRaises)
-                return ResolveCallOrFoldAdvice(group, callAmount, playerChips, canCall);
+                return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall);
 
             if (group == PreflopHandGroup.Premium
                 && canRaise
@@ -161,11 +163,12 @@ namespace TexasHoldem
                 return BettingAdvice.Raise;
             }
 
-            return ResolveCallOrFoldAdvice(group, callAmount, playerChips, canCall);
+            return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall);
         }
 
         private static BettingAdvice ResolveCallOrFoldAdvice(
             PreflopHandGroup group,
+            int potBeforeAction,
             int callAmount,
             int playerChips,
             bool canCall)
