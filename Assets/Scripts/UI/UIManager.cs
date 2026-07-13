@@ -3738,18 +3738,19 @@ namespace TexasHoldem
         }
 
         /// <summary>Shrinks the center pot stack and label to the net amount (after rake).</summary>
-        private void ApplyNetPotToCenterDisplay(int netAmount)
+        private void ApplyNetPotToCenterDisplay(int netAmount, bool showLabel = true)
         {
             if (netAmount <= 0)
             {
-                if (_potText != null)
-                    _potText.text = string.Empty;
+                HidePotLabelDisplay();
                 HidePotChipStack();
                 return;
             }
 
-            if (_potText != null)
+            if (showLabel && _potText != null)
                 _potText.text = "Pot: " + netAmount.ToString("N0", GermanNFI);
+            else
+                HidePotLabelDisplay();
 
             if (_potChipStack == null)
                 EnsurePotChipStack();
@@ -3761,6 +3762,12 @@ namespace TexasHoldem
             PositionPotChipStack(showStack: true);
         }
 
+        private void HidePotLabelDisplay()
+        {
+            if (_potText != null)
+                _potText.text = string.Empty;
+        }
+
         private bool BeginCollectPotToWinner()
         {
             if (_winnerPotChipsCollected)
@@ -3768,6 +3775,7 @@ namespace TexasHoldem
 
             ClearWinningCardHighlights();
             HideRakeDisplay();
+            HidePotLabelDisplay();
 
             ForceEndPlayersRefresh();
             ClearUiKeyboardFocus();
@@ -3942,7 +3950,7 @@ namespace TexasHoldem
             }
 
             RestorePotChipStackHome();
-            ApplyNetPotToCenterDisplay(amount);
+            ApplyNetPotToCenterDisplay(amount, showLabel: false);
             ShowPotAmountBadge(amount);
 
             if (_winnerPotCollectResizeDelay > 0f)
@@ -3984,8 +3992,7 @@ namespace TexasHoldem
             stackRt.anchoredPosition = betPos;
             stackRt.localScale       = Vector3.one;
 
-            if (_potText != null)
-                _potText.text = string.Empty;
+            HidePotLabelDisplay();
 
             if (_winnerPotCollectHoldDuration > 0f)
                 yield return new WaitForSecondsRealtime(_winnerPotCollectHoldDuration);
@@ -4017,8 +4024,7 @@ namespace TexasHoldem
 
         private void CompleteWinnerPotCollection()
         {
-            if (_potText != null)
-                _potText.text = string.Empty;
+            HidePotLabelDisplay();
 
             _gameManager?.ApplyPendingPotAward();
 
