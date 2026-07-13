@@ -2462,7 +2462,7 @@ namespace TexasHoldem
 
         /// <summary>
         /// Clears seat bets on a BB walk without showing the full blind pot at center.
-        /// Only the small-blind chip is animated to the BB at showdown.
+        /// Winner collect still animates from the center pot like any other hand.
         /// </summary>
         public IEnumerator CollectBbWalkBlinds(PlayerState sbPlayer)
         {
@@ -3786,16 +3786,7 @@ namespace TexasHoldem
                 _winnerCelebrationCoroutine = null;
             }
 
-            if (_gameManager.LastHandWasBbWalk && _gameManager.LastBbWalkSbPlayer != null)
-            {
-                PlayerView sbView = ResolvePlayerView(_gameManager.LastBbWalkSbPlayer);
-                _winnerCelebrationCoroutine = StartCoroutine(
-                    AnimateBbWalkBlindToWinner(sbView, legs[0].View, legs[0].NetShare));
-            }
-            else
-            {
-                _winnerCelebrationCoroutine = StartCoroutine(AnimatePotChipsToAllWinners(legs));
-            }
+            _winnerCelebrationCoroutine = StartCoroutine(AnimatePotChipsToAllWinners(legs));
 
             return true;
         }
@@ -3922,115 +3913,6 @@ namespace TexasHoldem
             stackRt.pivot            = new Vector2(0.5f, 0.5f);
             stackRt.anchoredPosition = canvasAnchoredPosition;
             stackRt.localScale       = Vector3.one;
-        }
-
-        private IEnumerator AnimateBbWalkBlindToWinner(
-            PlayerView sbView, PlayerView winnerView, int amount)
-        {
-            ForceEndPlayersRefresh();
-
-            if (winnerView == null || amount <= 0)
-            {
-                CompleteWinnerPotCollection();
-                yield break;
-            }
-
-            if (ResolveRootCanvas() == null)
-            {
-                Debug.LogError("[UIManager] BB walk collect FAILED — root canvas not found.", this);
-                CompleteWinnerPotCollection();
-                yield break;
-            }
-
-            EnsurePotChipStack();
-            if (_potChipStack == null)
-            {
-                CompleteWinnerPotCollection();
-                yield break;
-            }
-
-            ApplyNetPotToCenterDisplay(amount);
-            ShowPotAmountBadge(amount);
-
-            if (_winnerPotCollectResizeDelay > 0f)
-                yield return new WaitForSecondsRealtime(_winnerPotCollectResizeDelay);
-
-            PlayWinnerChipSound();
-
-            RectTransform stackRt = _potChipStack.StackRoot;
-            var canvasRt = (RectTransform)_rootCanvas.transform;
-
-            Vector2 startPos;
-            if (sbView != null
-                && TryResolveWinnerBetStackCanvasPosition(sbView, canvasRt, amount, out startPos))
-            {
-                // Start at the small-blind seat.
-            }
-            else if (!TryResolvePotCollectCanvasPosition(out startPos))
-            {
-                startPos = canvasRt.anchoredPosition;
-            }
-
-            if (!TryResolveWinnerBetStackCanvasPosition(winnerView, canvasRt, amount, out Vector2 betPos))
-            {
-                Debug.LogError(
-                    $"[UIManager] BB walk collect FAILED — could not resolve winner bet stack (amount={amount}).",
-                    this);
-                CompleteWinnerPotCollection();
-                yield break;
-            }
-
-            AttachStackToCanvasForFly(stackRt, canvasRt, out _);
-            stackRt.anchoredPosition = startPos;
-            stackRt.gameObject.SetActive(true);
-
-            float flyDuration = Mathf.Max(0.05f, _winnerPotCollectFlyDuration);
-            float elapsed     = 0f;
-
-            while (elapsed < flyDuration)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / flyDuration));
-                stackRt.anchoredPosition = Vector2.Lerp(startPos, betPos, t);
-                yield return null;
-            }
-
-            stackRt.anchoredPosition = betPos;
-
-            if (_potText != null)
-                _potText.text = string.Empty;
-
-            winnerView.ShowBetDisplay(amount);
-
-            if (_winnerPotCollectHoldDuration > 0f)
-                yield return new WaitForSecondsRealtime(_winnerPotCollectHoldDuration);
-
-            Vector2 avatarPos = betPos;
-            TryResolveWinnerAvatarCanvasPosition(winnerView, canvasRt, out avatarPos);
-
-            float vanishDuration = Mathf.Max(0.05f, _winnerPotCollectVanishDuration);
-            elapsed              = 0f;
-            Vector2 vanishStart  = stackRt.anchoredPosition;
-            Vector3 scaleStart   = stackRt.localScale;
-
-            while (elapsed < vanishDuration)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / vanishDuration));
-
-                stackRt.anchoredPosition = Vector2.Lerp(vanishStart, avatarPos, t);
-                stackRt.localScale       = Vector3.Lerp(scaleStart, Vector3.zero, t);
-                SetPotCollectVisualAlpha(1f - t);
-
-                yield return null;
-            }
-
-            HidePotAmountBadge();
-            RestorePotChipStackHome();
-            HidePotChipStack();
-            winnerView.HideBetDisplay();
-
-            CompleteWinnerPotCollection();
         }
 
         private IEnumerator AnimatePotChipsToWinnerLeg(PlayerView winnerView, int amount)
