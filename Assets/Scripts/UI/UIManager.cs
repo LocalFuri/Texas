@@ -1718,6 +1718,15 @@ namespace TexasHoldem
                 streetRaiseCount = _gameManager.StreetRaiseCount;
             }
 
+            if (isPreflop)
+            {
+                PreflopStrategy.LogEffectiveStack(
+                    _humanPlayer,
+                    _gameManager.Players,
+                    _gameManager.CurrentBet,
+                    _gameManager.BigBlindAmount);
+            }
+
             BettingAdvice advice = BettingAdvisor.Recommend(
                 equityPercent,
                 _gameManager.PotAmount,

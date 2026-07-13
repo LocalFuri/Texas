@@ -43,6 +43,9 @@ namespace TexasHoldem
                     equityPercent = EstimateEquityPercent(player, communityCards, allPlayers);
             }
 
+            if (isPreflop)
+                PreflopStrategy.LogEffectiveStack(player, allPlayers, tableCurrentBet, bigBlindAmount);
+
             BettingAdvice advice = BettingAdvisor.Recommend(
                 equityPercent,
                 potAmount,

@@ -21,6 +21,13 @@ namespace TexasHoldem
         Cutoff,
     }
 
+    public enum EffectiveStackBand
+    {
+        Short,
+        Medium,
+        Deep,
+    }
+
     /// <summary>Shared preflop hand chart and deterministic advice (mirrors bot tiers + position).</summary>
     public static class PreflopStrategy
     {
@@ -45,6 +52,69 @@ namespace TexasHoldem
             return suited || hi == lo
                 ? PreflopChart[hi, lo]
                 : PreflopChart[lo, hi];
+        }
+
+        public static float ResolveEffectiveStackBB(int heroStackChips, int villainStackChips, int bigBlind)
+        {
+            if (bigBlind <= 0)
+                return 0f;
+
+            int effectiveChips = Mathf.Min(
+                Mathf.Max(0, heroStackChips),
+                Mathf.Max(0, villainStackChips));
+
+            return effectiveChips / (float)bigBlind;
+        }
+
+        public static EffectiveStackBand ResolveEffectiveStackBand(
+            int heroStackChips,
+            int villainStackChips,
+            int bigBlind)
+        {
+            float effectiveStackBB = ResolveEffectiveStackBB(heroStackChips, villainStackChips, bigBlind);
+            if (effectiveStackBB <= 25f)
+                return EffectiveStackBand.Short;
+            if (effectiveStackBB <= 100f)
+                return EffectiveStackBand.Medium;
+            return EffectiveStackBand.Deep;
+        }
+
+        /// <summary>Shover total chips (stack + committed); falls back to <paramref name="tableCurrentBet"/>.</summary>
+        public static int ResolveVillainTotalChipsForEffectiveStack(
+            PlayerState hero,
+            IReadOnlyList<PlayerState> allPlayers,
+            int tableCurrentBet)
+        {
+            if (allPlayers != null && tableCurrentBet > 0)
+            {
+                foreach (PlayerState player in allPlayers)
+                {
+                    if (player == null || player == hero || player.HasFolded)
+                        continue;
+
+                    if (player.CurrentBet == tableCurrentBet)
+                        return player.Chips + player.CurrentBet;
+                }
+            }
+
+            return tableCurrentBet;
+        }
+
+        public static void LogEffectiveStack(
+            PlayerState hero,
+            IReadOnlyList<PlayerState> allPlayers,
+            int tableCurrentBet,
+            int bigBlind)
+        {
+            if (hero == null || bigBlind <= 0)
+                return;
+
+            int heroTotal    = hero.Chips + hero.CurrentBet;
+            int villainTotal = ResolveVillainTotalChipsForEffectiveStack(hero, allPlayers, tableCurrentBet);
+            float effectiveStackBB = ResolveEffectiveStackBB(heroTotal, villainTotal, bigBlind);
+            EffectiveStackBand band = ResolveEffectiveStackBand(heroTotal, villainTotal, bigBlind);
+
+            Debug.Log($"[EffectiveStack] EffectiveStackBB = {effectiveStackBB:0} Band = {band}");
         }
 
         public static PreflopSeatBucket ResolveSeatBucket(
