@@ -67,6 +67,7 @@ namespace TexasHoldem
         public int               PotAmount    => _bettingManager?.Pot ?? 0;
         public int               CurrentBet   => _bettingManager?.CurrentBet ?? 0;
         public int               BigBlindAmount => _bigBlind;
+        public int               MaxBuyIn       => _startingChips;
         public int               StreetRaiseCount => _bettingManager?.StreetRaiseCount ?? 0;
         public bool              IsAwaitingHumanInput => _awaitingHumanInput;
         public TableSoundManager TableSounds { get; private set; }
@@ -663,6 +664,9 @@ namespace TexasHoldem
 
             yield return new WaitUntil(() => !_awaitingWinnerDismiss);
 
+            ApplyPendingPotAward();
+            ApplyRebuysToMaxBuyIn();
+
             OnRoundEnded?.Invoke();
             DealerIndex = (DealerIndex + 1) % active.Count;
             SetPhase(GamePhase.RoundOver);
@@ -887,6 +891,26 @@ namespace TexasHoldem
                 if (player.Type == PlayerType.Human && player.Chips < 100_000)
                     player.Chips = 100_000;
             }
+        }
+
+        /// <summary>Tops up every seated player to <see cref="MaxBuyIn"/> after a hand.</summary>
+        private void ApplyRebuysToMaxBuyIn()
+        {
+            if (Players == null || Players.Count == 0 || _startingChips <= 0)
+                return;
+
+            int maxBuyIn = _startingChips;
+            foreach (PlayerState player in Players)
+            {
+                if (player.Chips >= maxBuyIn)
+                    continue;
+
+                int added = maxBuyIn - player.Chips;
+                player.Chips = maxBuyIn;
+                OnGameMessage?.Invoke($"{player.Name} rebuys ${added} (stack ${maxBuyIn}).");
+            }
+
+            NotifyPlayersUpdated();
         }
 
         private IEnumerator DealPreflopHoleCards(List<PlayerState> active, int sbIndex)
