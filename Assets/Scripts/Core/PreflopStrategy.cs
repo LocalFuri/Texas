@@ -153,19 +153,102 @@ namespace TexasHoldem
             IReadOnlyList<Card> holeCards)
         {
             if (group == PreflopHandGroup.Weak)
+            {
+                LogPreflopDecision(holeCards, group, FacingAllInHandTier.None, callAmount, playerChips,
+                    potBeforeAction, IsFacingAllIn(callAmount, playerChips), BettingAdvice.Fold,
+                    "RecommendFacingRaise:Weak");
                 return BettingAdvice.Fold;
+            }
 
             if (streetRaiseCount >= MaxStreetRaises)
                 return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, holeCards);
 
+            bool facingAllIn = IsFacingAllIn(callAmount, playerChips);
             if (group == PreflopHandGroup.Premium
                 && canRaise
+                && !facingAllIn
                 && streetRaiseCount < MaxStreetRaises)
             {
+                LogPreflopDecision(holeCards, group, ClassifyFacingAllInHand(holeCards), callAmount, playerChips,
+                    potBeforeAction, facingAllIn, BettingAdvice.Raise,
+                    "RecommendFacingRaise:Premium3Bet");
                 return BettingAdvice.Raise;
             }
 
             return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, holeCards);
+        }
+
+        private static bool IsFacingAllIn(int callAmount, int playerChips) =>
+            playerChips > 0 && callAmount >= Mathf.CeilToInt(playerChips * 0.85f);
+
+        private enum FacingAllInHandTier
+        {
+            None,
+            Premium,
+            Strong,
+            Fold,
+        }
+
+        private static FacingAllInHandTier ClassifyFacingAllInHand(IReadOnlyList<Card> holeCards)
+        {
+            if (holeCards == null || holeCards.Count < 2)
+                return FacingAllInHandTier.None;
+
+            Rank r0 = holeCards[0].Rank;
+            Rank r1 = holeCards[1].Rank;
+            bool suited = holeCards[0].Suit == holeCards[1].Suit;
+
+            Rank hi = (Rank)Mathf.Max((int)r0, (int)r1);
+            Rank lo = (Rank)Mathf.Min((int)r0, (int)r1);
+            bool isPair = hi == lo;
+
+            if ((isPair && (hi == Rank.Ace || hi == Rank.King || hi == Rank.Queen || hi == Rank.Jack))
+                || (hi == Rank.Ace && lo == Rank.King))
+            {
+                return FacingAllInHandTier.Premium;
+            }
+
+            if ((isPair && hi == Rank.Ten)
+                || (hi == Rank.Ace && lo == Rank.Queen)
+                || (hi == Rank.Ace && lo == Rank.Jack && suited))
+            {
+                return FacingAllInHandTier.Strong;
+            }
+
+            return FacingAllInHandTier.Fold;
+        }
+
+        private static BettingAdvice ResolveFacingAllInAdvice(IReadOnlyList<Card> holeCards)
+        {
+            switch (ClassifyFacingAllInHand(holeCards))
+            {
+                case FacingAllInHandTier.Premium:
+                case FacingAllInHandTier.Strong:
+                    return BettingAdvice.Call;
+                default:
+                    return BettingAdvice.Fold;
+            }
+        }
+
+        private static void LogPreflopDecision(
+            IReadOnlyList<Card> holeCards,
+            PreflopHandGroup group,
+            FacingAllInHandTier handTier,
+            int callAmount,
+            int playerChips,
+            int potBeforeAction,
+            bool facingAllIn,
+            BettingAdvice advice,
+            string returnPath)
+        {
+            string cards = holeCards == null || holeCards.Count < 2
+                ? "(none)"
+                : $"{holeCards[0]} {holeCards[1]}";
+
+            Debug.Log(
+                $"[PreflopDebug] holeCards={cards} group={group} handTier={handTier} " +
+                $"callAmount={callAmount} playerChips={playerChips} potBeforeAction={potBeforeAction} " +
+                $"facingAllIn={facingAllIn} advice={advice} path={returnPath}");
         }
 
         private static BettingAdvice ResolveCallOrFoldAdvice(
@@ -176,59 +259,68 @@ namespace TexasHoldem
             bool canCall,
             IReadOnlyList<Card> holeCards)
         {
-            if (!canCall || callAmount > playerChips)
-                return BettingAdvice.Fold;
+            bool facingAllIn = IsFacingAllIn(callAmount, playerChips);
+            FacingAllInHandTier handTier = ClassifyFacingAllInHand(holeCards);
 
-            // Dedicated facing-all-in rule (plugs into existing groups; does not affect normal spots).
-            // "Nearly entire stack" threshold: call commits >= 85% of remaining chips.
-            bool facingAllIn = playerChips > 0 && callAmount >= Mathf.CeilToInt(playerChips * 0.85f);
+            // Dedicated facing-all-in rule runs before chip-cap guards so short-stack calls
+            // (callAmount > playerChips) still reach the hand matcher and map to AllIn in ResolveAction.
             if (facingAllIn)
             {
-                if (holeCards == null || holeCards.Count < 2)
-                    return BettingAdvice.Fold;
+                BettingAdvice advice = ResolveFacingAllInAdvice(holeCards);
+                LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                    facingAllIn, advice,
+                    handTier == FacingAllInHandTier.None
+                        ? "ResolveCallOrFoldAdvice:FacingAllIn:MissingHoleCards"
+                        : advice == BettingAdvice.Call
+                            ? $"ResolveCallOrFoldAdvice:FacingAllIn:{handTier}"
+                            : "ResolveCallOrFoldAdvice:FacingAllIn:Fold");
+                return advice;
+            }
 
-                Rank r0 = holeCards[0].Rank;
-                Rank r1 = holeCards[1].Rank;
-                bool suited = holeCards[0].Suit == holeCards[1].Suit;
-
-                Rank hi = (Rank)Mathf.Max((int)r0, (int)r1);
-                Rank lo = (Rank)Mathf.Min((int)r0, (int)r1);
-                bool isPair = hi == lo;
-
-                bool alwaysCall =
-                    (isPair && (hi == Rank.Ace || hi == Rank.King || hi == Rank.Queen || hi == Rank.Jack))
-                    || (hi == Rank.Ace && lo == Rank.King); // AKs/AKo
-
-                if (alwaysCall)
-                    return BettingAdvice.Call;
-
-                bool usuallyCall =
-                    (isPair && hi == Rank.Ten)               // TT
-                    || (hi == Rank.Ace && lo == Rank.Queen)  // AQs/AQo
-                    || (hi == Rank.Ace && lo == Rank.Jack && suited); // AJs only
-
-                if (usuallyCall)
-                    return Random.value < 0.65f ? BettingAdvice.Call : BettingAdvice.Fold;
-
+            if (!canCall || callAmount > playerChips)
+            {
+                LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                    facingAllIn, BettingAdvice.Fold,
+                    !canCall
+                        ? "ResolveCallOrFoldAdvice:!canCall"
+                        : "ResolveCallOrFoldAdvice:callAmount>playerChips");
                 return BettingAdvice.Fold;
             }
 
             switch (group)
             {
                 case PreflopHandGroup.Premium:
+                    LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                        facingAllIn, BettingAdvice.Call, "ResolveCallOrFoldAdvice:Premium");
                     return BettingAdvice.Call;
 
                 case PreflopHandGroup.Strong:
                     if (callAmount > playerChips * StrongFoldChipFraction)
+                    {
+                        LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                            facingAllIn, BettingAdvice.Fold, "ResolveCallOrFoldAdvice:Strong:TooLarge");
                         return BettingAdvice.Fold;
+                    }
+
+                    LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                        facingAllIn, BettingAdvice.Call, "ResolveCallOrFoldAdvice:Strong");
                     return BettingAdvice.Call;
 
                 case PreflopHandGroup.Playable:
                     if (callAmount <= playerChips * PlayableCallChipFraction)
+                    {
+                        LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                            facingAllIn, BettingAdvice.Call, "ResolveCallOrFoldAdvice:Playable");
                         return BettingAdvice.Call;
+                    }
+
+                    LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                        facingAllIn, BettingAdvice.Fold, "ResolveCallOrFoldAdvice:Playable:TooLarge");
                     return BettingAdvice.Fold;
 
                 default:
+                    LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                        facingAllIn, BettingAdvice.Fold, "ResolveCallOrFoldAdvice:Default");
                     return BettingAdvice.Fold;
             }
         }
