@@ -55,7 +55,8 @@ namespace TexasHoldem
                 preflopSeat,
                 facingRaise,
                 streetRaiseCount,
-                player.Chips);
+                player.Chips,
+                player.HoleCards);
 
             return BettingAdvisor.ResolveAction(advice, betting, player, isPreflop, streetRaiseCount);
         }

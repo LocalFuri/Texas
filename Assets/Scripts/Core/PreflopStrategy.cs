@@ -92,10 +92,11 @@ namespace TexasHoldem
             bool canCheck,
             bool canRaise,
             bool canCall,
-            int streetRaiseCount)
+            int streetRaiseCount,
+            IReadOnlyList<Card> holeCards = null)
         {
             if (facingRaise)
-                return RecommendFacingRaise(group, potBeforeAction, callAmount, playerChips, canRaise, canCall, streetRaiseCount);
+                return RecommendFacingRaise(group, potBeforeAction, callAmount, playerChips, canRaise, canCall, streetRaiseCount, holeCards);
 
             return RecommendUnopened(group, seat, callAmount, playerChips, canCheck, canRaise, canCall, streetRaiseCount);
         }
@@ -148,13 +149,14 @@ namespace TexasHoldem
             int playerChips,
             bool canRaise,
             bool canCall,
-            int streetRaiseCount)
+            int streetRaiseCount,
+            IReadOnlyList<Card> holeCards)
         {
             if (group == PreflopHandGroup.Weak)
                 return BettingAdvice.Fold;
 
             if (streetRaiseCount >= MaxStreetRaises)
-                return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall);
+                return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, holeCards);
 
             if (group == PreflopHandGroup.Premium
                 && canRaise
@@ -163,7 +165,7 @@ namespace TexasHoldem
                 return BettingAdvice.Raise;
             }
 
-            return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall);
+            return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, holeCards);
         }
 
         private static BettingAdvice ResolveCallOrFoldAdvice(
@@ -171,10 +173,45 @@ namespace TexasHoldem
             int potBeforeAction,
             int callAmount,
             int playerChips,
-            bool canCall)
+            bool canCall,
+            IReadOnlyList<Card> holeCards)
         {
             if (!canCall || callAmount > playerChips)
                 return BettingAdvice.Fold;
+
+            // Dedicated facing-all-in rule (plugs into existing groups; does not affect normal spots).
+            // "Nearly entire stack" threshold: call commits >= 85% of remaining chips.
+            bool facingAllIn = playerChips > 0 && callAmount >= Mathf.CeilToInt(playerChips * 0.85f);
+            if (facingAllIn)
+            {
+                if (holeCards == null || holeCards.Count < 2)
+                    return BettingAdvice.Fold;
+
+                Rank r0 = holeCards[0].Rank;
+                Rank r1 = holeCards[1].Rank;
+                bool suited = holeCards[0].Suit == holeCards[1].Suit;
+
+                Rank hi = (Rank)Mathf.Max((int)r0, (int)r1);
+                Rank lo = (Rank)Mathf.Min((int)r0, (int)r1);
+                bool isPair = hi == lo;
+
+                bool alwaysCall =
+                    (isPair && (hi == Rank.Ace || hi == Rank.King || hi == Rank.Queen || hi == Rank.Jack))
+                    || (hi == Rank.Ace && lo == Rank.King); // AKs/AKo
+
+                if (alwaysCall)
+                    return BettingAdvice.Call;
+
+                bool usuallyCall =
+                    (isPair && hi == Rank.Ten)               // TT
+                    || (hi == Rank.Ace && lo == Rank.Queen)  // AQs/AQo
+                    || (hi == Rank.Ace && lo == Rank.Jack && suited); // AJs only
+
+                if (usuallyCall)
+                    return Random.value < 0.65f ? BettingAdvice.Call : BettingAdvice.Fold;
+
+                return BettingAdvice.Fold;
+            }
 
             switch (group)
             {

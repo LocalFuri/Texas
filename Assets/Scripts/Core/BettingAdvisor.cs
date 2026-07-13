@@ -64,7 +64,8 @@ namespace TexasHoldem
             PreflopSeatBucket preflopSeat,
             bool facingRaise,
             int streetRaiseCount,
-            int playerChips)
+            int playerChips,
+            System.Collections.Generic.IReadOnlyList<Card> holeCards = null)
         {
             if (isPreflop)
             {
@@ -78,7 +79,8 @@ namespace TexasHoldem
                     canCheck,
                     canRaise,
                     canCall,
-                    streetRaiseCount);
+                    streetRaiseCount,
+                    holeCards);
             }
 
             return RecommendPostflop(equityPercent, potBeforeAction, callAmount, canCheck, canRaise, canCall);

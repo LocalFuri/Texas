@@ -1730,7 +1730,8 @@ namespace TexasHoldem
                 preflopSeat,
                 facingRaise,
                 streetRaiseCount,
-                _humanPlayer.Chips);
+                _humanPlayer.Chips,
+                _humanPlayer.HoleCards);
 
             return BettingAdvisor.LabelFor(advice);
         }
