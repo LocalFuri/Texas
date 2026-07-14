@@ -23,6 +23,9 @@ namespace TexasHoldem
         private const float RaiseEdge   = 15f;
         private const float StrongRaise = 65f;
 
+        private const float PostflopBetPotFraction   = 0.67f;
+        private const float PostflopRaisePotFraction = 0.75f;
+
         public static string LabelFor(BettingAdvice advice) =>
             advice switch
             {
@@ -128,7 +131,8 @@ namespace TexasHoldem
             BettingManager betting,
             PlayerState player,
             bool isPreflop = false,
-            int streetRaiseCount = 0)
+            int streetRaiseCount = 0,
+            int potBeforeAction = 0)
         {
             if (betting == null || player == null)
                 return (BettingAction.Fold, 0);
@@ -168,7 +172,8 @@ namespace TexasHoldem
 
                     int increment = isPreflop
                         ? ResolvePreflopRaiseIncrement(betting, minIncrement, streetRaiseCount)
-                        : minIncrement;
+                        : ResolvePostflopRaiseIncrement(
+                            betting, potBeforeAction, callAmount, minIncrement, maxIncrement);
                     if (callAmount + increment >= player.Chips)
                         return (BettingAction.AllIn, 0);
 
@@ -210,6 +215,35 @@ namespace TexasHoldem
 
             int increment = targetTotal - currentBet;
             return Mathf.Max(minIncrement, increment);
+        }
+
+        private static int ResolvePostflopRaiseIncrement(
+            BettingManager betting,
+            int potBeforeAction,
+            int callAmount,
+            int minIncrement,
+            int maxIncrement)
+        {
+            int currentBet = betting.CurrentBet;
+            int targetTotal;
+
+            if (callAmount <= 0)
+            {
+                targetTotal = potBeforeAction > 0
+                    ? Mathf.RoundToInt(potBeforeAction * PostflopBetPotFraction)
+                    : currentBet + minIncrement;
+            }
+            else
+            {
+                int potAfterCall = potBeforeAction + callAmount;
+                targetTotal = callAmount + Mathf.RoundToInt(potAfterCall * PostflopRaisePotFraction);
+            }
+
+            if (targetTotal <= currentBet)
+                targetTotal = currentBet + minIncrement;
+
+            int increment = targetTotal - currentBet;
+            return Mathf.Clamp(Mathf.Max(increment, minIncrement), minIncrement, maxIncrement);
         }
 
         private static (BettingAction action, int raiseAmount) ResolveActionWhenCannotRaise(

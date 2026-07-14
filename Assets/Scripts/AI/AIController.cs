@@ -61,7 +61,7 @@ namespace TexasHoldem
                 player.Chips,
                 player.HoleCards);
 
-            return BettingAdvisor.ResolveAction(advice, betting, player, isPreflop, streetRaiseCount);
+            return BettingAdvisor.ResolveAction(advice, betting, player, isPreflop, streetRaiseCount, potAmount);
         }
 
         private static float EstimateEquityPercent(
