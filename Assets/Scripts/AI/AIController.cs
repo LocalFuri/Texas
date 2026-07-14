@@ -40,7 +40,10 @@ namespace TexasHoldem
                 preflopGroup = PreflopStrategy.ClassifyHand(player.HoleCards);
 
                 if (!isPreflop)
+                {
                     equityPercent = EstimateEquityPercent(player, communityCards, allPlayers);
+                    LogPostflopDraw(player, communityCards, equityPercent);
+                }
             }
 
             if (isPreflop)
@@ -100,6 +103,36 @@ namespace TexasHoldem
             }
 
             return count;
+        }
+
+        private static void LogPostflopDraw(
+            PlayerState player,
+            IReadOnlyList<Card> communityCards,
+            float equityPercent)
+        {
+            PostflopDrawFlags draws = PostflopDrawDetector.Detect(player.HoleCards, communityCards);
+
+            string hole = $"{player.HoleCards[0]} {player.HoleCards[1]}";
+            string board = FormatBoard(communityCards);
+
+            Debug.Log(
+                $"[PostflopDraw] player={player.Name} hole={hole} board={board} " +
+                $"draws={draws} equity={equityPercent:F1}%");
+        }
+
+        private static string FormatBoard(IReadOnlyList<Card> communityCards)
+        {
+            if (communityCards == null || communityCards.Count == 0)
+                return "(none)";
+
+            var parts = new List<string>(communityCards.Count);
+            foreach (Card card in communityCards)
+            {
+                if (card != null)
+                    parts.Add(card.ToString());
+            }
+
+            return parts.Count > 0 ? string.Join(" ", parts) : "(none)";
         }
     }
 }
