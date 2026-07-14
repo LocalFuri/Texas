@@ -53,7 +53,7 @@ namespace TexasHoldem.Dev
 
                 new DrawTestCase(
                     "Open-ended straight draw",
-                    PostflopDrawFlags.OpenEndedStraightDraw | PostflopDrawFlags.GutshotStraightDraw,
+                    PostflopDrawFlags.OpenEndedStraightDraw,
                     Cards(
                         C(Suit.Clubs, Rank.Nine),
                         C(Suit.Clubs, Rank.Ten)),

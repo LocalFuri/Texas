@@ -75,8 +75,7 @@ namespace TexasHoldem
 
             if (HasOpenEndedStraightDraw(ranks))
                 flags |= PostflopDrawFlags.OpenEndedStraightDraw;
-
-            if (HasGutshotStraightDraw(ranks))
+            else if (HasGutshotStraightDraw(ranks))
                 flags |= PostflopDrawFlags.GutshotStraightDraw;
 
             return flags;
