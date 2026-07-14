@@ -483,14 +483,19 @@ namespace TexasHoldem
                 view?.SeatActionMenu?.Hide();
         }
 
-        private void RepairAllActionBadges()
+        private void RepairAllActionBadges(bool fullRepair = true)
         {
             foreach (PlayerView view in ResolvePlayerViews())
             {
                 if (view == null) continue;
                 ActionBadge badge = view.GetComponentInChildren<ActionBadge>(true);
-                if (badge != null)
+                if (badge == null)
+                    continue;
+
+                if (fullRepair)
                     ActionBadgeUtility.Repair(badge.gameObject, badge);
+                else
+                    ActionBadgeUtility.RepairLayoutOnly(badge.gameObject, badge);
             }
         }
 
@@ -512,10 +517,7 @@ namespace TexasHoldem
                 if (badge == null)
                     continue;
 
-                if (badge.gameObject.activeInHierarchy)
-                    badge.RefreshLayout();
-                else
-                    ActionBadgeUtility.Repair(badge.gameObject, badge);
+                badge.RefreshLayout();
             }
         }
 
@@ -3508,7 +3510,7 @@ namespace TexasHoldem
             }
 
             ApplySceneModePreview();
-            RepairAllActionBadges();
+            RepairAllActionBadges(fullRepair: false);
         }
 
         [ContextMenu("Apply Copyright Label To TMP")]
