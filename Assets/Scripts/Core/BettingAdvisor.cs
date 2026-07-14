@@ -19,9 +19,10 @@ namespace TexasHoldem
         public const string LabelCheck = "CHECK";
         public const string LabelRaise = "RAISE";
 
-        private const float EdgeMargin  = 3f;
-        private const float RaiseEdge   = 15f;
-        private const float StrongRaise = 65f;
+        private const float EdgeMargin       = 3f;
+        private const float RaiseEdge        = 15f;
+        private const float RiverRaiseEdge   = 25f;
+        private const float StrongRaise      = 65f;
 
         private const float PostflopBetPotFraction   = 0.67f;
         private const float PostflopRaisePotFraction = 0.75f;
@@ -68,7 +69,8 @@ namespace TexasHoldem
             bool facingRaise,
             int streetRaiseCount,
             int playerChips,
-            System.Collections.Generic.IReadOnlyList<Card> holeCards = null)
+            System.Collections.Generic.IReadOnlyList<Card> holeCards = null,
+            GamePhase postflopPhase = GamePhase.Flop)
         {
             if (isPreflop)
             {
@@ -86,7 +88,8 @@ namespace TexasHoldem
                     holeCards);
             }
 
-            return RecommendPostflop(equityPercent, potBeforeAction, callAmount, canCheck, canRaise, canCall);
+            return RecommendPostflop(
+                equityPercent, potBeforeAction, callAmount, canCheck, canRaise, canCall, postflopPhase);
         }
 
         private static BettingAdvice RecommendPostflop(
@@ -95,7 +98,8 @@ namespace TexasHoldem
             int callAmount,
             bool canCheck,
             bool canRaise,
-            bool canCall)
+            bool canCall,
+            GamePhase postflopPhase)
         {
             equityPercent = Mathf.Clamp(equityPercent, 0f, 100f);
 
@@ -115,8 +119,9 @@ namespace TexasHoldem
                 return equityPercent >= 50f ? BettingAdvice.Call : BettingAdvice.Fold;
 
             float needed = 100f * callAmount / denominator;
+            float raiseEdge = postflopPhase == GamePhase.River ? RiverRaiseEdge : RaiseEdge;
 
-            if (equityPercent >= needed + RaiseEdge && canRaise)
+            if (equityPercent >= needed + raiseEdge && canRaise)
                 return BettingAdvice.Raise;
 
             if (equityPercent >= needed + EdgeMargin)

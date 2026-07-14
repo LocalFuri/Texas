@@ -1742,7 +1742,8 @@ namespace TexasHoldem
                 facingRaise,
                 streetRaiseCount,
                 _humanPlayer.Chips,
-                _humanPlayer.HoleCards);
+                _humanPlayer.HoleCards,
+                _gameManager.CurrentPhase);
 
             return BettingAdvisor.LabelFor(advice);
         }
