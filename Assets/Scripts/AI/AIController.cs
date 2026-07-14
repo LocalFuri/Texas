@@ -40,10 +40,7 @@ namespace TexasHoldem
                 preflopGroup = PreflopStrategy.ClassifyHand(player.HoleCards);
 
                 if (!isPreflop)
-                {
                     equityPercent = EstimateEquityPercent(player, communityCards, allPlayers);
-                    LogPostflopDraw(player, communityCards, equityPercent);
-                }
             }
 
             if (isPreflop)
@@ -65,8 +62,13 @@ namespace TexasHoldem
                 player.HoleCards,
                 phase);
 
-            return BettingAdvisor.ResolveAction(
+            (BettingAction action, int raiseAmount) resolved = BettingAdvisor.ResolveAction(
                 advice, betting, player, isPreflop, streetRaiseCount, potAmount, equityPercent, phase);
+
+            if (!isPreflop)
+                LogPostflopDecision(player, communityCards, equityPercent, resolved.action, resolved.raiseAmount);
+
+            return resolved;
         }
 
         private static float EstimateEquityPercent(
@@ -107,19 +109,37 @@ namespace TexasHoldem
             return count;
         }
 
-        private static void LogPostflopDraw(
+        private static void LogPostflopDecision(
             PlayerState player,
             IReadOnlyList<Card> communityCards,
-            float equityPercent)
+            float equityPercent,
+            BettingAction action,
+            int raiseAmount)
         {
-            PostflopDrawFlags draws = PostflopDrawDetector.Detect(player.HoleCards, communityCards);
+            BoardTextureFlags texture = BoardTextureAnalyzer.Analyze(communityCards);
 
-            string hole = $"{player.HoleCards[0]} {player.HoleCards[1]}";
-            string board = FormatBoard(communityCards);
+            PostflopDrawFlags draws = PostflopDrawFlags.None;
+            if (player?.HoleCards != null && player.HoleCards.Count >= 2)
+                draws = PostflopDrawDetector.Detect(player.HoleCards, communityCards);
 
             Debug.Log(
-                $"[PostflopDraw] player={player.Name} hole={hole} board={board} " +
-                $"draws={draws} equity={equityPercent:F1}%");
+                $"[PostflopAI] player={player.Name} board={FormatBoard(communityCards)} " +
+                $"texture={FormatTextureFlags(texture)} draws={FormatDrawFlags(draws)} " +
+                $"equity={equityPercent:F1}% decision={FormatDecision(action, raiseAmount)}");
+        }
+
+        private static string FormatTextureFlags(BoardTextureFlags flags) =>
+            flags == BoardTextureFlags.None ? "None" : flags.ToString();
+
+        private static string FormatDrawFlags(PostflopDrawFlags flags) =>
+            flags == PostflopDrawFlags.None ? "None" : flags.ToString();
+
+        private static string FormatDecision(BettingAction action, int raiseAmount)
+        {
+            if (action == BettingAction.Raise && raiseAmount > 0)
+                return $"{action} +${raiseAmount}";
+
+            return action.ToString();
         }
 
         private static string FormatBoard(IReadOnlyList<Card> communityCards)
