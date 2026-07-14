@@ -6,8 +6,7 @@ using UnityEngine.UI;
 namespace TexasHoldem
 {
     /// <summary>
-    /// Screen-space overlay for the post-win debug flow:
-    /// collect pot chips, then advance to the next hand.
+    /// Screen-space overlay for the post-win flow: collect pot chips, then auto-advance to the next hand.
     /// Works in player builds — uses mouse polling and on-screen feedback (no Console needed).
     /// </summary>
     [DefaultExecutionOrder(-50)]
@@ -22,12 +21,9 @@ namespace TexasHoldem
         private TMP_Text        _statusText;
         private TMP_Text        _feedbackText;
         private Button          _collectButton;
-        private Button          _nextButton;
         private RectTransform   _collectButtonRt;
-        private RectTransform   _nextButtonRt;
         private bool            _inputActive;
         private bool            _overlayVisible;
-        private bool            _wasAdvanceReady;
         private string          _feedbackMessage = string.Empty;
 
         public void Bind(GameManager gameManager, UIManager uiManager)
@@ -48,8 +44,7 @@ namespace TexasHoldem
 
             _inputActive      = true;
             _overlayVisible   = showOverlay;
-            _wasAdvanceReady  = false;
-            _feedbackMessage  = "Tap Collect or press B / Backspace.";
+            _feedbackMessage  = "Tap Collect or press Backspace / B.";
             _canvas.gameObject.SetActive(showOverlay);
             Refresh();
 
@@ -81,19 +76,10 @@ namespace TexasHoldem
             if (!Input.GetMouseButtonDown(0))
                 return;
 
-            Vector2 mouse = Input.mousePosition;
-
-            if (IsCollectPending() && HitTest(_collectButtonRt, mouse))
+            if (IsCollectPending() && HitTest(_collectButtonRt, Input.mousePosition))
             {
                 SetFeedback("Collect clicked…");
-                TryCollect();
-                return;
-            }
-
-            if (CanAdvance() && HitTest(_nextButtonRt, mouse))
-            {
-                SetFeedback("Next hand clicked…");
-                TryAdvance();
+                TryCollectOrAdvance();
             }
         }
 
@@ -102,13 +88,7 @@ namespace TexasHoldem
             if (Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.B) || Input.GetKeyDown(KeyCode.Delete))
             {
                 SetFeedback("Collect key pressed…");
-                TryCollect();
-            }
-
-            if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-            {
-                SetFeedback("Next hand key pressed…");
-                TryAdvance();
+                TryCollectOrAdvance();
             }
         }
 
@@ -122,31 +102,20 @@ namespace TexasHoldem
 
         private void Refresh()
         {
-            bool canAdvance = CanAdvance();
-
-            if (canAdvance && !_wasAdvanceReady)
-                SetFeedback("Pot collected — tap Next hand or press Space.");
-
-            _wasAdvanceReady = canAdvance;
-
             if (!_overlayVisible)
                 return;
 
             if (_statusText != null)
             {
                 _statusText.text =
-                    $"Winner pause — collect: {(IsCollectPending() ? "yes" : "no")}, "
-                    + $"next hand: {(canAdvance ? "ready" : "wait for collect")}";
+                    $"Winner pause — collect: {(IsCollectPending() ? "yes" : "no")}";
             }
 
             if (_feedbackText != null)
                 _feedbackText.text = _feedbackMessage;
 
             if (_collectButton != null)
-                _collectButton.interactable = IsCollectPending();
-
-            if (_nextButton != null)
-                _nextButton.interactable = canAdvance;
+                _collectButton.interactable = IsCollectPending() || CanAdvance();
         }
 
         private void SetFeedback(string message)
@@ -165,6 +134,18 @@ namespace TexasHoldem
         private bool CanAdvance()
             => _gameManager != null
                 && (_uiManager == null || _uiManager.CanAdvancePastWinnerDismiss());
+
+        private void TryCollectOrAdvance()
+        {
+            if (IsCollectPending())
+            {
+                TryCollect();
+                return;
+            }
+
+            if (CanAdvance())
+                TryAdvance();
+        }
 
         private void TryCollect()
         {
@@ -193,7 +174,7 @@ namespace TexasHoldem
         {
             if (_gameManager == null || !CanAdvance())
             {
-                SetFeedback("Next hand blocked — collect pot first.");
+                SetFeedback("Collect pot first.");
                 return;
             }
 
@@ -232,13 +213,11 @@ namespace TexasHoldem
                     Destroy(child.gameObject);
             }
 
-            _canvas           = null;
-            _statusText       = null;
-            _feedbackText     = null;
-            _collectButton    = null;
-            _nextButton       = null;
-            _collectButtonRt  = null;
-            _nextButtonRt     = null;
+            _canvas          = null;
+            _statusText      = null;
+            _feedbackText    = null;
+            _collectButton   = null;
+            _collectButtonRt = null;
         }
 
         private void BuildOverlay()
@@ -262,7 +241,7 @@ namespace TexasHoldem
             panelRt.anchorMin        = new Vector2(0.5f, 0f);
             panelRt.anchorMax        = new Vector2(0.5f, 0f);
             panelRt.pivot            = new Vector2(0.5f, 0f);
-            panelRt.sizeDelta        = new Vector2(520f, 175f);
+            panelRt.sizeDelta        = new Vector2(420f, 175f);
             panelRt.anchoredPosition = new Vector2(0f, 24f);
 
             var panelImage = panelGo.GetComponent<Image>();
@@ -272,16 +251,16 @@ namespace TexasHoldem
             _statusText = CreateLabel(
                 panelRt, "Status",
                 new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0f, -10f), new Vector2(480f, 32f), 18f);
+                new Vector2(0f, -10f), new Vector2(380f, 32f), 18f);
 
             _feedbackText = CreateLabel(
                 panelRt, "Feedback",
                 new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0f, -42f), new Vector2(480f, 28f), 16f);
+                new Vector2(0f, -42f), new Vector2(380f, 28f), 16f);
             _feedbackText.color = new Color(0.75f, 0.9f, 1f, 1f);
 
-            _collectButton   = CreateButton(panelRt, "Collect pot  (Backspace / B)", new Vector2(-130f, 36f), TryCollect, out _collectButtonRt);
-            _nextButton      = CreateButton(panelRt, "Next hand  (Space)", new Vector2(130f, 36f), TryAdvance, out _nextButtonRt);
+            _collectButton = CreateButton(
+                panelRt, "Collect pot  (Backspace / B)", new Vector2(0f, 36f), TryCollectOrAdvance, out _collectButtonRt);
 
             canvasGo.SetActive(false);
         }
@@ -329,7 +308,7 @@ namespace TexasHoldem
             buttonRt.anchorMin        = new Vector2(0.5f, 0f);
             buttonRt.anchorMax        = new Vector2(0.5f, 0f);
             buttonRt.pivot            = new Vector2(0.5f, 0f);
-            buttonRt.sizeDelta        = new Vector2(240f, 52f);
+            buttonRt.sizeDelta        = new Vector2(280f, 52f);
             buttonRt.anchoredPosition = anchoredPos;
 
             var image = go.GetComponent<Image>();

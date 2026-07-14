@@ -4087,6 +4087,9 @@ namespace TexasHoldem
 
             _winnerPotChipsCollected    = true;
             _winnerCelebrationCoroutine = null;
+
+            if (_gameManager != null && _gameManager.AwaitingWinnerDismiss)
+                _gameManager.AcknowledgeWinnerDismiss();
         }
 
         private void EnsureWinningHandLabel()
