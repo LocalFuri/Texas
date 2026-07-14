@@ -1142,7 +1142,7 @@ namespace TexasHoldem
                 else
                     view.HideBetDisplay();
 
-                if (!player.HasFolded && !player.IsAllIn)
+                if (!player.HasFolded && !player.IsAllIn && !_winnerCelebrationActive)
                     view.BringActionBadgeToFrontIfVisible();
             }
 

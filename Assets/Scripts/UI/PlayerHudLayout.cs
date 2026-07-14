@@ -461,6 +461,7 @@ namespace TexasHoldem
         {
             if (root == null) return;
 
+            bool winnerAvatarOnTop = pv != null && pv.IsWinnerAvatarZoomActive;
             int idx = 0;
             if (pv != null)
             {
@@ -478,19 +479,40 @@ namespace TexasHoldem
             if (hudGlow != null)  hudGlow.SetSiblingIndex(idx++);
 
             Transform avatarFrame = FindChild(root, "AvatarFrame");
-            if (avatarFrame != null)
+            if (!winnerAvatarOnTop && avatarFrame != null)
             {
                 avatarFrame.SetSiblingIndex(idx++);
                 ApplyAvatarFrameDrawOrder(avatarFrame);
             }
 
-            string[] frontOrder =
-            {
-                "EquityText", "EquityAdviceText",
-                "NameText", "ChipsText", "StatusText",
-                "SeatActionMenu", "ActionBadge", "BetAnchor", "BetDisplay", "DealerButtonAnchor"
-            };
+            string[] frontOrder = winnerAvatarOnTop
+                ? new[]
+                {
+                    "EquityText", "EquityAdviceText", "ActionBadge",
+                    "NameText", "ChipsText", "StatusText", "SeatActionMenu",
+                }
+                : new[]
+                {
+                    "EquityText", "EquityAdviceText",
+                    "NameText", "ChipsText", "StatusText",
+                    "SeatActionMenu", "ActionBadge",
+                };
+
             foreach (string name in frontOrder)
+            {
+                Transform t = FindChild(root, name);
+                if (t != null)
+                    t.SetSiblingIndex(idx++);
+            }
+
+            if (winnerAvatarOnTop && avatarFrame != null)
+            {
+                avatarFrame.SetSiblingIndex(idx++);
+                ApplyAvatarFrameDrawOrder(avatarFrame);
+            }
+
+            string[] trailingOrder = { "BetAnchor", "BetDisplay", "DealerButtonAnchor" };
+            foreach (string name in trailingOrder)
             {
                 Transform t = FindChild(root, name);
                 if (t != null)

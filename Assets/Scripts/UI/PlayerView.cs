@@ -92,12 +92,14 @@ namespace TexasHoldem
         private int       _revealedHoleCount;
         private Coroutine _ringCountdown;
         private Coroutine _winnerAvatarScaleCoroutine;
+        private bool      _winnerAvatarScaleActive;
         private bool      _winnerGlowHeld;
         private bool      _winnerGoldRingActive;
         private Sprite    _currentAvatarSprite; // cached so the toggle can restore it without re-calling SetAvatar
 
         public bool HudMirrored => _hudMirrored;
         public bool IsHuman     => _isHuman;
+        public bool IsWinnerAvatarZoomActive => _winnerAvatarScaleActive;
 
         /// <summary>Resolved display name for this seat (serialized field, then name label).</summary>
         public string DisplayName => ResolveDisplayName();
@@ -813,9 +815,17 @@ namespace TexasHoldem
         /// <summary>Keeps a visible action badge above bet chips after HUD refresh.</summary>
         public void BringActionBadgeToFrontIfVisible()
         {
+            if (_winnerAvatarScaleActive)
+                return;
+
             ActionBadge badge = ResolveActionBadge();
             if (badge != null && badge.gameObject.activeInHierarchy)
                 badge.BringToFront();
+        }
+
+        private void ApplyWinnerAvatarDrawOrder()
+        {
+            PlayerHudLayout.ApplyHudDrawOrder(transform, this);
         }
 
         private ActionBadge ResolveActionBadge()
@@ -1020,12 +1030,16 @@ namespace TexasHoldem
 
             ResolveActionBadge()?.ShowWinPersistent(potAmount);
             ApplyHudGlowWinnerHold();
+            if (_winnerAvatarScaleActive)
+                ApplyWinnerAvatarDrawOrder();
         }
 
         /// <summary>Scales AvatarFrame (photo + chrome/gold rings) up, holds, then returns to normal size.</summary>
         public void StartWinnerAvatarScale(float peakScale, float holdSeconds, float transitionSeconds)
         {
             StopWinnerAvatarScale();
+            _winnerAvatarScaleActive = true;
+            ApplyWinnerAvatarDrawOrder();
             _winnerAvatarScaleCoroutine = StartCoroutine(
                 AnimateWinnerAvatarScale(peakScale, holdSeconds, transitionSeconds));
         }
@@ -1038,6 +1052,7 @@ namespace TexasHoldem
                 _winnerAvatarScaleCoroutine = null;
             }
 
+            _winnerAvatarScaleActive = false;
             ResetAvatarFrameScale();
             RestoreRingsAfterWin();
         }
@@ -1052,10 +1067,12 @@ namespace TexasHoldem
         public IEnumerator AnimateWinnerAvatarScale(float peakScale, float holdSeconds, float transitionSeconds)
         {
             ApplyWinnerGoldRingSolid();
+            ApplyWinnerAvatarDrawOrder();
 
             RectTransform rt = ResolveAvatarPulseTarget();
             if (rt == null)
             {
+                _winnerAvatarScaleActive = false;
                 RestoreRingsAfterWin();
                 yield break;
             }
@@ -1068,12 +1085,14 @@ namespace TexasHoldem
             try
             {
                 yield return LerpAvatarImageScale(rt, normal, peak, transitionSeconds);
+                ApplyWinnerAvatarDrawOrder();
 
                 if (holdSeconds > 0f)
                 {
                     float elapsed = 0f;
                     while (elapsed < holdSeconds)
                     {
+                        ApplyWinnerAvatarDrawOrder();
                         elapsed += Time.unscaledDeltaTime;
                         yield return null;
                     }
@@ -1084,8 +1103,10 @@ namespace TexasHoldem
             finally
             {
                 rt.localScale = normal;
+                _winnerAvatarScaleActive = false;
                 _winnerAvatarScaleCoroutine = null;
                 RestoreRingsAfterWin();
+                PlayerHudLayout.ApplyHudDrawOrder(transform, this);
             }
         }
 

@@ -81,6 +81,7 @@ namespace TexasHoldem
             }
 
             enabled = true;
+            ActionBadgeSprites.EnsureLoaded();
             ActionBadgeUtility.Repair(gameObject, this);
             ResolveReferences();
 
@@ -97,7 +98,9 @@ namespace TexasHoldem
 
             HideLabelChild();
             ApplyLayout(sprite);
-            BringToFrontOfSeat();
+
+            if (sprite != ActionBadgeSprites.Winner)
+                BringToFrontOfSeat();
 
             // Activate after setup — prefab starts inactive; never call Hide() from Awake (that races first Show).
             if (!gameObject.activeSelf)
