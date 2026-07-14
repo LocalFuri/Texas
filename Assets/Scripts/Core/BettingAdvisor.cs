@@ -23,9 +23,11 @@ namespace TexasHoldem
         private const float RaiseEdge        = 15f;
         private const float RiverRaiseEdge   = 25f;
         private const float StrongRaise      = 65f;
+        private const float RiverThinValueBet = 55f;
 
-        private const float PostflopBetPotFraction   = 0.67f;
-        private const float PostflopRaisePotFraction = 0.75f;
+        private const float PostflopBetPotFraction      = 0.67f;
+        private const float RiverThinBetPotFraction     = 0.33f;
+        private const float PostflopRaisePotFraction    = 0.75f;
 
         public static string LabelFor(BettingAdvice advice) =>
             advice switch
@@ -105,7 +107,21 @@ namespace TexasHoldem
 
             if (canCheck)
             {
-                if (equityPercent >= StrongRaise && canRaise)
+                if (!canRaise)
+                    return BettingAdvice.Check;
+
+                if (postflopPhase == GamePhase.River)
+                {
+                    if (equityPercent >= StrongRaise)
+                        return BettingAdvice.Raise;
+
+                    if (equityPercent >= RiverThinValueBet)
+                        return BettingAdvice.Raise;
+
+                    return BettingAdvice.Check;
+                }
+
+                if (equityPercent >= StrongRaise)
                     return BettingAdvice.Raise;
 
                 return BettingAdvice.Check;
@@ -137,7 +153,9 @@ namespace TexasHoldem
             PlayerState player,
             bool isPreflop = false,
             int streetRaiseCount = 0,
-            int potBeforeAction = 0)
+            int potBeforeAction = 0,
+            float equityPercent = 0f,
+            GamePhase postflopPhase = GamePhase.Flop)
         {
             if (betting == null || player == null)
                 return (BettingAction.Fold, 0);
@@ -178,7 +196,8 @@ namespace TexasHoldem
                     int increment = isPreflop
                         ? ResolvePreflopRaiseIncrement(betting, minIncrement, streetRaiseCount)
                         : ResolvePostflopRaiseIncrement(
-                            betting, potBeforeAction, callAmount, minIncrement, maxIncrement);
+                            betting, potBeforeAction, callAmount, minIncrement, maxIncrement,
+                            equityPercent, postflopPhase);
                     if (callAmount + increment >= player.Chips)
                         return (BettingAction.AllIn, 0);
 
@@ -227,15 +246,25 @@ namespace TexasHoldem
             int potBeforeAction,
             int callAmount,
             int minIncrement,
-            int maxIncrement)
+            int maxIncrement,
+            float equityPercent,
+            GamePhase postflopPhase)
         {
             int currentBet = betting.CurrentBet;
             int targetTotal;
 
             if (callAmount <= 0)
             {
+                float betPotFraction = PostflopBetPotFraction;
+                if (postflopPhase == GamePhase.River
+                    && equityPercent >= RiverThinValueBet
+                    && equityPercent < StrongRaise)
+                {
+                    betPotFraction = RiverThinBetPotFraction;
+                }
+
                 targetTotal = potBeforeAction > 0
-                    ? Mathf.RoundToInt(potBeforeAction * PostflopBetPotFraction)
+                    ? Mathf.RoundToInt(potBeforeAction * betPotFraction)
                     : currentBet + minIncrement;
             }
             else
