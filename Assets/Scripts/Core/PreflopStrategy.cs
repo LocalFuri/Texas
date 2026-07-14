@@ -36,6 +36,10 @@ namespace TexasHoldem
         private const float PlayableCallChipFraction = 0.20f;
         private const float StrongFoldChipFraction   = 0.35f;
 
+        private const float SmallPairCallChipFraction = 0.12f;
+        /// <summary>Post-call stack must exceed call × this ratio (~15 BB when call ≈ 3 BB).</summary>
+        private const int SmallPairMinPostCallToCallRatio = 5;
+
         private static readonly PreflopHandGroup[,] PreflopChart = BuildPreflopChart();
 
         public static PreflopHandGroup ClassifyHand(IReadOnlyList<Card> holeCards)
@@ -231,7 +235,7 @@ namespace TexasHoldem
             }
 
             if (streetRaiseCount >= MaxStreetRaises)
-                return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, holeCards);
+                return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards);
 
             bool facingAllIn = IsFacingAllIn(callAmount, playerChips);
             if (group == PreflopHandGroup.Premium
@@ -245,7 +249,7 @@ namespace TexasHoldem
                 return BettingAdvice.Raise;
             }
 
-            return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, holeCards);
+            return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards);
         }
 
         private static bool IsFacingAllIn(int callAmount, int playerChips) =>
@@ -327,6 +331,7 @@ namespace TexasHoldem
             int callAmount,
             int playerChips,
             bool canCall,
+            int streetRaiseCount,
             IReadOnlyList<Card> holeCards)
         {
             bool facingAllIn = IsFacingAllIn(callAmount, playerChips);
@@ -355,6 +360,12 @@ namespace TexasHoldem
                         ? "ResolveCallOrFoldAdvice:!canCall"
                         : "ResolveCallOrFoldAdvice:callAmount>playerChips");
                 return BettingAdvice.Fold;
+            }
+
+            if (IsSmallPocketPair(holeCards))
+            {
+                return ResolveSmallPairFacingRaiseAdvice(
+                    group, handTier, potBeforeAction, callAmount, playerChips, streetRaiseCount, holeCards);
             }
 
             switch (group)
@@ -393,6 +404,56 @@ namespace TexasHoldem
                         facingAllIn, BettingAdvice.Fold, "ResolveCallOrFoldAdvice:Default");
                     return BettingAdvice.Fold;
             }
+        }
+
+        private static bool IsSmallPocketPair(IReadOnlyList<Card> holeCards)
+        {
+            if (holeCards == null || holeCards.Count < 2)
+                return false;
+
+            if (holeCards[0].Rank != holeCards[1].Rank)
+                return false;
+
+            Rank rank = holeCards[0].Rank;
+            return rank >= Rank.Two && rank <= Rank.Six;
+        }
+
+        private static BettingAdvice ResolveSmallPairFacingRaiseAdvice(
+            PreflopHandGroup group,
+            FacingAllInHandTier handTier,
+            int potBeforeAction,
+            int callAmount,
+            int playerChips,
+            int streetRaiseCount,
+            IReadOnlyList<Card> holeCards)
+        {
+            const bool facingAllIn = false;
+
+            if (streetRaiseCount >= 2)
+            {
+                LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                    facingAllIn, BettingAdvice.Fold, "ResolveSmallPairFacingRaise:Vs3BetPlus");
+                return BettingAdvice.Fold;
+            }
+
+            if (callAmount > playerChips * SmallPairCallChipFraction)
+            {
+                LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                    facingAllIn, BettingAdvice.Fold, "ResolveSmallPairFacingRaise:CallTooLarge");
+                return BettingAdvice.Fold;
+            }
+
+            int postCallStack = playerChips - callAmount;
+            if (postCallStack <= callAmount * SmallPairMinPostCallToCallRatio)
+            {
+                LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                    facingAllIn, BettingAdvice.Fold, "ResolveSmallPairFacingRaise:InsufficientImpliedOdds");
+                return BettingAdvice.Fold;
+            }
+
+            LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                facingAllIn, BettingAdvice.Call, "ResolveSmallPairFacingRaise:SetMine");
+            return BettingAdvice.Call;
         }
 
         private static int OpenTier(PreflopHandGroup group) =>
