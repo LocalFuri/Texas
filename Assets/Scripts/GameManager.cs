@@ -37,8 +37,10 @@ namespace TexasHoldem
         [Header("Round End")]
         [Tooltip("How long the winner celebration plays before the next round begins.")]
         [SerializeField, Min(0f)] private float _roundEndPauseSecs = 2.5f;
+        [Tooltip("When on, pot chips fly to the winner automatically (no Backspace). Turn off to collect manually.")]
+        [SerializeField] private bool _autoCollectWinnerPot = true;
         [Tooltip("Shows on-screen Collect / Next-hand buttons after a win (debug flow).")]
-        [SerializeField] private bool _showWinnerDebugOverlay = true;
+        [SerializeField] private bool _showWinnerDebugOverlay = false;
 
         [Header("Round Start")]
         [Tooltip("Pause before the dealer button appears at the start of each hand.")]
@@ -249,6 +251,29 @@ namespace TexasHoldem
             ResolveUiManagerReference();
             _winnerDismissControls.Bind(this, _uiManager);
             _winnerDismissControls.Begin(_showWinnerDebugOverlay);
+
+            if (_autoCollectWinnerPot)
+                StartCoroutine(AutoCollectWinnerPotRoutine());
+        }
+
+        private IEnumerator AutoCollectWinnerPotRoutine()
+        {
+            // Let OnWinnerDetermined finish setting up celebration UI.
+            yield return null;
+            yield return null;
+
+            if (!_awaitingWinnerDismiss)
+                yield break;
+
+            UIManager ui = ResolveUiManager();
+            if (ui != null && ui.WinnerPotCollectPending)
+            {
+                ui.TryCollectWinnerPot();
+                yield break;
+            }
+
+            if (ui == null || ui.CanAdvancePastWinnerDismiss())
+                AcknowledgeWinnerDismiss();
         }
 
         private void HideWinnerDismissControls()

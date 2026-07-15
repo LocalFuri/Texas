@@ -13286,6 +13286,7 @@ MonoBehaviour:
   _communityFlipDuration: 0.1
   _communityFlipGap: 0.1
   _roundEndPauseSecs: 2.5
+  _autoCollectWinnerPot: 1
   _showWinnerDebugOverlay: 0
   _dealerButtonDelay: 0
   _blindPostDelay: 0.5
