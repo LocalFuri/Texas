@@ -655,7 +655,6 @@ namespace TexasHoldem
             }
 
             _winnerGlowHeld = false;
-            StopWinnerAvatarScale();
 
             if (_hudGlow == null)
                 return;

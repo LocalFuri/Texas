@@ -3880,6 +3880,7 @@ namespace TexasHoldem
             DestroyFlyingWinChips();
 
             ReleaseWinnerGlowHolds();
+            StopWinnerAvatarScales();
             foreach (PlayerView view in ResolvePlayerViews())
                 view?.SetActiveTurn(false);
         }
@@ -3895,6 +3896,20 @@ namespace TexasHoldem
                     continue;
 
                 ResolvePlayerView(winner)?.ReleaseWinnerGlowHold();
+            }
+        }
+
+        private void StopWinnerAvatarScales()
+        {
+            if (_gameManager?.LastRoundWinners == null)
+                return;
+
+            foreach (PlayerState winner in _gameManager.LastRoundWinners)
+            {
+                if (winner == null)
+                    continue;
+
+                ResolvePlayerView(winner)?.StopWinnerAvatarScale();
             }
         }
 
