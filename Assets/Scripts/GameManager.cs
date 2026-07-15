@@ -165,26 +165,25 @@ namespace TexasHoldem
             return Players.IndexOf(active[dealerActiveIndex]);
         }
 
-        /// <summary>Preflop seat bucket (BTN/SB/BB/UTG/…) for a player still seated with chips.</summary>
+        /// <summary>Preflop seat bucket (BTN/SB/BB/UTG/…) from hand-start seats — all-ins do not shift positions.</summary>
         public PreflopSeatBucket GetPreflopSeatBucket(PlayerState player)
         {
-            if (player == null || Players == null || Players.Count == 0)
+            if (player == null)
                 return PreflopSeatBucket.Early;
 
-            var active = Players.Where(p => p.Chips > 0).ToList();
-            if (active.Count == 0)
-                return PreflopSeatBucket.Early;
+            IReadOnlyList<PlayerState> seats = _handPlayers;
+            int dealerInHand = _handDealerIndexInHand;
 
-            int dealerSeat = GetDealerSeatIndex();
-            if (dealerSeat < 0 || dealerSeat >= Players.Count)
-                return PreflopSeatBucket.Early;
+            if (seats == null || seats.Count == 0)
+            {
+                seats = Players;
+                if (seats == null || seats.Count == 0)
+                    return PreflopSeatBucket.Early;
 
-            PlayerState dealer = Players[dealerSeat];
-            int dealerInActive = active.IndexOf(dealer);
-            if (dealerInActive < 0)
-                dealerInActive = 0;
+                dealerInHand = ((DealerIndex % seats.Count) + seats.Count) % seats.Count;
+            }
 
-            return PreflopStrategy.ResolveSeatBucket(active, dealerInActive, player);
+            return PreflopStrategy.ResolveSeatBucket(seats, dealerInHand, player);
         }
 
         /// <summary>Wait time after dealing — flip animations removed; only base deal delay when clearing.</summary>
@@ -203,6 +202,10 @@ namespace TexasHoldem
         private BettingAction _humanAction;
         private int           _humanRaiseAmount;
         private WinnerDismissControls _winnerDismissControls;
+
+        /// <summary>Players seated when the current hand began (includes all-ins; does not shrink mid-hand).</summary>
+        private List<PlayerState> _handPlayers;
+        private int               _handDealerIndexInHand;
 
         private void Awake()
         {
@@ -380,6 +383,9 @@ namespace TexasHoldem
 
             var active   = Players.Where(p => p.Chips > 0).ToList();
             ApplyGodModeIfEnabled(active);
+            // Snapshot seats + dealer for the whole hand so all-ins do not shift preflop positions.
+            _handPlayers             = active;
+            _handDealerIndexInHand   = ((DealerIndex % active.Count) + active.Count) % active.Count;
             int sbIndex  = (DealerIndex + 1) % active.Count;
             int bbIndex  = (DealerIndex + 2) % active.Count;
 
