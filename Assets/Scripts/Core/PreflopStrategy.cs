@@ -190,8 +190,8 @@ namespace TexasHoldem
             if (seat == PreflopSeatBucket.BigBlind && canCheck)
             {
                 if (group >= PreflopHandGroup.Strong
-                    && canRaise
-                    && streetRaiseCount < MaxStreetRaises)
+                    && streetRaiseCount < MaxStreetRaises
+                    && playerChips > 0)
                 {
                     return BettingAdvice.Raise;
                 }
@@ -199,9 +199,9 @@ namespace TexasHoldem
                 return BettingAdvice.Check;
             }
 
-            if (canRaise
-                && streetRaiseCount < MaxStreetRaises
-                && OpenTier(group) >= MinOpenTier(seat))
+            if (streetRaiseCount < MaxStreetRaises
+                && OpenTier(group) >= MinOpenTier(seat)
+                && playerChips > 0)
             {
                 return BettingAdvice.Raise;
             }

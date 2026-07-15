@@ -185,12 +185,12 @@ namespace TexasHoldem
 
                 case BettingAdvice.Raise:
                     if (!betting.CanRaise(player))
-                        return ResolveActionWhenCannotRaise(callAmount, betting, player);
+                        return ResolveActionWhenCannotRaise(callAmount, player, isPreflop);
 
                     int minIncrement = betting.GetMinRaiseIncrement();
                     int maxIncrement = betting.GetMaxRaiseIncrement(player);
                     if (maxIncrement < minIncrement)
-                        return ResolveActionWhenCannotRaise(callAmount, betting, player);
+                        return ResolveActionWhenCannotRaise(callAmount, player, isPreflop);
 
                     int increment = isPreflop
                         ? ResolvePreflopRaiseIncrement(betting, minIncrement, streetRaiseCount)
@@ -281,9 +281,16 @@ namespace TexasHoldem
 
         private static (BettingAction action, int raiseAmount) ResolveActionWhenCannotRaise(
             int callAmount,
-            BettingManager betting,
-            PlayerState player)
+            PlayerState player,
+            bool isPreflop)
         {
+            if (player.Chips <= 0)
+                return callAmount <= 0 ? (BettingAction.Check, 0) : (BettingAction.Fold, 0);
+
+            // Preflop: intended raise but cannot meet min → jam (never flat leftover chips).
+            if (isPreflop)
+                return (BettingAction.AllIn, 0);
+
             if (callAmount <= 0)
                 return (BettingAction.Check, 0);
 
