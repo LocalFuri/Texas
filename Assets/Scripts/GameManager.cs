@@ -374,6 +374,7 @@ namespace TexasHoldem
             foreach (var p in Players) p.ResetForNewRound();
             _bettingManager.ResetRound();
             _boardManager.NewDeck();
+            _aiController.ClearHandState();
             LastHandWasBbWalk  = false;
             LastBbWalkNetWin   = 0;
             LastBbWalkSbPlayer = null;
@@ -564,6 +565,12 @@ namespace TexasHoldem
 
                 if (!actionApplied)
                     continue;
+
+                if (CurrentPhase == GamePhase.Flop
+                    && _bettingManager.CurrentBet > betBeforeAction)
+                {
+                    _aiController.NoteFlopAggression(player);
+                }
 
                 NotifyPlayersUpdated();
 

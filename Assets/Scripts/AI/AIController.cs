@@ -8,6 +8,36 @@ namespace TexasHoldem
     /// </summary>
     public class AIController
     {
+        private const float FlopValueEquityThreshold   = 65f;
+        private const float TurnSecondBarrelEquityMin  = 50f;
+        private const float FlopSmallBetPotFraction     = 0.33f;
+        private const float FlopLargeBetPotFraction     = 0.67f;
+
+        private static readonly BoardTextureFlags FlopWetTextureFlags =
+            BoardTextureFlags.ThreeFlush
+            | BoardTextureFlags.FourFlush
+            | BoardTextureFlags.Connected
+            | BoardTextureFlags.FourStraight;
+
+        private static readonly PostflopDrawFlags FlopSemiBluffDraws =
+            PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw;
+
+        /// <summary>Player who last bet or raised on the flop (cleared each hand).</summary>
+        private PlayerState _flopLastAggressor;
+
+        /// <summary>Clears per-hand aggression tracking at the start of a new hand.</summary>
+        public void ClearHandState()
+        {
+            _flopLastAggressor = null;
+        }
+
+        /// <summary>Records the last flop bet/raise aggressor (full or short).</summary>
+        public void NoteFlopAggression(PlayerState player)
+        {
+            if (player != null)
+                _flopLastAggressor = player;
+        }
+
         /// <summary>Decides the AI's next betting action using <see cref="BettingAdvisor"/>.</summary>
         public (BettingAction action, int raiseAmount) DecideAction(
             PlayerState                 player,
@@ -65,6 +95,9 @@ namespace TexasHoldem
             advice = ApplyFlopOrTurnSemiBluffIfEligible(
                 advice, phase, canCheck, canRaise, player.HoleCards, communityCards);
 
+            advice = ApplyTurnSecondBarrelIfEligible(
+                advice, phase, canCheck, canRaise, player, equityPercent);
+
             (BettingAction action, int raiseAmount) resolved = BettingAdvisor.ResolveAction(
                 advice, betting, player, isPreflop, streetRaiseCount, potAmount, equityPercent, phase);
 
@@ -77,19 +110,6 @@ namespace TexasHoldem
 
             return resolved;
         }
-
-        private const float FlopValueEquityThreshold = 65f;
-        private const float FlopSmallBetPotFraction  = 0.33f;
-        private const float FlopLargeBetPotFraction  = 0.67f;
-
-        private static readonly BoardTextureFlags FlopWetTextureFlags =
-            BoardTextureFlags.ThreeFlush
-            | BoardTextureFlags.FourFlush
-            | BoardTextureFlags.Connected
-            | BoardTextureFlags.FourStraight;
-
-        private static readonly PostflopDrawFlags FlopSemiBluffDraws =
-            PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw;
 
         /// <summary>
         /// Flop open bets only: ~1/3 pot for semi-bluffs and dry value; ~2/3 pot for value on wetter flops.
@@ -153,6 +173,33 @@ namespace TexasHoldem
 
             // Dry value (and any other flop open) → small size.
             return FlopSmallBetPotFraction;
+        }
+
+        /// <summary>
+        /// Turn second barrel: if this bot was the last flop aggressor and is checked to,
+        /// continue betting with equity ≥ 50% (existing ~⅔ pot sizing).
+        /// </summary>
+        private BettingAdvice ApplyTurnSecondBarrelIfEligible(
+            BettingAdvice advice,
+            GamePhase phase,
+            bool canCheck,
+            bool canRaise,
+            PlayerState player,
+            float equityPercent)
+        {
+            if (phase != GamePhase.Turn || !canCheck || !canRaise)
+                return advice;
+
+            if (advice != BettingAdvice.Check)
+                return advice;
+
+            if (player == null || player != _flopLastAggressor)
+                return advice;
+
+            if (equityPercent >= TurnSecondBarrelEquityMin)
+                return BettingAdvice.Raise;
+
+            return advice;
         }
 
         /// <summary>
