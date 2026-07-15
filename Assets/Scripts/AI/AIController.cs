@@ -62,6 +62,9 @@ namespace TexasHoldem
                 player.HoleCards,
                 phase);
 
+            advice = ApplyFlopSemiBluffIfEligible(
+                advice, phase, canCheck, canRaise, player.HoleCards, communityCards);
+
             (BettingAction action, int raiseAmount) resolved = BettingAdvisor.ResolveAction(
                 advice, betting, player, isPreflop, streetRaiseCount, potAmount, equityPercent, phase);
 
@@ -69,6 +72,34 @@ namespace TexasHoldem
                 LogPostflopDecision(player, communityCards, equityPercent, resolved.action, resolved.raiseAmount);
 
             return resolved;
+        }
+
+        /// <summary>
+        /// Flop only, when checking is free: keep ≥65% value bets from the advisor, and also
+        /// bet open-ended straight draws / flush draws (not gutshots). Uses existing sizing.
+        /// </summary>
+        private static BettingAdvice ApplyFlopSemiBluffIfEligible(
+            BettingAdvice advice,
+            GamePhase phase,
+            bool canCheck,
+            bool canRaise,
+            IReadOnlyList<Card> holeCards,
+            IReadOnlyList<Card> communityCards)
+        {
+            if (phase != GamePhase.Flop || !canCheck || !canRaise)
+                return advice;
+
+            if (advice != BettingAdvice.Check)
+                return advice;
+
+            PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
+            const PostflopDrawFlags semiBluffDraws =
+                PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw;
+
+            if ((draws & semiBluffDraws) != 0)
+                return BettingAdvice.Raise;
+
+            return advice;
         }
 
         private static float EstimateEquityPercent(
