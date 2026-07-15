@@ -310,7 +310,6 @@ namespace TexasHoldem
 
             Rank r0 = holeCards[0].Rank;
             Rank r1 = holeCards[1].Rank;
-            bool suited = holeCards[0].Suit == holeCards[1].Suit;
 
             Rank hi = (Rank)Mathf.Max((int)r0, (int)r1);
             Rank lo = (Rank)Mathf.Min((int)r0, (int)r1);
@@ -322,9 +321,9 @@ namespace TexasHoldem
                 return FacingAllInHandTier.Premium;
             }
 
-            if ((isPair && hi == Rank.Ten)
+            if ((isPair && (hi == Rank.Ten || hi == Rank.Nine))
                 || (hi == Rank.Ace && lo == Rank.Queen)
-                || (hi == Rank.Ace && lo == Rank.Jack && suited))
+                || (hi == Rank.Ace && lo == Rank.Jack))
             {
                 return FacingAllInHandTier.Strong;
             }

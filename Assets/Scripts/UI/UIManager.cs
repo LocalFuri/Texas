@@ -234,7 +234,8 @@ namespace TexasHoldem
         private const float ActiveAlpha        = 1.0f;
         private const float InactiveAlpha      = 0.0f;
         private const float StartHideDelaySecs = 0.15f;
-        private const string RaiseButtonLabel  = "RAISE";
+        private const string BetButtonLabel   = "BET";
+        private const string RaiseButtonLabel = "RAISE";
         private const string RakeLabelName = "RakeLabel";
 
         private CanvasGroup _actionPanelGroup;
@@ -1510,9 +1511,13 @@ namespace TexasHoldem
             TMP_Text label = _raiseButton.GetComponentInChildren<TMP_Text>();
             if (label == null) return;
 
-            label.text = RaiseButtonLabel;
+            label.text = ResolveRaiseButtonLabel();
             StylePanelLabel(label, TextRaise);
         }
+
+        /// <summary>BET into an unopened street; RAISE when facing a bet.</summary>
+        private string ResolveRaiseButtonLabel() =>
+            _gameManager != null && _gameManager.CurrentBet <= 0 ? BetButtonLabel : RaiseButtonLabel;
 
         private void PrepareRaiseInputForTurn()
         {
@@ -3564,7 +3569,7 @@ namespace TexasHoldem
                 TMP_Text raiseLabel = _raiseButton.GetComponentInChildren<TMP_Text>(true);
                 if (raiseLabel != null)
                 {
-                    raiseLabel.text = RaiseButtonLabel;
+                    raiseLabel.text = ResolveRaiseButtonLabel();
                     StylePanelLabel(raiseLabel, TextRaise, fontSize);
                 }
             }
