@@ -62,11 +62,15 @@ namespace TexasHoldem
                 player.HoleCards,
                 phase);
 
-            advice = ApplyFlopSemiBluffIfEligible(
+            advice = ApplyFlopOrTurnSemiBluffIfEligible(
                 advice, phase, canCheck, canRaise, player.HoleCards, communityCards);
 
             (BettingAction action, int raiseAmount) resolved = BettingAdvisor.ResolveAction(
                 advice, betting, player, isPreflop, streetRaiseCount, potAmount, equityPercent, phase);
+
+            resolved = ApplyFlopOpenBetSizing(
+                resolved, phase, callAmount, equityPercent, potAmount, betting, player,
+                player.HoleCards, communityCards);
 
             if (!isPreflop)
                 LogPostflopDecision(player, communityCards, equityPercent, resolved.action, resolved.raiseAmount);
@@ -74,11 +78,88 @@ namespace TexasHoldem
             return resolved;
         }
 
+        private const float FlopValueEquityThreshold = 65f;
+        private const float FlopSmallBetPotFraction  = 0.33f;
+        private const float FlopLargeBetPotFraction  = 0.67f;
+
+        private static readonly BoardTextureFlags FlopWetTextureFlags =
+            BoardTextureFlags.ThreeFlush
+            | BoardTextureFlags.FourFlush
+            | BoardTextureFlags.Connected
+            | BoardTextureFlags.FourStraight;
+
+        private static readonly PostflopDrawFlags FlopSemiBluffDraws =
+            PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw;
+
         /// <summary>
-        /// Flop only, when checking is free: keep ≥65% value bets from the advisor, and also
-        /// bet open-ended straight draws / flush draws (not gutshots). Uses existing sizing.
+        /// Flop open bets only: ~1/3 pot for semi-bluffs and dry value; ~2/3 pot for value on wetter flops.
         /// </summary>
-        private static BettingAdvice ApplyFlopSemiBluffIfEligible(
+        private static (BettingAction action, int raiseAmount) ApplyFlopOpenBetSizing(
+            (BettingAction action, int raiseAmount) resolved,
+            GamePhase phase,
+            int callAmount,
+            float equityPercent,
+            int potAmount,
+            BettingManager betting,
+            PlayerState player,
+            IReadOnlyList<Card> holeCards,
+            IReadOnlyList<Card> communityCards)
+        {
+            if (phase != GamePhase.Flop
+                || callAmount > 0
+                || resolved.action != BettingAction.Raise
+                || betting == null
+                || player == null)
+            {
+                return resolved;
+            }
+
+            int minIncrement = betting.GetMinRaiseIncrement();
+            int maxIncrement = betting.GetMaxRaiseIncrement(player);
+            if (maxIncrement < minIncrement || maxIncrement <= 0)
+                return resolved;
+
+            float potFraction = ResolveFlopOpenBetPotFraction(equityPercent, holeCards, communityCards);
+            int targetTotal = potAmount > 0
+                ? Mathf.RoundToInt(potAmount * potFraction)
+                : minIncrement;
+
+            int increment = Mathf.Max(targetTotal, minIncrement);
+            increment = Mathf.Clamp(increment, minIncrement, maxIncrement);
+
+            if (increment >= player.Chips)
+                return (BettingAction.AllIn, 0);
+
+            return (BettingAction.Raise, increment);
+        }
+
+        private static float ResolveFlopOpenBetPotFraction(
+            float equityPercent,
+            IReadOnlyList<Card> holeCards,
+            IReadOnlyList<Card> communityCards)
+        {
+            bool isValue = equityPercent >= FlopValueEquityThreshold;
+            PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
+            bool isSemiBluff = !isValue && (draws & FlopSemiBluffDraws) != 0;
+
+            if (isSemiBluff)
+                return FlopSmallBetPotFraction;
+
+            BoardTextureFlags texture = BoardTextureAnalyzer.Analyze(communityCards);
+            bool isWet = (texture & FlopWetTextureFlags) != 0;
+
+            if (isValue && isWet)
+                return FlopLargeBetPotFraction;
+
+            // Dry value (and any other flop open) → small size.
+            return FlopSmallBetPotFraction;
+        }
+
+        /// <summary>
+        /// Flop/turn only, when checking is free: keep ≥65% value bets from the advisor, and also
+        /// bet open-ended straight draws / flush draws (not gutshots). Turn uses existing ~2/3 pot sizing.
+        /// </summary>
+        private static BettingAdvice ApplyFlopOrTurnSemiBluffIfEligible(
             BettingAdvice advice,
             GamePhase phase,
             bool canCheck,
@@ -86,17 +167,14 @@ namespace TexasHoldem
             IReadOnlyList<Card> holeCards,
             IReadOnlyList<Card> communityCards)
         {
-            if (phase != GamePhase.Flop || !canCheck || !canRaise)
+            if ((phase != GamePhase.Flop && phase != GamePhase.Turn) || !canCheck || !canRaise)
                 return advice;
 
             if (advice != BettingAdvice.Check)
                 return advice;
 
             PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
-            const PostflopDrawFlags semiBluffDraws =
-                PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw;
-
-            if ((draws & semiBluffDraws) != 0)
+            if ((draws & FlopSemiBluffDraws) != 0)
                 return BettingAdvice.Raise;
 
             return advice;
