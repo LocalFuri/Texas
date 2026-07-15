@@ -176,11 +176,10 @@ namespace TexasHoldem
                     if (callAmount <= 0)
                         return (BettingAction.Check, 0);
 
-                    if (callAmount >= player.Chips)
+                    // Preflop: don't leave a crumb when already committing ~85%+ of stack.
+                    if (callAmount >= player.Chips
+                        || (isPreflop && callAmount >= Mathf.CeilToInt(player.Chips * 0.85f)))
                         return (BettingAction.AllIn, 0);
-
-                    if (callAmount > player.Chips)
-                        return (BettingAction.Fold, 0);
 
                     return (BettingAction.Call, 0);
 
