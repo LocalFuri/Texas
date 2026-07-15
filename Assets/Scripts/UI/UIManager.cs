@@ -1180,9 +1180,22 @@ namespace TexasHoldem
 
             int seatIndex = _gameManager.GetDealerSeatIndex();
             if (seatIndex < 0)
+            {
                 _tableLayout.HideDealerButton();
-            else
-                _tableLayout.PlaceDealerButton(seatIndex);
+                return;
+            }
+
+            // Hide while the dealer's seat avatar is zoomed for a win celebration.
+            IReadOnlyList<PlayerView> views = ResolvePlayerViews();
+            if (seatIndex < views.Count
+                && views[seatIndex] != null
+                && views[seatIndex].IsWinnerAvatarZoomActive)
+            {
+                _tableLayout.HideDealerButton();
+                return;
+            }
+
+            _tableLayout.PlaceDealerButton(seatIndex);
         }
 
         private void OnCommunityCardsUpdated(List<Card> cards)
@@ -3696,10 +3709,28 @@ namespace TexasHoldem
             if (winnerView == null || _winnerAvatarScale < 1f)
                 return;
 
+            HideDealerButtonIfOnWinnerSeat(winnerView);
+
             winnerView.StartWinnerAvatarScale(
                 _winnerAvatarScale,
                 _winnerAvatarHoldSeconds,
                 _winnerAvatarScaleTransitionSeconds);
+        }
+
+        private void HideDealerButtonIfOnWinnerSeat(PlayerView winnerView)
+        {
+            if (_tableLayout == null || _gameManager == null || winnerView == null)
+                return;
+
+            int dealerSeat = _gameManager.GetDealerSeatIndex();
+            if (dealerSeat < 0)
+                return;
+
+            IReadOnlyList<PlayerView> views = ResolvePlayerViews();
+            if (dealerSeat >= views.Count || views[dealerSeat] != winnerView)
+                return;
+
+            _tableLayout.HideDealerButton();
         }
 
         private readonly struct WinnerCollectLeg

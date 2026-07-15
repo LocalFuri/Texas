@@ -104,9 +104,11 @@ namespace TexasHoldem
                     {
                         int increment = player.CurrentBet - tableBetBefore;
                         CurrentBet = player.CurrentBet;
-                        NoteRaise(player);
                         if (increment >= _minRaiseIncrement)
+                        {
+                            NoteRaise(player);
                             _minRaiseIncrement = increment;
+                        }
                     }
                     else if (player.CurrentBet >= tableBetBefore && player.CurrentBet >= CurrentBet)
                         NoteMatchedBet(player);
