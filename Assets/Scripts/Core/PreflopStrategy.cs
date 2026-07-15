@@ -242,10 +242,19 @@ namespace TexasHoldem
                 && !facingAllIn
                 && streetRaiseCount < MaxStreetRaises)
             {
-                LogPreflopDecision(holeCards, group, ClassifyFacingAllInHand(holeCards), callAmount, playerChips,
-                    potBeforeAction, facingAllIn, BettingAdvice.Raise,
-                    "RecommendFacingRaise:Premium3Bet");
-                return BettingAdvice.Raise;
+                // 3-bet any Premium vs a single open; 4-bet only QQ+/AK vs a 3-bet.
+                bool isThreeBetSpot = streetRaiseCount == 1;
+                bool isFourBetSpot  = streetRaiseCount == 2 && IsPremiumFourBetHand(holeCards);
+
+                if (isThreeBetSpot || isFourBetSpot)
+                {
+                    LogPreflopDecision(holeCards, group, ClassifyFacingAllInHand(holeCards), callAmount, playerChips,
+                        potBeforeAction, facingAllIn, BettingAdvice.Raise,
+                        isThreeBetSpot
+                            ? "RecommendFacingRaise:Premium3Bet"
+                            : "RecommendFacingRaise:Premium4Bet");
+                    return BettingAdvice.Raise;
+                }
             }
 
             // Strong: 3-bet only vs a single open from BTN / CO / BB.
@@ -268,6 +277,23 @@ namespace TexasHoldem
 
         private static bool IsFacingAllIn(int callAmount, int playerChips) =>
             playerChips > 0 && callAmount >= Mathf.CeilToInt(playerChips * 0.85f);
+
+        /// <summary>Hands that 4-bet vs a 3-bet (QQ+ and AK). JJ / AQs use call/fold instead.</summary>
+        private static bool IsPremiumFourBetHand(IReadOnlyList<Card> holeCards)
+        {
+            if (holeCards == null || holeCards.Count < 2)
+                return false;
+
+            Rank r0 = holeCards[0].Rank;
+            Rank r1 = holeCards[1].Rank;
+            Rank hi = (Rank)Mathf.Max((int)r0, (int)r1);
+            Rank lo = (Rank)Mathf.Min((int)r0, (int)r1);
+
+            if (hi == lo && hi >= Rank.Queen)
+                return true;
+
+            return hi == Rank.Ace && lo == Rank.King;
+        }
 
         private enum FacingAllInHandTier
         {
