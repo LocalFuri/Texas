@@ -531,6 +531,8 @@ namespace TexasHoldem
                         appliedAction = action;
                         int displayAmount = GetActionDisplayAmount(player, action, raise, playerBetBefore);
                         OnPlayerAction?.Invoke(player, action, displayAmount);
+                        _aiController.RecordHandAction(
+                            CurrentPhase, player, action, displayAmount, PotAmount, StreetRaiseCount);
                         string detail = action == BettingAction.Raise ? $" +${raise}" : "";
                         OnGameMessage?.Invoke($"{player.Name}: {action}{detail}");
                     }
@@ -552,6 +554,8 @@ namespace TexasHoldem
                         appliedAction = _humanAction;
                         int displayAmount = GetActionDisplayAmount(player, _humanAction, _humanRaiseAmount, humanBetBefore);
                         OnPlayerAction?.Invoke(player, _humanAction, displayAmount);
+                        _aiController.RecordHandAction(
+                            CurrentPhase, player, _humanAction, displayAmount, PotAmount, StreetRaiseCount);
                         string detail = _humanAction == BettingAction.Raise ? $" +${_humanRaiseAmount}" : "";
                         OnGameMessage?.Invoke($"You: {_humanAction}{detail}");
                     }

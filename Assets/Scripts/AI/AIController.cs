@@ -9,6 +9,8 @@ namespace TexasHoldem
     public class AIController
     {
         private const float FlopValueEquityThreshold   = 65f;
+        private const float FlopThinValueEquityMin     = 52f;
+        private const int   FlopThinValueMaxOpponents  = 2;
         private const float TurnSecondBarrelEquityMin  = 50f;
         private const float FlopSmallBetPotFraction     = 0.33f;
         private const float FlopLargeBetPotFraction     = 0.67f;
@@ -25,10 +27,28 @@ namespace TexasHoldem
         /// <summary>Player who last bet or raised on the flop (cleared each hand).</summary>
         private PlayerState _flopLastAggressor;
 
-        /// <summary>Clears per-hand aggression tracking at the start of a new hand.</summary>
+        private readonly HandActionLog _handActionLog = new HandActionLog();
+
+        /// <summary>Hand-scoped action history for bot AI analysis (read-only).</summary>
+        public IReadOnlyList<HandActionEntry> HandActions => _handActionLog.Entries;
+
+        /// <summary>Clears per-hand aggression tracking and action log at the start of a new hand.</summary>
         public void ClearHandState()
         {
             _flopLastAggressor = null;
+            _handActionLog.Clear();
+        }
+
+        /// <summary>Appends a completed table action for bot AI analysis (no effect on decisions).</summary>
+        public void RecordHandAction(
+            GamePhase street,
+            PlayerState player,
+            BettingAction action,
+            int amount,
+            int pot,
+            int streetRaiseCount)
+        {
+            _handActionLog.Record(street, player, action, amount, pot, streetRaiseCount);
         }
 
         /// <summary>Records the last flop bet/raise aggressor (full or short).</summary>
@@ -94,6 +114,10 @@ namespace TexasHoldem
 
             advice = ApplyFlopOrTurnSemiBluffIfEligible(
                 advice, phase, canCheck, canRaise, player.HoleCards, communityCards);
+
+            advice = ApplyFlopThinValueIfEligible(
+                advice, phase, canCheck, canRaise, equityPercent,
+                CountActiveOpponents(allPlayers, player), communityCards);
 
             advice = ApplyTurnSecondBarrelIfEligible(
                 advice, phase, canCheck, canRaise, player, equityPercent);
@@ -171,8 +195,44 @@ namespace TexasHoldem
             if (isValue && isWet)
                 return FlopLargeBetPotFraction;
 
-            // Dry value (and any other flop open) → small size.
+            // Dry / thin value and any other flop open → small size.
             return FlopSmallBetPotFraction;
+        }
+
+        /// <summary>
+        /// Flop only, when checked to: small (~1/3 pot) thin value bet at 52–65% equity,
+        /// only with ≤2 opponents on a dry board. Strong ≥65% value stays in the advisor.
+        /// Runs after semi-bluff so FD/OESD stabs are unchanged.
+        /// </summary>
+        private static BettingAdvice ApplyFlopThinValueIfEligible(
+            BettingAdvice advice,
+            GamePhase phase,
+            bool canCheck,
+            bool canRaise,
+            float equityPercent,
+            int activeOpponents,
+            IReadOnlyList<Card> communityCards)
+        {
+            if (phase != GamePhase.Flop || !canCheck || !canRaise)
+                return advice;
+
+            if (advice != BettingAdvice.Check)
+                return advice;
+
+            if (activeOpponents > FlopThinValueMaxOpponents)
+                return advice;
+
+            if (equityPercent < FlopThinValueEquityMin
+                || equityPercent >= FlopValueEquityThreshold)
+            {
+                return advice;
+            }
+
+            BoardTextureFlags texture = BoardTextureAnalyzer.Analyze(communityCards);
+            if ((texture & FlopWetTextureFlags) != 0)
+                return advice;
+
+            return BettingAdvice.Raise;
         }
 
         /// <summary>
