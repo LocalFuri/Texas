@@ -170,7 +170,9 @@ namespace TexasHoldem
             IReadOnlyList<Card> holeCards = null)
         {
             if (facingRaise)
-                return RecommendFacingRaise(group, potBeforeAction, callAmount, playerChips, canRaise, canCall, streetRaiseCount, holeCards);
+                return RecommendFacingRaise(
+                    group, seat, potBeforeAction, callAmount, playerChips,
+                    canRaise, canCall, streetRaiseCount, holeCards);
 
             return RecommendUnopened(group, seat, callAmount, playerChips, canCheck, canRaise, canCall, streetRaiseCount);
         }
@@ -214,6 +216,7 @@ namespace TexasHoldem
 
         private static BettingAdvice RecommendFacingRaise(
             PreflopHandGroup group,
+            PreflopSeatBucket seat,
             int potBeforeAction,
             int callAmount,
             int playerChips,
@@ -242,6 +245,21 @@ namespace TexasHoldem
                 LogPreflopDecision(holeCards, group, ClassifyFacingAllInHand(holeCards), callAmount, playerChips,
                     potBeforeAction, facingAllIn, BettingAdvice.Raise,
                     "RecommendFacingRaise:Premium3Bet");
+                return BettingAdvice.Raise;
+            }
+
+            // Strong: 3-bet only vs a single open from BTN / CO / BB.
+            if (group == PreflopHandGroup.Strong
+                && canRaise
+                && !facingAllIn
+                && streetRaiseCount == 1
+                && (seat == PreflopSeatBucket.Button
+                    || seat == PreflopSeatBucket.Cutoff
+                    || seat == PreflopSeatBucket.BigBlind))
+            {
+                LogPreflopDecision(holeCards, group, ClassifyFacingAllInHand(holeCards), callAmount, playerChips,
+                    potBeforeAction, facingAllIn, BettingAdvice.Raise,
+                    "RecommendFacingRaise:Strong3Bet");
                 return BettingAdvice.Raise;
             }
 
