@@ -460,7 +460,8 @@ namespace TexasHoldem
                     continue;
                 }
 
-                if (hasActed[currentIndex] && player.CurrentBet >= _bettingManager.CurrentBet)
+                // Already closed action this street (incomplete all-ins do not reopen).
+                if (hasActed[currentIndex])
                 {
                     seatIndex++;
                     continue;
@@ -469,6 +470,7 @@ namespace TexasHoldem
                 yield return WaitWhileOptionsMenuOpen();
 
                 int  betBeforeAction = _bettingManager.CurrentBet;
+                int  minRaiseBefore  = _bettingManager.GetMinRaiseIncrement();
                 bool actionApplied   = false;
                 BettingAction appliedAction = default;
 
@@ -541,7 +543,8 @@ namespace TexasHoldem
 
                 hasActed[currentIndex] = true;
 
-                if (_bettingManager.CurrentBet > betBeforeAction)
+                // Full raise only: short all-ins raise CurrentBet but do not reopen action.
+                if (_bettingManager.CurrentBet - betBeforeAction >= minRaiseBefore)
                     ReopenActionForOthers(players, hasActed, currentIndex);
 
                 seatIndex++;
@@ -558,9 +561,8 @@ namespace TexasHoldem
             {
                 if (players[i].HasFolded || players[i].IsAllIn)
                     continue;
+                // hasActed is source of truth; short all-ins may leave CurrentBet below table.
                 if (!hasActed[i])
-                    return false;
-                if (players[i].CurrentBet < currentBet)
                     return false;
             }
 
@@ -574,7 +576,7 @@ namespace TexasHoldem
             {
                 if (players[i].HasFolded || players[i].IsAllIn)
                     continue;
-                if (!hasActed[i] || players[i].CurrentBet < currentBet)
+                if (!hasActed[i])
                     return true;
             }
 
