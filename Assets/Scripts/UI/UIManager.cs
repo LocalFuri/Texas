@@ -1632,7 +1632,7 @@ namespace TexasHoldem
         }
 
         private int GetMinRaiseIncrement() =>
-            _gameManager != null ? _gameManager.GetMinRaiseIncrement() : 40;
+            _gameManager != null ? _gameManager.GetMinRaiseIncrement() : ResolveBigBlindAmount();
 
         private int ResolveBigBlindAmount() =>
             _gameManager != null ? _gameManager.BigBlindAmount : 0;

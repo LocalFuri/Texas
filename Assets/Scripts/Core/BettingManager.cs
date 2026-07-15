@@ -14,14 +14,16 @@ namespace TexasHoldem
         private PlayerState _lastAggressor;
         private bool        _lastRaiseWasCalled;
         private int         _streetRaiseCount;
+        private int         _minRaiseIncrement;
 
         /// <summary>Raises made this betting street (open, 3-bet, 4-bet, …).</summary>
         public int StreetRaiseCount => _streetRaiseCount;
 
         public BettingManager(int smallBlind, int bigBlind)
         {
-            SmallBlind = smallBlind;
-            BigBlind   = bigBlind;
+            SmallBlind         = smallBlind;
+            BigBlind           = bigBlind;
+            _minRaiseIncrement = bigBlind;
         }
 
         /// <summary>Resets pot and current bet for a new round.</summary>
@@ -44,6 +46,7 @@ namespace TexasHoldem
             _lastAggressor       = null;
             _lastRaiseWasCalled  = false;
             _streetRaiseCount    = 0;
+            _minRaiseIncrement   = BigBlind;
         }
 
         /// <summary>Posts the small blind for the given player.</summary>
@@ -91,6 +94,7 @@ namespace TexasHoldem
                     PlaceBet(player, totalAfterRaise - player.CurrentBet);
                     CurrentBet = player.CurrentBet;
                     NoteRaise(player);
+                    _minRaiseIncrement = raiseAmount;
                     return true;
 
                 case BettingAction.AllIn:
@@ -98,8 +102,11 @@ namespace TexasHoldem
                     PlaceBet(player, player.Chips);
                     if (player.CurrentBet > CurrentBet)
                     {
+                        int increment = player.CurrentBet - tableBetBefore;
                         CurrentBet = player.CurrentBet;
                         NoteRaise(player);
+                        if (increment >= _minRaiseIncrement)
+                            _minRaiseIncrement = increment;
                     }
                     else if (player.CurrentBet >= tableBetBefore && player.CurrentBet >= CurrentBet)
                         NoteMatchedBet(player);
@@ -116,8 +123,8 @@ namespace TexasHoldem
         public int GetCallAmount(PlayerState player) =>
             Math.Max(0, CurrentBet - player.CurrentBet);
 
-        /// <summary>Minimum raise increment above <see cref="CurrentBet"/> (2× big blind).</summary>
-        public int GetMinRaiseIncrement() => BigBlind * 2;
+        /// <summary>Minimum raise increment above <see cref="CurrentBet"/> (BB on a new street; last full raise size thereafter).</summary>
+        public int GetMinRaiseIncrement() => _minRaiseIncrement;
 
         /// <summary>Maximum raise increment the player can add after calling.</summary>
         public int GetMaxRaiseIncrement(PlayerState player) =>

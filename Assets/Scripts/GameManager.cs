@@ -80,7 +80,7 @@ namespace TexasHoldem
             player != null && _bettingManager != null ? _bettingManager.GetCallAmount(player) : 0;
 
         public int GetMinRaiseIncrement() =>
-            _bettingManager?.GetMinRaiseIncrement() ?? _bigBlind * 2;
+            _bettingManager?.GetMinRaiseIncrement() ?? _bigBlind;
 
         public int GetMaxRaiseIncrement(PlayerState player) =>
             player != null && _bettingManager != null
