@@ -204,14 +204,10 @@ namespace TexasHoldem
                 return BettingAdvice.Raise;
             }
 
+            // Unopened pots: never limp. Below open tier (or unable to raise) → fold,
+            // except a free check (BB option) is handled above / here.
             if (canCheck)
                 return BettingAdvice.Check;
-
-            if (group == PreflopHandGroup.Weak)
-                return BettingAdvice.Fold;
-
-            if (canCall && callAmount <= playerChips)
-                return BettingAdvice.Call;
 
             return BettingAdvice.Fold;
         }
