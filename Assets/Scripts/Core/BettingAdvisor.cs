@@ -19,11 +19,12 @@ namespace TexasHoldem
         public const string LabelCheck = "CHECK";
         public const string LabelRaise = "RAISE";
 
-        private const float EdgeMargin       = 3f;
-        private const float RaiseEdge        = 15f;
-        private const float RiverRaiseEdge   = 25f;
-        private const float StrongRaise      = 65f;
-        private const float RiverThinValueBet = 55f;
+        private const float EdgeMargin            = 3f;
+        private const float RaiseEdge             = 15f;
+        private const float RiverRaiseEdge        = 25f;
+        private const float RiverRaiseEquityFloor = 80f;
+        private const float StrongRaise           = 65f;
+        private const float RiverThinValueBet     = 55f;
 
         private const float PostflopBetPotFraction      = 0.67f;
         private const float RiverThinBetPotFraction     = 0.33f;
@@ -143,7 +144,18 @@ namespace TexasHoldem
             float raiseEdge = postflopPhase == GamePhase.River ? RiverRaiseEdge : RaiseEdge;
 
             if (equityPercent >= needed + raiseEdge && canRaise)
+            {
+                if (postflopPhase == GamePhase.River && equityPercent < RiverRaiseEquityFloor)
+                {
+                    Debug.Log(
+                        $"[PostflopAI] RiverRaiseFloorBlock equity={equityPercent:F1}% " +
+                        $"(needed+{RiverRaiseEdge:F0}%={needed + RiverRaiseEdge:F1}%, " +
+                        $"floor={RiverRaiseEquityFloor:F0}%) → Call");
+                    return BettingAdvice.Call;
+                }
+
                 return BettingAdvice.Raise;
+            }
 
             if (equityPercent >= needed + EdgeMargin)
                 return BettingAdvice.Call;
