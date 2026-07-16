@@ -19,6 +19,9 @@ namespace TexasHoldem
         /// <summary>Raises made this betting street (open, 3-bet, 4-bet, …).</summary>
         public int StreetRaiseCount => _streetRaiseCount;
 
+        /// <summary>Player who last bet or raised this street (null if none).</summary>
+        public PlayerState LastAggressor => _lastAggressor;
+
         public BettingManager(int smallBlind, int bigBlind)
         {
             SmallBlind         = smallBlind;

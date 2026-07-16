@@ -74,6 +74,8 @@ namespace TexasHoldem
         public bool              IsAwaitingHumanInput => _awaitingHumanInput;
         /// <summary>Live players still to act this street (excluding the current actor). For HUD/AI.</summary>
         public int               PlayersBehind => _currentPlayersBehind;
+        /// <summary>Preflop seat of the current street's last aggressor (shover). Defaults to Button.</summary>
+        public PreflopSeatBucket ShovePosition => _currentShovePosition;
         public TableSoundManager TableSounds { get; private set; }
 
         /// <summary>True when the player can make a legal minimum raise (not call-only).</summary>
@@ -199,6 +201,7 @@ namespace TexasHoldem
         private AIController   _aiController;
 
         private int           _currentPlayersBehind;
+        private PreflopSeatBucket _currentShovePosition = PreflopSeatBucket.Button;
         private bool          _awaitingHumanInput;
         private bool          _awaitingWinnerDismiss;
         private bool          _potAwardPending;
@@ -524,6 +527,33 @@ namespace TexasHoldem
                 }
 
                 _currentPlayersBehind = playersBehind;
+
+                // Prefer last aggressor; fall back to anyone matching the table bet.
+                PlayerState shover = _bettingManager.LastAggressor;
+                if (shover == null || shover == player || shover.HasFolded)
+                {
+                    shover = null;
+                    int tableBet = _bettingManager.CurrentBet;
+                    if (tableBet > 0)
+                    {
+                        foreach (PlayerState p in players)
+                        {
+                            if (p == null || p == player || p.HasFolded)
+                                continue;
+                            if (p.CurrentBet == tableBet)
+                            {
+                                shover = p;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                PreflopSeatBucket shovePosition = shover != null
+                    ? GetPreflopSeatBucket(shover)
+                    : PreflopSeatBucket.Button;
+                _currentShovePosition = shovePosition;
+
                 _awaitingHumanInput = player.Type == PlayerType.Human;
                 OnPlayerTurn?.Invoke(player);
 
@@ -542,7 +572,8 @@ namespace TexasHoldem
                         StreetRaiseCount,
                         GetPreflopSeatBucket(player),
                         IsTestMode,
-                        playersBehind);
+                        playersBehind,
+                        shovePosition);
                     int playerBetBefore = player.CurrentBet;
                     if (_bettingManager.ProcessAction(player, action, raise))
                     {

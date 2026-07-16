@@ -74,7 +74,8 @@ namespace TexasHoldem
             int playerChips,
             System.Collections.Generic.IReadOnlyList<Card> holeCards = null,
             GamePhase postflopPhase = GamePhase.Flop,
-            int playersBehind = 0)
+            int playersBehind = 0,
+            PreflopSeatBucket shovePosition = PreflopSeatBucket.Button)
         {
             if (isPreflop)
             {
@@ -90,7 +91,8 @@ namespace TexasHoldem
                     canCall,
                     streetRaiseCount,
                     holeCards,
-                    playersBehind);
+                    playersBehind,
+                    shovePosition);
             }
 
             return RecommendPostflop(

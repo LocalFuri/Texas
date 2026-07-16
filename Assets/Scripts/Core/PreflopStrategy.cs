@@ -168,12 +168,13 @@ namespace TexasHoldem
             bool canCall,
             int streetRaiseCount,
             IReadOnlyList<Card> holeCards = null,
-            int playersBehind = 0)
+            int playersBehind = 0,
+            PreflopSeatBucket shovePosition = PreflopSeatBucket.Button)
         {
             if (facingRaise)
                 return RecommendFacingRaise(
                     group, seat, potBeforeAction, callAmount, playerChips,
-                    canRaise, canCall, streetRaiseCount, holeCards, playersBehind);
+                    canRaise, canCall, streetRaiseCount, holeCards, playersBehind, shovePosition);
 
             return RecommendUnopened(group, seat, callAmount, playerChips, canCheck, canRaise, canCall, streetRaiseCount);
         }
@@ -228,7 +229,8 @@ namespace TexasHoldem
             bool canCall,
             int streetRaiseCount,
             IReadOnlyList<Card> holeCards,
-            int playersBehind = 0)
+            int playersBehind = 0,
+            PreflopSeatBucket shovePosition = PreflopSeatBucket.Button)
         {
             if (group == PreflopHandGroup.Weak)
             {
@@ -239,7 +241,7 @@ namespace TexasHoldem
             }
 
             if (streetRaiseCount >= MaxStreetRaises)
-                return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards, playersBehind);
+                return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards, playersBehind, shovePosition);
 
             bool facingAllIn = IsFacingAllIn(callAmount, playerChips);
             if (group == PreflopHandGroup.Premium
@@ -288,7 +290,7 @@ namespace TexasHoldem
                     $"hole={(holeCards != null && holeCards.Count >= 2 ? $"{holeCards[0]} {holeCards[1]}" : "(none)")}");
             }
 
-            return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards, playersBehind);
+            return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards, playersBehind, shovePosition);
         }
 
         private static bool IsFacingAllIn(int callAmount, int playerChips) =>
@@ -418,7 +420,8 @@ namespace TexasHoldem
             bool canCall,
             int streetRaiseCount,
             IReadOnlyList<Card> holeCards,
-            int playersBehind = 0)
+            int playersBehind = 0,
+            PreflopSeatBucket shovePosition = PreflopSeatBucket.Button)
         {
             bool facingAllIn = IsFacingAllIn(callAmount, playerChips);
             FacingAllInHandTier handTier = ClassifyFacingAllInHand(holeCards);
@@ -458,19 +461,29 @@ namespace TexasHoldem
                 BettingAdvice advice;
                 if (playersBehind >= 2)
                 {
+                    // Multiway: only Premium-tier hands call (unchanged).
                     advice = tier == FacingAllInHandTier.Premium
                         ? BettingAdvice.Call
                         : BettingAdvice.Fold;
                 }
+                else if (tier == FacingAllInHandTier.Strong
+                         && (shovePosition == PreflopSeatBucket.Early
+                             || shovePosition == PreflopSeatBucket.Middle))
+                {
+                    // Strong vs EP/MP shove: fold.
+                    advice = BettingAdvice.Fold;
+                }
                 else
                 {
-                    // Existing heads-up or one-player-behind behavior remains unchanged.
+                    // CO/BTN/SB/BB (or Premium tier): existing heads-up / one-behind behavior.
                     advice = ResolveFacingAllInAdvice(holeCards);
                 }
 
                 Debug.Log(
                     $"[PreflopAI] PlayersBehind={playersBehind} " +
                     $"FacingAllInDecision={advice} Tier={tier}");
+                Debug.Log(
+                    $"[PreflopAI] ShovePosition={shovePosition} Tier={tier} Decision={advice}");
 
                 LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
                     facingAllIn, advice,
