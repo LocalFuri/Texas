@@ -260,19 +260,30 @@ namespace TexasHoldem
                 }
             }
 
-            // Strong: 3-bet only vs a single open from BTN / CO / BB.
+            // Strong: top of range 3-bets vs a single open from BTN / CO / BB; rest call/fold.
+            bool strongThreeBetSeat = seat == PreflopSeatBucket.Button
+                || seat == PreflopSeatBucket.Cutoff
+                || seat == PreflopSeatBucket.BigBlind;
+
             if (group == PreflopHandGroup.Strong
-                && canRaise
                 && !facingAllIn
                 && streetRaiseCount == 1
-                && (seat == PreflopSeatBucket.Button
-                    || seat == PreflopSeatBucket.Cutoff
-                    || seat == PreflopSeatBucket.BigBlind))
+                && strongThreeBetSeat)
             {
-                LogPreflopDecision(holeCards, group, ClassifyFacingAllInHand(holeCards), callAmount, playerChips,
-                    potBeforeAction, facingAllIn, BettingAdvice.Raise,
-                    "RecommendFacingRaise:Strong3Bet");
-                return BettingAdvice.Raise;
+                if (canRaise && IsStrongThreeBetHand(holeCards))
+                {
+                    LogPreflopDecision(holeCards, group, ClassifyFacingAllInHand(holeCards), callAmount, playerChips,
+                        potBeforeAction, facingAllIn, BettingAdvice.Raise,
+                        "RecommendFacingRaise:Strong3Bet");
+                    Debug.Log(
+                        $"[PreflopDebug] Strong path=3Bet seat={seat} " +
+                        $"hole={(holeCards != null && holeCards.Count >= 2 ? $"{holeCards[0]} {holeCards[1]}" : "(none)")}");
+                    return BettingAdvice.Raise;
+                }
+
+                Debug.Log(
+                    $"[PreflopDebug] Strong path=CallFold seat={seat} " +
+                    $"hole={(holeCards != null && holeCards.Count >= 2 ? $"{holeCards[0]} {holeCards[1]}" : "(none)")}");
             }
 
             return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards);
@@ -280,6 +291,36 @@ namespace TexasHoldem
 
         private static bool IsFacingAllIn(int callAmount, int playerChips) =>
             playerChips > 0 && callAmount >= Mathf.CeilToInt(playerChips * 0.85f);
+
+        /// <summary>Strong hands that 3-bet: TT, 99, AJs+, AQo+, KQs.</summary>
+        private static bool IsStrongThreeBetHand(IReadOnlyList<Card> holeCards)
+        {
+            if (holeCards == null || holeCards.Count < 2)
+                return false;
+
+            Rank r0 = holeCards[0].Rank;
+            Rank r1 = holeCards[1].Rank;
+            Rank hi = (Rank)Mathf.Max((int)r0, (int)r1);
+            Rank lo = (Rank)Mathf.Min((int)r0, (int)r1);
+            bool suited = holeCards[0].Suit == holeCards[1].Suit;
+            bool isPair = hi == lo;
+
+            if (isPair && (hi == Rank.Ten || hi == Rank.Nine))
+                return true;
+
+            // AJs+ within Strong (AQs+ are Premium).
+            if (suited && hi == Rank.Ace && lo >= Rank.Jack)
+                return true;
+
+            // AQo+ within Strong (AKo is Premium).
+            if (!suited && hi == Rank.Ace && lo >= Rank.Queen)
+                return true;
+
+            if (suited && hi == Rank.King && lo == Rank.Queen)
+                return true;
+
+            return false;
+        }
 
         /// <summary>Hands that 4-bet vs a 3-bet (QQ+ and AK). JJ / AQs use call/fold instead.</summary>
         private static bool IsPremiumFourBetHand(IReadOnlyList<Card> holeCards)
