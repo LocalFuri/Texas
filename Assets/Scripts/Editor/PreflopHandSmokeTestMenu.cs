@@ -8,22 +8,29 @@ namespace TexasHoldem
     public static class PreflopHandSmokeTestMenu
     {
         private const string ResultsPath = "Temp/PreflopHandSmokeTestResults.txt";
+        private const int DefaultHands = 10_000;
 
         [MenuItem("Texas Hold'em/Run Preflop Hand Smoke Test")]
         public static void RunFromMenu()
         {
-            (int passed, int total) = PreflopHandSmokeTestRunner.RunAllTests();
-            Debug.Log($"[PreflopSmoke] Menu complete: {passed}/{total}");
+            (bool ok, PreflopHandSmokeTestRunner.SmokeStats stats) =
+                PreflopHandSmokeTestRunner.RunAllTests(DefaultHands);
+            Debug.Log($"[PreflopSmoke] Menu complete: {(ok ? "PASS" : "FAIL")} hands={stats.HandsPlayed}");
         }
 
         public static void RunFromBatch()
         {
-            (int passed, int total) = PreflopHandSmokeTestRunner.RunAllTests();
-            string line = passed == total ? $"PASS {passed}/{total}" : $"FAIL {passed}/{total}";
+            (bool ok, PreflopHandSmokeTestRunner.SmokeStats stats) =
+                PreflopHandSmokeTestRunner.RunAllTests(DefaultHands);
+            string line = ok
+                ? $"PASS hands={stats.HandsPlayed} completed={stats.BettingRoundsCompleted} " +
+                  $"fold={stats.Folds} call={stats.Calls} raise={stats.Raises}"
+                : $"FAIL hands={stats.HandsPlayed} exceptions={stats.Exceptions} " +
+                  $"illegal={stats.IllegalActions} last={stats.LastError}";
             Directory.CreateDirectory(Path.GetDirectoryName(ResultsPath) ?? "Temp");
             File.WriteAllText(ResultsPath, line + "\n");
             Debug.Log($"[PreflopSmoke] {line} (wrote {ResultsPath})");
-            EditorApplication.Exit(passed == total ? 0 : 1);
+            EditorApplication.Exit(ok ? 0 : 1);
         }
     }
 }

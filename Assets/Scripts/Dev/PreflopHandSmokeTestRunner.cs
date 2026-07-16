@@ -10,7 +10,7 @@ namespace TexasHoldem.Dev
     /// </summary>
     public sealed class PreflopHandSmokeTestRunner : MonoBehaviour
     {
-        private const int DefaultHandCount = 100;
+        private const int DefaultHandCount = 10_000;
         private const int PlayerCount      = 6;
         private const int StartingChips    = 1000;
         private const int SmallBlind       = 10;
@@ -21,43 +21,70 @@ namespace TexasHoldem.Dev
         [ContextMenu("Run Preflop Hand Smoke Test")]
         private void RunFromContextMenu() => RunAllTests(_handCount);
 
-        /// <summary>Returns (handsPassed, handCount). Logs first failure and aborts remaining hands.</summary>
-        public static (int passed, int total) RunAllTests(int handCount = DefaultHandCount)
+        /// <summary>
+        /// Runs <paramref name="handCount"/> production-AI preflop hands.
+        /// Returns (ok, stats). ok is false if any exception or illegal action occurred.
+        /// </summary>
+        public static (bool ok, SmokeStats stats) RunAllTests(int handCount = DefaultHandCount)
         {
             if (handCount < 1)
                 handCount = DefaultHandCount;
 
+            var stats = new SmokeStats { HandsTarget = handCount };
+
             Debug.Log($"[PreflopSmoke] Running {handCount} automated preflop hand(s)...");
 
-            int passed = 0;
             for (int hand = 0; hand < handCount; hand++)
             {
+                stats.HandsPlayed++;
+
                 try
                 {
-                    string failure = RunOneHand(hand);
+                    string failure = RunOneHand(hand, stats);
                     if (failure != null)
                     {
-                        Debug.LogError($"[PreflopSmoke] FAIL hand={hand}: {failure}");
-                        Debug.Log($"[PreflopSmoke] Complete: {passed}/{handCount} passed (stopped on failure).");
-                        return (passed, handCount);
+                        stats.IllegalActions++;
+                        stats.LastError = $"hand={hand}: {failure}";
+                        Debug.LogError($"[PreflopSmoke] Illegal action — {stats.LastError}");
+                        continue;
                     }
 
-                    passed++;
+                    stats.BettingRoundsCompleted++;
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[PreflopSmoke] FAIL hand={hand}: exception — {ex}");
-                    Debug.Log($"[PreflopSmoke] Complete: {passed}/{handCount} passed (stopped on exception).");
-                    return (passed, handCount);
+                    stats.Exceptions++;
+                    stats.LastError = $"hand={hand}: {ex.GetType().Name}: {ex.Message}";
+                    Debug.LogError($"[PreflopSmoke] Exception — {stats.LastError}");
                 }
             }
 
-            Debug.Log($"[PreflopSmoke] Complete: {passed}/{handCount} passed.");
-            return (passed, handCount);
+            PrintSummary(stats);
+
+            bool ok = stats.Exceptions == 0 && stats.IllegalActions == 0;
+            if (!ok)
+                Debug.LogError("[PreflopSmoke] FAIL — exceptions or illegal actions detected.");
+            else
+                Debug.Log("[PreflopSmoke] PASS");
+
+            return (ok, stats);
+        }
+
+        public static void PrintSummary(SmokeStats stats)
+        {
+            Debug.Log(
+                "[PreflopSmoke] Summary\n" +
+                $"  Hands played:              {stats.HandsPlayed}\n" +
+                $"  Betting rounds completed:  {stats.BettingRoundsCompleted}\n" +
+                $"  Exceptions:                {stats.Exceptions}\n" +
+                $"  Illegal actions:           {stats.IllegalActions}\n" +
+                $"  Actions Fold:              {stats.Folds}\n" +
+                $"  Actions Call:              {stats.Calls}\n" +
+                $"  Actions Raise:             {stats.Raises}");
         }
 
         /// <summary>Null on success; failure message otherwise.</summary>
-        private static string RunOneHand(int handIndex)
+        private static string RunOneHand(int handIndex, SmokeStats stats)
         {
             var players = new List<PlayerState>(PlayerCount);
             for (int i = 0; i < PlayerCount; i++)
@@ -80,7 +107,7 @@ namespace TexasHoldem.Dev
             betting.PostSmallBlind(players[sbIndex]);
             betting.PostBigBlind(players[bbIndex]);
 
-            return RunPreflopBettingRound(players, utgIndex, dealer, betting, board, ai);
+            return RunPreflopBettingRound(players, utgIndex, dealer, betting, board, ai, stats);
         }
 
         private static string RunPreflopBettingRound(
@@ -89,7 +116,8 @@ namespace TexasHoldem.Dev
             int dealerIndex,
             BettingManager betting,
             BoardManager board,
-            AIController ai)
+            AIController ai,
+            SmokeStats stats)
         {
             int n = players.Count;
             var hasActed = new bool[n];
@@ -126,7 +154,6 @@ namespace TexasHoldem.Dev
                     continue;
                 }
 
-                // Belt-and-suspenders: never decide for folded / all-in.
                 if (player.HasFolded || player.IsAllIn)
                     return $"{player.Name} acted while folded/all-in";
 
@@ -201,6 +228,8 @@ namespace TexasHoldem.Dev
                            $"call={callAmount} chips={player.Chips} table={betting.CurrentBet}";
                 }
 
+                CountAction(stats, action, callAmount);
+
                 hasActed[currentIndex] = true;
 
                 if (betting.CurrentBet - betBefore >= minRaiseBefore)
@@ -213,6 +242,30 @@ namespace TexasHoldem.Dev
             }
 
             return "betting round failed to complete (safety limit)";
+        }
+
+        private static void CountAction(SmokeStats stats, BettingAction action, int callAmount)
+        {
+            switch (action)
+            {
+                case BettingAction.Fold:
+                    stats.Folds++;
+                    break;
+                case BettingAction.Call:
+                    stats.Calls++;
+                    break;
+                case BettingAction.Raise:
+                    stats.Raises++;
+                    break;
+                case BettingAction.AllIn:
+                    // Jam into a bet counts as Call; open/overbet jam counts as Raise.
+                    if (callAmount > 0)
+                        stats.Calls++;
+                    else
+                        stats.Raises++;
+                    break;
+                // Check is legal but not part of Fold/Call/Raise summary.
+            }
         }
 
         private static int CountNonFolded(IReadOnlyList<PlayerState> players)
@@ -264,6 +317,19 @@ namespace TexasHoldem.Dev
                     continue;
                 hasActed[i] = false;
             }
+        }
+
+        public sealed class SmokeStats
+        {
+            public int HandsTarget;
+            public int HandsPlayed;
+            public int BettingRoundsCompleted;
+            public int Exceptions;
+            public int IllegalActions;
+            public int Folds;
+            public int Calls;
+            public int Raises;
+            public string LastError;
         }
     }
 }
