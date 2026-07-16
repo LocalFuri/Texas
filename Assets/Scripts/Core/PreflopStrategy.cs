@@ -376,6 +376,21 @@ namespace TexasHoldem
             bool facingAllIn = IsFacingAllIn(callAmount, playerChips);
             FacingAllInHandTier handTier = ClassifyFacingAllInHand(holeCards);
 
+            // Premium (AA/KK/QQ/JJ/AK/AQs) never folds when facing a call or all-in.
+            if (group == PreflopHandGroup.Premium)
+            {
+                BettingAdvice premiumAdvice = callAmount <= 0
+                    ? BettingAdvice.Check
+                    : BettingAdvice.Call;
+
+                LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                    facingAllIn, premiumAdvice, "ResolveCallOrFoldAdvice:PremiumOverride");
+                Debug.Log(
+                    $"[PreflopDebug] PremiumOverride used advice={premiumAdvice} " +
+                    $"callAmount={callAmount} playerChips={playerChips} facingAllIn={facingAllIn}");
+                return premiumAdvice;
+            }
+
             // Dedicated facing-all-in rule runs before chip-cap guards so short-stack calls
             // (callAmount > playerChips) still reach the hand matcher and map to AllIn in ResolveAction.
             if (facingAllIn)
@@ -409,11 +424,6 @@ namespace TexasHoldem
 
             switch (group)
             {
-                case PreflopHandGroup.Premium:
-                    LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
-                        facingAllIn, BettingAdvice.Call, "ResolveCallOrFoldAdvice:Premium");
-                    return BettingAdvice.Call;
-
                 case PreflopHandGroup.Strong:
                     if (callAmount > playerChips * StrongFoldChipFraction)
                     {
