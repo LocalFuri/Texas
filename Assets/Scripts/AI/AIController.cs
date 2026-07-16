@@ -11,6 +11,7 @@ namespace TexasHoldem
         private const float FlopValueEquityThreshold   = 65f;
         private const float FlopThinValueEquityMin     = 52f;
         private const int   FlopThinValueMaxOpponents  = 2;
+        private const float FlopDrawCallEquitySlack    = 5f;
         private const float TurnSecondBarrelEquityMin  = 50f;
         private const float FlopSmallBetPotFraction     = 0.33f;
         private const float FlopLargeBetPotFraction     = 0.67f;
@@ -128,6 +129,10 @@ namespace TexasHoldem
             advice = ApplyTurnSecondBarrelIfEligible(
                 advice, phase, canCheck, canRaise, player, equityPercent);
             BettingAdvice adviceAfterBarrel = advice;
+
+            advice = ApplyFlopFacingBetDrawCallIfEligible(
+                advice, phase, canCheck, callAmount, potAmount, equityPercent,
+                player.HoleCards, communityCards);
 
             (BettingAction action, int raiseAmount) resolved = BettingAdvisor.ResolveAction(
                 advice, betting, player, isPreflop, streetRaiseCount, potAmount, equityPercent, phase);
@@ -257,6 +262,46 @@ namespace TexasHoldem
                 return advice;
 
             return BettingAdvice.Raise;
+        }
+
+        /// <summary>
+        /// Flop only, facing a bet: if the advisor folds but hero has FD/OESD and equity is
+        /// within <see cref="FlopDrawCallEquitySlack"/>% of pot odds, call instead.
+        /// </summary>
+        private static BettingAdvice ApplyFlopFacingBetDrawCallIfEligible(
+            BettingAdvice advice,
+            GamePhase phase,
+            bool canCheck,
+            int callAmount,
+            int potAmount,
+            float equityPercent,
+            IReadOnlyList<Card> holeCards,
+            IReadOnlyList<Card> communityCards)
+        {
+            if (phase != GamePhase.Flop || canCheck)
+                return advice;
+
+            if (advice != BettingAdvice.Fold || callAmount <= 0)
+                return advice;
+
+            PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
+            if ((draws & FlopSemiBluffDraws) == 0)
+                return advice;
+
+            int denominator = potAmount + callAmount;
+            if (denominator <= 0)
+                return advice;
+
+            float needed = 100f * callAmount / denominator;
+            if (equityPercent + FlopDrawCallEquitySlack < needed)
+                return advice;
+
+            Debug.Log(
+                $"[PostflopAI] FlopDrawCall Fold→Call " +
+                $"equity={equityPercent:F1}% needed={needed:F1}% slack={FlopDrawCallEquitySlack:F0}% " +
+                $"draws={draws}");
+
+            return BettingAdvice.Call;
         }
 
         /// <summary>
