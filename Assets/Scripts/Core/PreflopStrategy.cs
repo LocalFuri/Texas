@@ -439,6 +439,17 @@ namespace TexasHoldem
             // (callAmount > playerChips) still reach the hand matcher and map to AllIn in ResolveAction.
             if (facingAllIn)
             {
+                if (group == PreflopHandGroup.Playable)
+                {
+                    LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                        facingAllIn, BettingAdvice.Fold, "ResolveCallOrFoldAdvice:FacingAllIn:PlayableFold");
+                    Debug.Log(
+                        $"[PreflopDebug] PlayableFacingAllInFold " +
+                        $"hole={(holeCards != null && holeCards.Count >= 2 ? $"{holeCards[0]} {holeCards[1]}" : "(none)")} " +
+                        $"callAmount={callAmount} playerChips={playerChips}");
+                    return BettingAdvice.Fold;
+                }
+
                 BettingAdvice advice = ResolveFacingAllInAdvice(holeCards);
                 LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
                     facingAllIn, advice,
