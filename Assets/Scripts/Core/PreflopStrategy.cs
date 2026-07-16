@@ -480,6 +480,24 @@ namespace TexasHoldem
             switch (group)
             {
                 case PreflopHandGroup.Strong:
+                    // Allowlisted shove-call hands (TT/99/AQ/AJ, etc.) bypass the 35% chip-cap fold.
+                    if (handTier == FacingAllInHandTier.Strong
+                        || handTier == FacingAllInHandTier.Premium)
+                    {
+                        if (callAmount > playerChips * StrongFoldChipFraction)
+                        {
+                            Debug.Log(
+                                $"[PreflopDebug] StrongAllowlistBypassChipCap " +
+                                $"hole={(holeCards != null && holeCards.Count >= 2 ? $"{holeCards[0]} {holeCards[1]}" : "(none)")} " +
+                                $"handTier={handTier} callAmount={callAmount} playerChips={playerChips} " +
+                                $"cap={playerChips * StrongFoldChipFraction:F0}");
+                        }
+
+                        LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
+                            facingAllIn, BettingAdvice.Call, "ResolveCallOrFoldAdvice:Strong:AllowlistBypass");
+                        return BettingAdvice.Call;
+                    }
+
                     if (callAmount > playerChips * StrongFoldChipFraction)
                     {
                         LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
