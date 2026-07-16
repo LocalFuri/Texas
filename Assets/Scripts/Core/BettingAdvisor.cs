@@ -115,8 +115,13 @@ namespace TexasHoldem
                     if (equityPercent >= StrongRaise)
                         return BettingAdvice.Raise;
 
+                    // Former thin-value band (55–65%): check instead of betting.
                     if (equityPercent >= RiverThinValueBet)
-                        return BettingAdvice.Raise;
+                    {
+                        Debug.Log(
+                            $"[PostflopAI] RiverThinCheck equity={equityPercent:F1}% " +
+                            $"(former thin-value band {RiverThinValueBet:F0}–{StrongRaise:F0}%)");
+                    }
 
                     return BettingAdvice.Check;
                 }
