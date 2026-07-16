@@ -118,7 +118,7 @@ namespace TexasHoldem
             int opponentCount = CountActiveOpponents(allPlayers, player);
 
             advice = ApplyFlopOrTurnSemiBluffIfEligible(
-                advice, phase, canCheck, canRaise, player.HoleCards, communityCards);
+                advice, phase, canCheck, canRaise, player, player.HoleCards, communityCards);
             BettingAdvice adviceAfterSemiBluff = advice;
 
             advice = ApplyFlopThinValueIfEligible(
@@ -333,13 +333,16 @@ namespace TexasHoldem
 
         /// <summary>
         /// Flop/turn only, when checking is free: keep ≥65% value bets from the advisor, and also
-        /// bet open-ended straight draws / flush draws (not gutshots). Turn uses existing ~2/3 pot sizing.
+        /// bet open-ended straight draws / flush draws (not gutshots).
+        /// Turn: only if this player was the flop aggressor; otherwise draws check unless equity already bets.
+        /// Turn uses existing ~2/3 pot sizing.
         /// </summary>
-        private static BettingAdvice ApplyFlopOrTurnSemiBluffIfEligible(
+        private BettingAdvice ApplyFlopOrTurnSemiBluffIfEligible(
             BettingAdvice advice,
             GamePhase phase,
             bool canCheck,
             bool canRaise,
+            PlayerState player,
             IReadOnlyList<Card> holeCards,
             IReadOnlyList<Card> communityCards)
         {
@@ -350,10 +353,22 @@ namespace TexasHoldem
                 return advice;
 
             PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
-            if ((draws & FlopSemiBluffDraws) != 0)
-                return BettingAdvice.Raise;
+            if ((draws & FlopSemiBluffDraws) == 0)
+                return advice;
 
-            return advice;
+            if (phase == GamePhase.Turn)
+            {
+                if (player == null || player != _flopLastAggressor)
+                {
+                    Debug.Log(
+                        $"[PostflopAI] TurnDrawCheck (non-aggressor) " +
+                        $"player={player?.Name ?? "(null)"} draws={draws} " +
+                        $"flopAggressor={_flopLastAggressor?.Name ?? "(none)"}");
+                    return advice;
+                }
+            }
+
+            return BettingAdvice.Raise;
         }
 
         private static float EstimateEquityPercent(
