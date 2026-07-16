@@ -71,7 +71,8 @@ namespace TexasHoldem
             int                         bigBlindAmount,
             int                         streetRaiseCount,
             PreflopSeatBucket           preflopSeat,
-            bool                        testMode = false)
+            bool                        testMode = false,
+            int                         playersBehind = 0)
         {
             int  callAmount = betting.GetCallAmount(player);
             bool canCheck   = callAmount <= 0;
@@ -111,7 +112,8 @@ namespace TexasHoldem
                 streetRaiseCount,
                 player.Chips,
                 player.HoleCards,
-                phase);
+                phase,
+                playersBehind);
 
             BettingAdvice adviceAfterAdvisor = advice;
 

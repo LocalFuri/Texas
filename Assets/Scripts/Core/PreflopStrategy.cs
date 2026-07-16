@@ -167,12 +167,13 @@ namespace TexasHoldem
             bool canRaise,
             bool canCall,
             int streetRaiseCount,
-            IReadOnlyList<Card> holeCards = null)
+            IReadOnlyList<Card> holeCards = null,
+            int playersBehind = 0)
         {
             if (facingRaise)
                 return RecommendFacingRaise(
                     group, seat, potBeforeAction, callAmount, playerChips,
-                    canRaise, canCall, streetRaiseCount, holeCards);
+                    canRaise, canCall, streetRaiseCount, holeCards, playersBehind);
 
             return RecommendUnopened(group, seat, callAmount, playerChips, canCheck, canRaise, canCall, streetRaiseCount);
         }
@@ -226,7 +227,8 @@ namespace TexasHoldem
             bool canRaise,
             bool canCall,
             int streetRaiseCount,
-            IReadOnlyList<Card> holeCards)
+            IReadOnlyList<Card> holeCards,
+            int playersBehind = 0)
         {
             if (group == PreflopHandGroup.Weak)
             {
@@ -237,7 +239,7 @@ namespace TexasHoldem
             }
 
             if (streetRaiseCount >= MaxStreetRaises)
-                return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards);
+                return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards, playersBehind);
 
             bool facingAllIn = IsFacingAllIn(callAmount, playerChips);
             if (group == PreflopHandGroup.Premium
@@ -286,7 +288,7 @@ namespace TexasHoldem
                     $"hole={(holeCards != null && holeCards.Count >= 2 ? $"{holeCards[0]} {holeCards[1]}" : "(none)")}");
             }
 
-            return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards);
+            return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards, playersBehind);
         }
 
         private static bool IsFacingAllIn(int callAmount, int playerChips) =>
@@ -415,7 +417,8 @@ namespace TexasHoldem
             int playerChips,
             bool canCall,
             int streetRaiseCount,
-            IReadOnlyList<Card> holeCards)
+            IReadOnlyList<Card> holeCards,
+            int playersBehind = 0)
         {
             bool facingAllIn = IsFacingAllIn(callAmount, playerChips);
             FacingAllInHandTier handTier = ClassifyFacingAllInHand(holeCards);
@@ -450,7 +453,25 @@ namespace TexasHoldem
                     return BettingAdvice.Fold;
                 }
 
-                BettingAdvice advice = ResolveFacingAllInAdvice(holeCards);
+                FacingAllInHandTier tier = ClassifyFacingAllInHand(holeCards);
+
+                BettingAdvice advice;
+                if (playersBehind >= 2)
+                {
+                    advice = tier == FacingAllInHandTier.Premium
+                        ? BettingAdvice.Call
+                        : BettingAdvice.Fold;
+                }
+                else
+                {
+                    // Existing heads-up or one-player-behind behavior remains unchanged.
+                    advice = ResolveFacingAllInAdvice(holeCards);
+                }
+
+                Debug.Log(
+                    $"[PreflopAI] PlayersBehind={playersBehind} " +
+                    $"FacingAllInDecision={advice} Tier={tier}");
+
                 LogPreflopDecision(holeCards, group, handTier, callAmount, playerChips, potBeforeAction,
                     facingAllIn, advice,
                     handTier == FacingAllInHandTier.None

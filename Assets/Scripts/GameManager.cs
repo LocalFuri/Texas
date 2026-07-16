@@ -72,6 +72,8 @@ namespace TexasHoldem
         public int               MaxBuyIn       => _startingChips;
         public int               StreetRaiseCount => _bettingManager?.StreetRaiseCount ?? 0;
         public bool              IsAwaitingHumanInput => _awaitingHumanInput;
+        /// <summary>Live players still to act this street (excluding the current actor). For HUD/AI.</summary>
+        public int               PlayersBehind => _currentPlayersBehind;
         public TableSoundManager TableSounds { get; private set; }
 
         /// <summary>True when the player can make a legal minimum raise (not call-only).</summary>
@@ -196,6 +198,7 @@ namespace TexasHoldem
         private BoardManager   _boardManager;
         private AIController   _aiController;
 
+        private int           _currentPlayersBehind;
         private bool          _awaitingHumanInput;
         private bool          _awaitingWinnerDismiss;
         private bool          _potAwardPending;
@@ -506,6 +509,21 @@ namespace TexasHoldem
                 bool actionApplied   = false;
                 BettingAction appliedAction = default;
 
+                // Live players other than the current player who still must act this street.
+                int playersBehind = 0;
+                for (int i = 0; i < players.Count; i++)
+                {
+                    if (i == currentIndex)
+                        continue;
+
+                    if (players[i].HasFolded || players[i].IsAllIn)
+                        continue;
+
+                    if (!hasActed[i])
+                        playersBehind++;
+                }
+
+                _currentPlayersBehind = playersBehind;
                 _awaitingHumanInput = player.Type == PlayerType.Human;
                 OnPlayerTurn?.Invoke(player);
 
@@ -523,7 +541,8 @@ namespace TexasHoldem
                         BigBlindAmount,
                         StreetRaiseCount,
                         GetPreflopSeatBucket(player),
-                        IsTestMode);
+                        IsTestMode,
+                        playersBehind);
                     int playerBetBefore = player.CurrentBet;
                     if (_bettingManager.ProcessAction(player, action, raise))
                     {

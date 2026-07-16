@@ -73,7 +73,8 @@ namespace TexasHoldem
             int streetRaiseCount,
             int playerChips,
             System.Collections.Generic.IReadOnlyList<Card> holeCards = null,
-            GamePhase postflopPhase = GamePhase.Flop)
+            GamePhase postflopPhase = GamePhase.Flop,
+            int playersBehind = 0)
         {
             if (isPreflop)
             {
@@ -88,7 +89,8 @@ namespace TexasHoldem
                     canRaise,
                     canCall,
                     streetRaiseCount,
-                    holeCards);
+                    holeCards,
+                    playersBehind);
             }
 
             return RecommendPostflop(
