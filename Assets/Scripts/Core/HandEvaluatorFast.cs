@@ -37,13 +37,132 @@ namespace TexasHoldem
             if (cmp != 0) return cmp;
             return K4.CompareTo(other.K4);
         }
+
+        public override string ToString() =>
+            $"{Rank}({K0},{K1},{K2},{K3},{K4})";
     }
 
     public static class HandEvaluatorFast
     {
         private static readonly int[] CountBuffer = new int[15];
 
+        private const int RankTwo = 2;
+        private const int RankAce = 14;
+        private const int WheelMask =
+            (1 << 14) | (1 << 5) | (1 << 4) | (1 << 3) | (1 << 2);
+
+        /// <summary>Best five-card hand from seven cards (direct, non-allocating).</summary>
         public static HandScore EvaluateSeven(Card h0, Card h1, Card b0, Card b1, Card b2, Card b3, Card b4)
+        {
+            Span<int> rankCount = stackalloc int[15];
+            Span<int> suitCount = stackalloc int[4];
+            Span<int> suitMask  = stackalloc int[4];
+            int rankMask = 0;
+
+            Accumulate(h0, rankCount, suitCount, suitMask, ref rankMask);
+            Accumulate(h1, rankCount, suitCount, suitMask, ref rankMask);
+            Accumulate(b0, rankCount, suitCount, suitMask, ref rankMask);
+            Accumulate(b1, rankCount, suitCount, suitMask, ref rankMask);
+            Accumulate(b2, rankCount, suitCount, suitMask, ref rankMask);
+            Accumulate(b3, rankCount, suitCount, suitMask, ref rankMask);
+            Accumulate(b4, rankCount, suitCount, suitMask, ref rankMask);
+
+            int flushSuit = -1;
+            for (int s = 0; s < 4; s++)
+            {
+                if (suitCount[s] >= 5)
+                {
+                    flushSuit = s;
+                    break;
+                }
+            }
+
+            if (flushSuit >= 0)
+            {
+                int flushBits = suitMask[flushSuit];
+                if (TryStraightHighFromMask(flushBits, out int sfHigh))
+                {
+                    return sfHigh == RankAce
+                        ? new HandScore(HandRank.RoyalFlush, sfHigh)
+                        : new HandScore(HandRank.StraightFlush, sfHigh);
+                }
+            }
+
+            int quad = 0;
+            int trips1 = 0, trips2 = 0;
+            int pair1 = 0, pair2 = 0, pair3 = 0;
+            for (int rank = RankAce; rank >= RankTwo; rank--)
+            {
+                int c = rankCount[rank];
+                if (c == 4)
+                    quad = rank;
+                else if (c == 3)
+                {
+                    if (trips1 == 0) trips1 = rank;
+                    else if (trips2 == 0) trips2 = rank;
+                }
+                else if (c == 2)
+                {
+                    if (pair1 == 0) pair1 = rank;
+                    else if (pair2 == 0) pair2 = rank;
+                    else if (pair3 == 0) pair3 = rank;
+                }
+            }
+
+            if (quad != 0)
+            {
+                int kicker = HighestRankExcept(rankCount, quad);
+                return new HandScore(HandRank.FourOfAKind, quad, kicker);
+            }
+
+            // Full house: best trips + best remaining pair (pair or second trips).
+            if (trips1 != 0)
+            {
+                int housePair = 0;
+                if (trips2 != 0)
+                    housePair = trips2;
+                else if (pair1 != 0)
+                    housePair = pair1;
+
+                if (housePair != 0)
+                    return new HandScore(HandRank.FullHouse, trips1, housePair);
+            }
+
+            if (flushSuit >= 0)
+            {
+                TopFiveRanks(suitMask[flushSuit], out int f0, out int f1, out int f2, out int f3, out int f4);
+                return new HandScore(HandRank.Flush, f0, f1, f2, f3, f4);
+            }
+
+            if (TryStraightHighFromMask(rankMask, out int straightHigh))
+                return new HandScore(HandRank.Straight, straightHigh);
+
+            if (trips1 != 0)
+            {
+                HighestTwoExcept(rankCount, trips1, out int k1, out int k2);
+                return new HandScore(HandRank.ThreeOfAKind, trips1, k1, k2);
+            }
+
+            if (pair1 != 0 && pair2 != 0)
+            {
+                // pair1 >= pair2 >= pair3 by scan order.
+                int kicker = HighestRankExcept(rankCount, pair1, pair2);
+                return new HandScore(HandRank.TwoPair, pair1, pair2, kicker);
+            }
+
+            if (pair1 != 0)
+            {
+                HighestThreeExcept(rankCount, pair1, out int k1, out int k2, out int k3);
+                return new HandScore(HandRank.OnePair, pair1, k1, k2, k3);
+            }
+
+            TopFiveRanks(rankMask, out int h0r, out int h1r, out int h2r, out int h3r, out int h4r);
+            return new HandScore(HandRank.HighCard, h0r, h1r, h2r, h3r, h4r);
+        }
+
+        /// <summary>Original best-of-21 evaluator (correctness / benchmark reference).</summary>
+        internal static HandScore EvaluateSevenReference(
+            Card h0, Card h1, Card b0, Card b1, Card b2, Card b3, Card b4)
         {
             HandScore best = default;
             bool      hasBest = false;
@@ -68,6 +187,114 @@ namespace TexasHoldem
             }
 
             return best;
+        }
+
+        private static void Accumulate(
+            Card card,
+            Span<int> rankCount,
+            Span<int> suitCount,
+            Span<int> suitMask,
+            ref int rankMask)
+        {
+            int rank = (int)card.Rank;
+            int suit = (int)card.Suit;
+            rankCount[rank]++;
+            suitCount[suit]++;
+            int bit = 1 << rank;
+            suitMask[suit] |= bit;
+            rankMask |= bit;
+        }
+
+        private static bool TryStraightHighFromMask(int mask, out int highCard)
+        {
+            for (int high = RankAce; high >= 6; high--)
+            {
+                int need = (1 << high) | (1 << (high - 1)) | (1 << (high - 2))
+                         | (1 << (high - 3)) | (1 << (high - 4));
+                if ((mask & need) == need)
+                {
+                    highCard = high;
+                    return true;
+                }
+            }
+
+            if ((mask & WheelMask) == WheelMask)
+            {
+                highCard = 5;
+                return true;
+            }
+
+            highCard = 0;
+            return false;
+        }
+
+        private static void TopFiveRanks(
+            int mask, out int r0, out int r1, out int r2, out int r3, out int r4)
+        {
+            r0 = r1 = r2 = r3 = r4 = 0;
+            int found = 0;
+            for (int rank = RankAce; rank >= RankTwo && found < 5; rank--)
+            {
+                if ((mask & (1 << rank)) == 0)
+                    continue;
+
+                switch (found)
+                {
+                    case 0: r0 = rank; break;
+                    case 1: r1 = rank; break;
+                    case 2: r2 = rank; break;
+                    case 3: r3 = rank; break;
+                    case 4: r4 = rank; break;
+                }
+
+                found++;
+            }
+        }
+
+        private static int HighestRankExcept(Span<int> rankCount, int excl0, int excl1 = 0)
+        {
+            for (int rank = RankAce; rank >= RankTwo; rank--)
+            {
+                if (rank == excl0 || rank == excl1)
+                    continue;
+                if (rankCount[rank] > 0)
+                    return rank;
+            }
+
+            return 0;
+        }
+
+        private static void HighestTwoExcept(
+            Span<int> rankCount, int excluded, out int k1, out int k2)
+        {
+            k1 = k2 = 0;
+            int found = 0;
+            for (int rank = RankAce; rank >= RankTwo && found < 2; rank--)
+            {
+                if (rank == excluded || rankCount[rank] == 0)
+                    continue;
+
+                if (found == 0) k1 = rank;
+                else k2 = rank;
+                found++;
+            }
+        }
+
+        private static void HighestThreeExcept(
+            Span<int> rankCount, int excluded, out int k1, out int k2, out int k3)
+        {
+            k1 = k2 = k3 = 0;
+            int found = 0;
+            for (int rank = RankAce; rank >= RankTwo && found < 3; rank--)
+            {
+                if (rank == excluded || rankCount[rank] == 0)
+                    continue;
+
+                if (found == 0) k1 = rank;
+                else if (found == 1) k2 = rank;
+                else k3 = rank;
+                found++;
+            }
         }
 
         private static Card Pick(int index, Card h0, Card h1, Card b0, Card b1, Card b2, Card b3, Card b4)
@@ -240,15 +467,17 @@ namespace TexasHoldem
 
         private static void SortDescending5(ref int a, ref int b, ref int c, ref int d, ref int e)
         {
+            // Bubble/odd-even network — must fully sort for wheel (A,5,4,3,2) detection.
             SortPairDesc(ref a, ref b);
+            SortPairDesc(ref b, ref c);
             SortPairDesc(ref c, ref d);
-            if (a < c) Swap(ref a, ref c);
-            if (b < d) Swap(ref b, ref d);
-            if (b < c) Swap(ref b, ref c);
-            SortPairDesc(ref e, ref d);
-            if (d < c) Swap(ref d, ref c);
-            if (c < b) Swap(ref c, ref b);
-            if (b < a) Swap(ref b, ref a);
+            SortPairDesc(ref d, ref e);
+            SortPairDesc(ref a, ref b);
+            SortPairDesc(ref b, ref c);
+            SortPairDesc(ref c, ref d);
+            SortPairDesc(ref a, ref b);
+            SortPairDesc(ref b, ref c);
+            SortPairDesc(ref a, ref b);
         }
 
         private static void SortPairDesc(ref int x, ref int y)
