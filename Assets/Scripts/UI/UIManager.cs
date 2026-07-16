@@ -270,6 +270,7 @@ namespace TexasHoldem
         private bool          _hasPendingActionBadge;
         private bool          _winnerCelebrationActive;
         private Coroutine     _winnerCelebrationCoroutine;
+        private Coroutine     _potCollectAfterZoomCoroutine;
         private bool          _winnerPotChipsCollected;
         private int           _winnerDisplayPotAmount;
         private bool          _lastShowBotCardsForTesting;
@@ -380,13 +381,56 @@ namespace TexasHoldem
             }
         }
 
-        /// <summary>Backspace / B / Delete — flies pot chips to the winner during the post-hand pause.</summary>
+        /// <summary>Backspace / B / Delete — flies pot chips to the winner after avatar zoom finishes.</summary>
         public bool TryCollectWinnerPot()
         {
             if (!CanCollectPotToWinner())
                 return false;
 
-            return BeginCollectPotToWinner();
+            if (_potCollectAfterZoomCoroutine != null)
+                return true;
+
+            _potCollectAfterZoomCoroutine = StartCoroutine(CollectPotToWinnerAfterAvatarZoom());
+            return true;
+        }
+
+        private IEnumerator CollectPotToWinnerAfterAvatarZoom()
+        {
+            yield return WaitUntilWinnerAvatarZoomsComplete();
+
+            _potCollectAfterZoomCoroutine = null;
+
+            if (!CanCollectPotToWinner())
+                yield break;
+
+            BeginCollectPotToWinner();
+        }
+
+        private IEnumerator WaitUntilWinnerAvatarZoomsComplete()
+        {
+            // Allow StartWinnerAvatarScale to set the active flag this frame.
+            yield return null;
+
+            while (AnyWinnerAvatarZoomActive())
+                yield return null;
+        }
+
+        private bool AnyWinnerAvatarZoomActive()
+        {
+            if (_gameManager?.LastRoundWinners == null)
+                return false;
+
+            foreach (PlayerState winner in _gameManager.LastRoundWinners)
+            {
+                if (winner == null)
+                    continue;
+
+                PlayerView view = ResolvePlayerView(winner);
+                if (view != null && view.IsWinnerAvatarZoomActive)
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>Space — allowed after pot chips were collected (or when there is no pot).</summary>
@@ -3867,6 +3911,12 @@ namespace TexasHoldem
             {
                 StopCoroutine(_winnerCelebrationCoroutine);
                 _winnerCelebrationCoroutine = null;
+            }
+
+            if (_potCollectAfterZoomCoroutine != null)
+            {
+                StopCoroutine(_potCollectAfterZoomCoroutine);
+                _potCollectAfterZoomCoroutine = null;
             }
 
             _gameManager?.ApplyPendingPotAward();
