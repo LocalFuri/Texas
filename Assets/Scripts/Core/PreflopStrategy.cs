@@ -189,10 +189,13 @@ namespace TexasHoldem
         {
             if (seat == PreflopSeatBucket.BigBlind && canCheck)
             {
-                if (group >= PreflopHandGroup.Strong
+                // Premium=0, Strong=1 — use <= Strong so Premium raises and Playable/Weak do not.
+                if (group <= PreflopHandGroup.Strong
                     && streetRaiseCount < MaxStreetRaises
                     && playerChips > 0)
                 {
+                    Debug.Log(
+                        $"[PreflopDebug] BBOptionRaise group={group} streetRaiseCount={streetRaiseCount}");
                     return BettingAdvice.Raise;
                 }
 
