@@ -74,6 +74,8 @@ namespace TexasHoldem
         public bool              IsAwaitingHumanInput => _awaitingHumanInput;
         /// <summary>Live players still to act this street (excluding the current actor). For HUD/AI.</summary>
         public int               PlayersBehind => _currentPlayersBehind;
+        /// <summary>Live players who already called the current preflop raise before this actor.</summary>
+        public int               CallersBefore => _currentCallersBefore;
         /// <summary>Preflop seat of the current street's last aggressor (shover). Defaults to Button.</summary>
         public PreflopSeatBucket ShovePosition => _currentShovePosition;
         public TableSoundManager TableSounds { get; private set; }
@@ -201,6 +203,7 @@ namespace TexasHoldem
         private AIController   _aiController;
 
         private int           _currentPlayersBehind;
+        private int           _currentCallersBefore;
         private PreflopSeatBucket _currentShovePosition = PreflopSeatBucket.Button;
         private bool          _awaitingHumanInput;
         private bool          _awaitingWinnerDismiss;
@@ -514,6 +517,7 @@ namespace TexasHoldem
 
                 // Live players other than the current player who still must act this street.
                 int playersBehind = 0;
+                int callersBefore = 0;
                 for (int i = 0; i < players.Count; i++)
                 {
                     if (i == currentIndex)
@@ -524,9 +528,12 @@ namespace TexasHoldem
 
                     if (!hasActed[i])
                         playersBehind++;
+                    else if (players[i].CurrentBet == _bettingManager.CurrentBet)
+                        callersBefore++;
                 }
 
                 _currentPlayersBehind = playersBehind;
+                _currentCallersBefore = callersBefore;
 
                 // Prefer last aggressor; fall back to anyone matching the table bet.
                 PlayerState shover = _bettingManager.LastAggressor;
@@ -573,7 +580,8 @@ namespace TexasHoldem
                         GetPreflopSeatBucket(player),
                         IsTestMode,
                         playersBehind,
-                        shovePosition);
+                        shovePosition,
+                        callersBefore);
                     int playerBetBefore = player.CurrentBet;
                     if (_bettingManager.ProcessAction(player, action, raise))
                     {

@@ -169,12 +169,13 @@ namespace TexasHoldem
             int streetRaiseCount,
             IReadOnlyList<Card> holeCards = null,
             int playersBehind = 0,
-            PreflopSeatBucket shovePosition = PreflopSeatBucket.Button)
+            PreflopSeatBucket shovePosition = PreflopSeatBucket.Button,
+            int callersBefore = 0)
         {
             if (facingRaise)
                 return RecommendFacingRaise(
                     group, seat, potBeforeAction, callAmount, playerChips,
-                    canRaise, canCall, streetRaiseCount, holeCards, playersBehind, shovePosition);
+                    canRaise, canCall, streetRaiseCount, holeCards, playersBehind, shovePosition, callersBefore);
 
             return RecommendUnopened(group, seat, callAmount, playerChips, canCheck, canRaise, canCall, streetRaiseCount);
         }
@@ -230,7 +231,8 @@ namespace TexasHoldem
             int streetRaiseCount,
             IReadOnlyList<Card> holeCards,
             int playersBehind = 0,
-            PreflopSeatBucket shovePosition = PreflopSeatBucket.Button)
+            PreflopSeatBucket shovePosition = PreflopSeatBucket.Button,
+            int callersBefore = 0)
         {
             if (group == PreflopHandGroup.Weak)
             {
@@ -272,6 +274,7 @@ namespace TexasHoldem
             if (group == PreflopHandGroup.Strong
                 && !facingAllIn
                 && streetRaiseCount == 1
+                && callersBefore < 2
                 && strongThreeBetSeat)
             {
                 if (canRaise && IsStrongThreeBetHand(holeCards))
@@ -288,6 +291,16 @@ namespace TexasHoldem
                 Debug.Log(
                     $"[PreflopDebug] Strong path=CallFold seat={seat} " +
                     $"hole={(holeCards != null && holeCards.Count >= 2 ? $"{holeCards[0]} {holeCards[1]}" : "(none)")}");
+            }
+
+            if (group == PreflopHandGroup.Strong
+                && !facingAllIn
+                && callersBefore >= 2)
+            {
+                Debug.Log($"[PreflopAI] Multiway={callersBefore} Decision={BettingAdvice.Fold}");
+                LogPreflopDecision(holeCards, group, ClassifyFacingAllInHand(holeCards), callAmount, playerChips,
+                    potBeforeAction, facingAllIn, BettingAdvice.Fold, "RecommendFacingRaise:Strong:MultiwayTighten");
+                return BettingAdvice.Fold;
             }
 
             return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards, playersBehind, shovePosition);
