@@ -205,19 +205,26 @@ namespace TexasHoldem
                 return BettingAdvice.Check;
             }
 
+            BettingAdvice decision;
             if (streetRaiseCount < MaxStreetRaises
                 && OpenTier(group) >= MinOpenTier(seat)
                 && playerChips > 0)
             {
-                return BettingAdvice.Raise;
+                decision = BettingAdvice.Raise;
+            }
+            else if (canCheck)
+            {
+                // Unopened pots: never limp. Below open tier → fold, except a free check.
+                decision = BettingAdvice.Check;
+            }
+            else
+            {
+                decision = BettingAdvice.Fold;
             }
 
-            // Unopened pots: never limp. Below open tier (or unable to raise) → fold,
-            // except a free check (BB option) is handled above / here.
-            if (canCheck)
-                return BettingAdvice.Check;
-
-            return BettingAdvice.Fold;
+            Debug.Log(
+                $"[PreflopAI] OpenRange Position={seat} Tier={group} Decision={decision}");
+            return decision;
         }
 
         private static BettingAdvice RecommendFacingRaise(
@@ -638,12 +645,12 @@ namespace TexasHoldem
         private static int MinOpenTier(PreflopSeatBucket seat) =>
             seat switch
             {
-                PreflopSeatBucket.Button     => 1,
-                PreflopSeatBucket.Cutoff     => 1,
-                PreflopSeatBucket.SmallBlind => 2,
-                PreflopSeatBucket.Middle     => 2,
-                PreflopSeatBucket.Early      => 2,
-                PreflopSeatBucket.BigBlind   => 3,
+                PreflopSeatBucket.Early      => 3, // Premium only
+                PreflopSeatBucket.Middle     => 2, // Strong+
+                PreflopSeatBucket.SmallBlind => 2, // Strong+
+                PreflopSeatBucket.Cutoff     => 1, // Playable+
+                PreflopSeatBucket.Button     => 1, // Playable+
+                PreflopSeatBucket.BigBlind   => 3, // unchanged (option path separate)
                 _                            => 2,
             };
 
