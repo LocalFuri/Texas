@@ -94,7 +94,10 @@ namespace TexasHoldem
                 preflopGroup = PreflopStrategy.ClassifyHand(player.HoleCards);
 
                 if (!isPreflop)
-                    equityPercent = EstimateEquityPercent(player, communityCards, allPlayers);
+                {
+                    equityPercent = EstimateEquityPercent(
+                        player, communityCards, allPlayers, callAmount, streetRaiseCount);
+                }
             }
 
             if (isPreflop)
@@ -381,18 +384,27 @@ namespace TexasHoldem
         private static float EstimateEquityPercent(
             PlayerState player,
             IReadOnlyList<Card> communityCards,
-            IReadOnlyList<PlayerState> allPlayers)
+            IReadOnlyList<PlayerState> allPlayers,
+            int callAmount,
+            int streetRaiseCount)
         {
             int opponents = CountActiveOpponents(allPlayers, player);
             if (opponents <= 0)
                 return 100f;
 
             var board = communityCards ?? System.Array.Empty<Card>();
+            OpponentRangeStrength range = MonteCarloSimulator.ResolveOpponentRange(
+                facingBet: callAmount > 0,
+                streetRaiseCount: streetRaiseCount,
+                callAmount: callAmount,
+                defenderChips: player != null ? player.Chips : 0);
+
             MonteCarloResult result = MonteCarloSimulator.Simulate(
                 player.HoleCards,
                 board,
                 opponents,
-                MonteCarloSimulator.DefaultSimulationCount);
+                MonteCarloSimulator.DefaultSimulationCount,
+                range);
 
             return result.EquityPercent;
         }

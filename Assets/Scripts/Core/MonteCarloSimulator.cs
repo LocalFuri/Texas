@@ -7,6 +7,17 @@ using Debug = UnityEngine.Debug;
 
 namespace TexasHoldem
 {
+    /// <summary>
+    /// How tightly to sample unknown opponent holes from betting aggression.
+    /// Wide ≈ check/call; Strong ≈ bet/raise; Strongest ≈ re-raise / near-stack shove.
+    /// </summary>
+    public enum OpponentRangeStrength
+    {
+        Wide      = 0,
+        Strong    = 1,
+        Strongest = 2,
+    }
+
     public readonly struct MonteCarloResult
     {
         public float EquityPercent { get; }
@@ -25,7 +36,7 @@ namespace TexasHoldem
 
     /// <summary>
     /// Estimates Texas Hold'em equity via Monte Carlo simulation.
-    /// Uses only the hero's hole cards, visible board, and active opponent count.
+    /// Opponent holes can be rejection-sampled to a betting-implied range.
     /// </summary>
     public static class MonteCarloSimulator
     {
@@ -33,14 +44,40 @@ namespace TexasHoldem
         /// <summary>Above default sim count so 10k runs without a trailing frame yield.</summary>
         public const int DefaultSimsPerFrame    = 15_000;
 
+        private const int MaxOpponentHandAttempts = 24;
+        private const float NearStackCallFraction = 0.5f;
+
         private static readonly int[] PerformanceBenchmarkSimulationCounts = { 10_000, 100_000, 1_000_000 };
         private const int PerformanceBenchmarkOpponentCount = 2;
+
+        /// <summary>
+        /// Maps facing-bet context to an opponent range tier.
+        /// Check/call → Wide; bet/raise → Strong; re-raise or ≥50% stack call → Strongest.
+        /// </summary>
+        public static OpponentRangeStrength ResolveOpponentRange(
+            bool facingBet,
+            int streetRaiseCount,
+            int callAmount,
+            int defenderChips)
+        {
+            if (!facingBet || callAmount <= 0)
+                return OpponentRangeStrength.Wide;
+
+            bool nearStack = defenderChips > 0
+                && callAmount >= Mathf.CeilToInt(defenderChips * NearStackCallFraction);
+
+            if (streetRaiseCount >= 2 || nearStack)
+                return OpponentRangeStrength.Strongest;
+
+            return OpponentRangeStrength.Strong;
+        }
 
         public static MonteCarloResult Simulate(
             IReadOnlyList<Card> heroHoleCards,
             IReadOnlyList<Card> communityCards,
             int activeOpponentCount,
-            int simulationCount = DefaultSimulationCount)
+            int simulationCount = DefaultSimulationCount,
+            OpponentRangeStrength opponentRange = OpponentRangeStrength.Wide)
         {
             ValidateInputs(heroHoleCards, communityCards, activeOpponentCount, simulationCount);
 
@@ -53,7 +90,11 @@ namespace TexasHoldem
             double equitySum = 0d;
 
             for (int sim = 0; sim < simulationCount; sim++)
-                workspace.RunOneSimulation(activeOpponentCount, ref wins, ref ties, ref losses, ref equitySum);
+            {
+                workspace.RunOneSimulation(
+                    activeOpponentCount, opponentRange,
+                    ref wins, ref ties, ref losses, ref equitySum);
+            }
 
             return BuildResult(wins, ties, losses, equitySum, simulationCount);
         }
@@ -67,7 +108,8 @@ namespace TexasHoldem
             int simulationCount = DefaultSimulationCount,
             int simsPerFrame = DefaultSimsPerFrame,
             bool logPerformance = false,
-            string performanceLogContext = null)
+            string performanceLogContext = null,
+            OpponentRangeStrength opponentRange = OpponentRangeStrength.Wide)
         {
             if (onComplete == null)
                 throw new ArgumentNullException(nameof(onComplete));
@@ -89,7 +131,9 @@ namespace TexasHoldem
 
             for (int sim = 0; sim < simulationCount; sim++)
             {
-                workspace.RunOneSimulation(activeOpponentCount, ref wins, ref ties, ref losses, ref equitySum);
+                workspace.RunOneSimulation(
+                    activeOpponentCount, opponentRange,
+                    ref wins, ref ties, ref losses, ref equitySum);
 
                 if ((sim + 1) % batch == 0)
                     yield return null;
@@ -109,7 +153,8 @@ namespace TexasHoldem
                     $"elapsedMs={stopwatch.Elapsed.TotalMilliseconds:F2} " +
                     $"renderedFrames={renderedFrames} " +
                     $"simsPerFrame={batch} " +
-                    $"activeOpponents={activeOpponentCount}");
+                    $"activeOpponents={activeOpponentCount} " +
+                    $"range={opponentRange}");
             }
 
             onComplete(BuildResult(wins, ties, losses, equitySum, simulationCount));
@@ -210,12 +255,14 @@ namespace TexasHoldem
             private readonly Card[] _board = new Card[5];
             private readonly Card[] _opponentHoleA = new Card[8];
             private readonly Card[] _opponentHoleB = new Card[8];
+            private readonly int[] _rankCounts = new int[15];
+            private readonly int[] _suitCounts = new int[4];
+            private readonly bool[] _rankPresent = new bool[15];
 
             private Card _hero0;
             private Card _hero1;
             private int  _deckCount;
             private int  _boardKnown;
-            private int  _cardsNeeded;
 
             public void Initialize(IReadOnlyList<Card> heroHoleCards, IReadOnlyList<Card> communityCards)
             {
@@ -247,26 +294,30 @@ namespace TexasHoldem
 
             public void RunOneSimulation(
                 int activeOpponentCount,
+                OpponentRangeStrength opponentRange,
                 ref int wins,
                 ref int ties,
                 ref int losses,
                 ref double equitySum)
             {
-                _cardsNeeded = activeOpponentCount * 2 + (5 - _boardKnown);
-                if (_deckCount < _cardsNeeded)
+                int cardsNeeded = activeOpponentCount * 2 + (5 - _boardKnown);
+                if (_deckCount < cardsNeeded)
                     return;
 
-                PartialShuffle(_cardsNeeded);
+                int remaining = _deckCount;
 
-                int index = 0;
                 for (int o = 0; o < activeOpponentCount; o++)
                 {
-                    _opponentHoleA[o] = _deck[index++];
-                    _opponentHoleB[o] = _deck[index++];
+                    DealOpponentHole(ref remaining, opponentRange, o);
                 }
 
                 for (int i = _boardKnown; i < 5; i++)
-                    _board[i] = _deck[index++];
+                {
+                    int pick = UnityEngine.Random.Range(0, remaining);
+                    _board[i] = _deck[pick];
+                    SwapDeck(pick, remaining - 1);
+                    remaining--;
+                }
 
                 Card b0 = _board[0];
                 Card b1 = _board[1];
@@ -286,8 +337,8 @@ namespace TexasHoldem
                     int cmp = score.CompareTo(bestScore);
                     if (cmp > 0)
                     {
-                        bestScore      = score;
-                        playersAtBest  = 1;
+                        bestScore     = score;
+                        playersAtBest = 1;
                     }
                     else if (cmp == 0)
                     {
@@ -314,13 +365,238 @@ namespace TexasHoldem
                 }
             }
 
-            private void PartialShuffle(int cardsNeeded)
+            private void DealOpponentHole(
+                ref int remaining,
+                OpponentRangeStrength opponentRange,
+                int opponentIndex)
             {
-                for (int i = 0; i < cardsNeeded; i++)
+                if (remaining < 2)
+                    return;
+
+                if (opponentRange == OpponentRangeStrength.Wide || _boardKnown < 3)
                 {
-                    int j = UnityEngine.Random.Range(i, _deckCount);
-                    (_deck[i], _deck[j]) = (_deck[j], _deck[i]);
+                    TakeTwoRandomHoles(ref remaining, opponentIndex);
+                    return;
                 }
+
+                for (int attempt = 0; attempt < MaxOpponentHandAttempts; attempt++)
+                {
+                    int i = UnityEngine.Random.Range(0, remaining);
+                    int j = UnityEngine.Random.Range(0, remaining - 1);
+                    if (j >= i)
+                        j++;
+
+                    Card a = _deck[i];
+                    Card b = _deck[j];
+                    if (!FitsRange(a, b, opponentRange))
+                        continue;
+
+                    int hi = i > j ? i : j;
+                    int lo = i > j ? j : i;
+                    SwapDeck(hi, remaining - 1);
+                    SwapDeck(lo, remaining - 2);
+
+                    _opponentHoleA[opponentIndex] = _deck[remaining - 1];
+                    _opponentHoleB[opponentIndex] = _deck[remaining - 2];
+                    remaining -= 2;
+                    return;
+                }
+
+                TakeTwoRandomHoles(ref remaining, opponentIndex);
+            }
+
+            private void TakeTwoRandomHoles(ref int remaining, int opponentIndex)
+            {
+                int i = UnityEngine.Random.Range(0, remaining);
+                SwapDeck(i, remaining - 1);
+                _opponentHoleA[opponentIndex] = _deck[remaining - 1];
+                remaining--;
+
+                int j = UnityEngine.Random.Range(0, remaining);
+                SwapDeck(j, remaining - 1);
+                _opponentHoleB[opponentIndex] = _deck[remaining - 1];
+                remaining--;
+            }
+
+            private void SwapDeck(int a, int b)
+            {
+                if (a == b)
+                    return;
+                (_deck[a], _deck[b]) = (_deck[b], _deck[a]);
+            }
+
+            /// <summary>
+            /// Wide: any hand.
+            /// Strong: OnePair+ / made flush-straight / FD / OESD.
+            /// Strongest: TwoPair+, top pair / overpair, made flush-straight, or FD/OESD.
+            /// </summary>
+            private bool FitsRange(Card h0, Card h1, OpponentRangeStrength range)
+            {
+                ClassifyHoleOnBoard(h0, h1,
+                    out HandRank made,
+                    out bool topPairOrOverpair,
+                    out bool strongDraw);
+
+                if (range == OpponentRangeStrength.Strongest)
+                {
+                    return made >= HandRank.TwoPair
+                        || topPairOrOverpair
+                        || strongDraw;
+                }
+
+                return made >= HandRank.OnePair || strongDraw;
+            }
+
+            private void ClassifyHoleOnBoard(
+                Card h0,
+                Card h1,
+                out HandRank made,
+                out bool topPairOrOverpair,
+                out bool strongDraw)
+            {
+                Array.Clear(_rankCounts, 0, _rankCounts.Length);
+                Array.Clear(_suitCounts, 0, _suitCounts.Length);
+                Array.Clear(_rankPresent, 0, _rankPresent.Length);
+
+                void Add(Card c)
+                {
+                    int r = (int)c.Rank;
+                    _rankCounts[r]++;
+                    _suitCounts[(int)c.Suit]++;
+                    _rankPresent[r] = true;
+                }
+
+                Add(h0);
+                Add(h1);
+                for (int i = 0; i < _boardKnown; i++)
+                    Add(_board[i]);
+
+                int quads = 0, trips = 0, pairs = 0;
+                for (int r = (int)Rank.Two; r <= (int)Rank.Ace; r++)
+                {
+                    int c = _rankCounts[r];
+                    if (c >= 4) quads++;
+                    else if (c == 3) trips++;
+                    else if (c == 2) pairs++;
+                }
+
+                bool madeFlush = false;
+                bool flushDraw = false;
+                for (int s = 0; s < 4; s++)
+                {
+                    if (_suitCounts[s] >= 5)
+                        madeFlush = true;
+                    else if (_suitCounts[s] == 4)
+                        flushDraw = true;
+                }
+
+                bool madeStraight = HasStraight(_rankPresent);
+                bool openEnded = !madeStraight && HasOpenEndedStraightDraw(_rankPresent);
+
+                if (quads > 0)
+                    made = HandRank.FourOfAKind;
+                else if (trips > 0 && pairs > 0)
+                    made = HandRank.FullHouse;
+                else if (madeFlush && madeStraight)
+                    made = HandRank.StraightFlush;
+                else if (madeFlush)
+                    made = HandRank.Flush;
+                else if (madeStraight)
+                    made = HandRank.Straight;
+                else if (trips > 0)
+                    made = HandRank.ThreeOfAKind;
+                else if (pairs >= 2)
+                    made = HandRank.TwoPair;
+                else if (pairs == 1)
+                    made = HandRank.OnePair;
+                else
+                    made = HandRank.HighCard;
+
+                strongDraw = (!madeFlush && flushDraw) || openEnded;
+
+                topPairOrOverpair = false;
+                if (made == HandRank.OnePair)
+                {
+                    int maxBoard = (int)_board[0].Rank;
+                    for (int i = 1; i < _boardKnown; i++)
+                    {
+                        int br = (int)_board[i].Rank;
+                        if (br > maxBoard)
+                            maxBoard = br;
+                    }
+
+                    if (h0.Rank == h1.Rank && (int)h0.Rank > maxBoard)
+                        topPairOrOverpair = true;
+                    else if ((int)h0.Rank == maxBoard || (int)h1.Rank == maxBoard)
+                        topPairOrOverpair = true;
+                }
+            }
+
+            private static bool HasStraight(bool[] present)
+            {
+                // A-5 wheel
+                if (present[14] && present[2] && present[3] && present[4] && present[5])
+                    return true;
+
+                int run = 0;
+                for (int r = 2; r <= 14; r++)
+                {
+                    if (present[r])
+                    {
+                        run++;
+                        if (run >= 5)
+                            return true;
+                    }
+                    else
+                    {
+                        run = 0;
+                    }
+                }
+
+                return false;
+            }
+
+            private static bool HasOpenEndedStraightDraw(bool[] present)
+            {
+                // Four consecutive ranks with both ends live (same idea as PostflopDrawDetector).
+                for (int start = (int)Rank.Two; start <= (int)Rank.Jack; start++)
+                {
+                    bool run = true;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (!present[start + i])
+                        {
+                            run = false;
+                            break;
+                        }
+                    }
+
+                    if (!run)
+                        continue;
+
+                    int lowOut = start == (int)Rank.Two ? (int)Rank.Ace : start - 1;
+                    int highOut = start + 4;
+                    if (highOut > (int)Rank.Ace)
+                        continue;
+
+                    if (CompletesStraight(present, lowOut) && CompletesStraight(present, highOut))
+                        return true;
+                }
+
+                return false;
+            }
+
+            private static bool CompletesStraight(bool[] present, int added)
+            {
+                if (added < (int)Rank.Two || added > (int)Rank.Ace)
+                    return false;
+
+                // Temporary add
+                bool had = present[added];
+                present[added] = true;
+                bool made = HasStraight(present);
+                present[added] = had;
+                return made;
             }
         }
     }
