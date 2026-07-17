@@ -118,6 +118,7 @@ namespace TexasHoldem
                 facingRaise,
                 streetRaiseCount,
                 player.Chips,
+                out string advisorDecisionReason,
                 player.HoleCards,
                 phase,
                 playersBehind,
@@ -172,7 +173,8 @@ namespace TexasHoldem
                     adviceAfterAdvisor,
                     adviceAfterSemiBluff,
                     adviceAfterThinValue,
-                    adviceAfterBarrel);
+                    adviceAfterBarrel,
+                    advisorDecisionReason);
             }
 
             return resolved;
@@ -468,7 +470,8 @@ namespace TexasHoldem
             BettingAdvice afterAdvisor,
             BettingAdvice afterSemiBluff,
             BettingAdvice afterThinValue,
-            BettingAdvice afterBarrel)
+            BettingAdvice afterBarrel,
+            string advisorDecisionReason)
         {
             BoardTextureFlags texture = BoardTextureAnalyzer.Analyze(communityCards);
 
@@ -512,7 +515,8 @@ namespace TexasHoldem
                 potOddsPercent,
                 decisionThreshold,
                 canCheck,
-                street);
+                street,
+                advisorDecisionReason);
 
             int playerStreetBet = player != null ? player.CurrentBet : 0;
             int totalBet = ResolveTotalBetAfterAction(
@@ -600,7 +604,8 @@ namespace TexasHoldem
             return FlopValueEquityThreshold;
         }
 
-        private static string BuildPlainEnglishReason(
+        /// <summary>Plain-English decision reason for logs (also used by logger regressions).</summary>
+        internal static string BuildPlainEnglishReason(
             BettingAdvice afterAdvisor,
             BettingAdvice afterSemiBluff,
             BettingAdvice afterThinValue,
@@ -609,7 +614,8 @@ namespace TexasHoldem
             float? potOddsPercent,
             float? facingThreshold,
             bool canCheck,
-            GamePhase street)
+            GamePhase street,
+            string advisorDecisionReason = null)
         {
             if (afterBarrel != afterThinValue)
                 return $"Second barrel as flop aggressor (equity ≥ {TurnSecondBarrelEquityMin:F0}%)";
@@ -644,6 +650,10 @@ namespace TexasHoldem
                 case BettingAdvice.Call:
                     return $"Equity exceeded call threshold ({threshold:F1}%)";
                 case BettingAdvice.Fold:
+                    // Gate-forced Fold: use the reason preserved from the decision path.
+                    if (!string.IsNullOrEmpty(advisorDecisionReason))
+                        return advisorDecisionReason;
+
                     return $"Equity below call threshold ({threshold:F1}%)";
                 default:
                     return $"Advisor:{afterAdvisor}";

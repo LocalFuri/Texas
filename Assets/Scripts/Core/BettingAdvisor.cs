@@ -87,6 +87,57 @@ namespace TexasHoldem
             System.Collections.Generic.IReadOnlyList<Card> communityCards = null,
             int activeOpponentCount = 1)
         {
+            return Recommend(
+                equityPercent,
+                potBeforeAction,
+                callAmount,
+                canCheck,
+                canRaise,
+                canCall,
+                isPreflop,
+                preflopGroup,
+                preflopSeat,
+                facingRaise,
+                streetRaiseCount,
+                playerChips,
+                out _,
+                holeCards,
+                postflopPhase,
+                playersBehind,
+                shovePosition,
+                callersBefore,
+                communityCards,
+                activeOpponentCount);
+        }
+
+        /// <param name="decisionReason">
+        /// When a postflop call gate forces Fold, the exact gate reason to log; otherwise null
+        /// (logger falls back to equity-threshold wording).
+        /// </param>
+        public static BettingAdvice Recommend(
+            float equityPercent,
+            int potBeforeAction,
+            int callAmount,
+            bool canCheck,
+            bool canRaise,
+            bool canCall,
+            bool isPreflop,
+            PreflopHandGroup preflopGroup,
+            PreflopSeatBucket preflopSeat,
+            bool facingRaise,
+            int streetRaiseCount,
+            int playerChips,
+            out string decisionReason,
+            System.Collections.Generic.IReadOnlyList<Card> holeCards = null,
+            GamePhase postflopPhase = GamePhase.Flop,
+            int playersBehind = 0,
+            PreflopSeatBucket shovePosition = PreflopSeatBucket.Button,
+            int callersBefore = 0,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards = null,
+            int activeOpponentCount = 1)
+        {
+            decisionReason = null;
+
             if (isPreflop)
             {
                 return PreflopStrategy.RecommendAdvice(
@@ -118,7 +169,8 @@ namespace TexasHoldem
                 holeCards,
                 communityCards,
                 playerChips,
-                activeOpponentCount);
+                activeOpponentCount,
+                out decisionReason);
         }
 
         private static BettingAdvice RecommendPostflop(
@@ -133,8 +185,10 @@ namespace TexasHoldem
             System.Collections.Generic.IReadOnlyList<Card> holeCards,
             System.Collections.Generic.IReadOnlyList<Card> communityCards,
             int playerChips,
-            int activeOpponentCount)
+            int activeOpponentCount,
+            out string decisionReason)
         {
+            decisionReason = null;
             equityPercent = Mathf.Clamp(equityPercent, 0f, 100f);
             bool multiway = activeOpponentCount >= MultiwayMinOpponents;
             float strongRaiseThreshold = StrongRaise + (multiway ? MultiwayRaiseThresholdBonus : 0f);
@@ -192,14 +246,18 @@ namespace TexasHoldem
             if (denominator <= 0)
             {
                 float callFloor = 50f + MarginalCallBonus(multiway, holeCards, communityCards);
-                if (equityPercent >= callFloor
-                    && PassesHugeCallGate(
-                        postflopPhase, callAmount, playerChips, holeCards, communityCards, out _))
+                if (equityPercent < callFloor)
+                    return BettingAdvice.Fold;
+
+                if (!PassesHugeCallGate(
+                        postflopPhase, callAmount, playerChips, holeCards, communityCards, out string hugeReason))
                 {
-                    return BettingAdvice.Call;
+                    decisionReason = FormatCallGateReason("Huge-call gate", hugeReason);
+                    Debug.Log($"[PostflopAI] HugeCallGate Fold — {hugeReason}");
+                    return BettingAdvice.Fold;
                 }
 
-                return BettingAdvice.Fold;
+                return BettingAdvice.Call;
             }
 
             float needed = 100f * callAmount / denominator;
@@ -214,7 +272,7 @@ namespace TexasHoldem
                         $"floor={RiverRaiseEquityFloor:F0}%) → Call");
                     return ResolveCallOrFoldAfterHugeGate(
                         equityPercent, needed, postflopPhase, callAmount, playerChips,
-                        holeCards, communityCards, multiway);
+                        holeCards, communityCards, multiway, out decisionReason);
                 }
 
                 if (!CanEscalateFacingRaise(holeCards, communityCards, streetRaiseCount, out string blockReason))
@@ -240,8 +298,11 @@ namespace TexasHoldem
 
             return ResolveCallOrFoldAfterHugeGate(
                 equityPercent, needed, postflopPhase, callAmount, playerChips,
-                holeCards, communityCards, multiway);
+                holeCards, communityCards, multiway, out decisionReason);
         }
+
+        private static string FormatCallGateReason(string gateName, string detail) =>
+            string.IsNullOrEmpty(detail) ? gateName : $"{gateName}: {detail}";
 
         /// <summary>+5% call margin in multiway for One Pair or weaker; Two Pair+ unchanged.</summary>
         private static float MarginalCallBonus(
@@ -267,8 +328,11 @@ namespace TexasHoldem
             int playerChips,
             System.Collections.Generic.IReadOnlyList<Card> holeCards,
             System.Collections.Generic.IReadOnlyList<Card> communityCards,
-            bool multiway)
+            bool multiway,
+            out string decisionReason)
         {
+            decisionReason = null;
+
             float callMargin = EdgeMargin + MarginalCallBonus(multiway, holeCards, communityCards);
             if (equityPercent < needed + callMargin)
                 return BettingAdvice.Fold;
@@ -276,6 +340,7 @@ namespace TexasHoldem
             if (!PassesHugeCallGate(
                     postflopPhase, callAmount, playerChips, holeCards, communityCards, out string reason))
             {
+                decisionReason = FormatCallGateReason("Huge-call gate", reason);
                 Debug.Log($"[PostflopAI] HugeCallGate Fold — {reason}");
                 return BettingAdvice.Fold;
             }
@@ -283,6 +348,7 @@ namespace TexasHoldem
             if (!PassesUnderpairTurnRiverCallGate(
                     postflopPhase, callAmount, playerChips, holeCards, communityCards, out string underReason))
             {
+                decisionReason = FormatCallGateReason("Underpair turn/river call gate", underReason);
                 Debug.Log($"[PostflopAI] UnderpairCallGate Fold — {underReason}");
                 return BettingAdvice.Fold;
             }
@@ -290,6 +356,7 @@ namespace TexasHoldem
             if (!PassesWetBluffCatcherLargeBetGate(
                     postflopPhase, callAmount, playerChips, holeCards, communityCards, out string wetCallReason))
             {
+                decisionReason = FormatCallGateReason("Wet-board bluff-catcher large-bet gate", wetCallReason);
                 Debug.Log($"[PostflopAI] WetBluffCatcherGate Fold — {wetCallReason}");
                 return BettingAdvice.Fold;
             }
