@@ -29,9 +29,9 @@ namespace TexasHoldem.Dev
                 bool underpair = BettingAdvisor.IsPocketUnderpair(testCase.HoleCards, testCase.Board);
                 HandRank made = BettingAdvisor.GetMadeHandRank(testCase.HoleCards, testCase.Board);
 
-                // Equity high enough that pot-odds alone would Call.
+                // Equity high enough that pot-odds alone would Call (needed≈68% + 3% edge).
                 BettingAdvice advice = BettingAdvisor.Recommend(
-                    equityPercent: 70f,
+                    equityPercent: 80f,
                     potBeforeAction: testCase.Pot,
                     callAmount: testCase.CallAmount,
                     canCheck: false,
@@ -77,6 +77,19 @@ namespace TexasHoldem.Dev
                 C(Suit.Clubs, Rank.Jack),
             };
 
+            // JJ on A♠ A♥ K♦ 7♣ — board-pair + pocket-pair Two Pair bluff-catcher → Fold.
+            Card[] jacks = { C(Suit.Hearts, Rank.Jack), C(Suit.Clubs, Rank.Jack) };
+            Card[] aak7 =
+            {
+                C(Suit.Spades, Rank.Ace),
+                C(Suit.Hearts, Rank.Ace),
+                C(Suit.Diamonds, Rank.King),
+                C(Suit.Clubs, Rank.Seven),
+            };
+
+            // Control: genuine two pair K7 on AAK7 may call huge shove.
+            Card[] kingSeven = { C(Suit.Spades, Rank.King), C(Suit.Hearts, Rank.Seven) };
+
             return new List<HugeCallTestCase>
             {
                 new HugeCallTestCase(
@@ -98,6 +111,28 @@ namespace TexasHoldem.Dev
                     GamePhase.Turn,
                     pot: 100,
                     callAmount: 20,
+                    playerChips: 1000,
+                    expectPassGate: true,
+                    expectedAdvice: BettingAdvice.Call),
+
+                new HugeCallTestCase(
+                    "JJ on AAK7 vs near-stack turn shove → Fold (board-pair+pocket)",
+                    jacks,
+                    aak7,
+                    GamePhase.Turn,
+                    pot: 400,
+                    callAmount: 850,
+                    playerChips: 1000,
+                    expectPassGate: false,
+                    expectedAdvice: BettingAdvice.Fold),
+
+                new HugeCallTestCase(
+                    "K7 on AAK7 genuine TwoPair may Call huge shove",
+                    kingSeven,
+                    aak7,
+                    GamePhase.Turn,
+                    pot: 400,
+                    callAmount: 850,
                     playerChips: 1000,
                     expectPassGate: true,
                     expectedAdvice: BettingAdvice.Call),

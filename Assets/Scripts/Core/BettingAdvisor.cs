@@ -330,8 +330,23 @@ namespace TexasHoldem
             bool strongDraw =
                 (draws & (PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw)) != 0;
 
-            if (made >= HandRank.TwoPair)
+            // Trips+ always qualify for huge calls.
+            if (made >= HandRank.ThreeOfAKind)
                 return true;
+
+            // Genuine Two Pair qualifies; board-pair + pocket-pair is a bluff-catcher.
+            if (made == HandRank.TwoPair)
+            {
+                if (IsBoardPairPlusPocketPairTwoPair(holeCards, communityCards))
+                {
+                    blockReason =
+                        $"call={callAmount} ≥50% stack={playerChips}; " +
+                        "board-pair+pocket-pair TwoPair is a bluff-catcher";
+                    return false;
+                }
+
+                return true;
+            }
 
             if (made == HandRank.OnePair)
             {
@@ -356,6 +371,47 @@ namespace TexasHoldem
             blockReason =
                 $"call={callAmount} ≥50% stack={playerChips}; made={made} needs TwoPair+ " +
                 $"or strong pair+draw";
+            return false;
+        }
+
+        /// <summary>
+        /// True when made Two Pair is only a board pair plus a pocket pair (e.g. JJ on AAK7).
+        /// </summary>
+        internal static bool IsBoardPairPlusPocketPairTwoPair(
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards)
+        {
+            if (holeCards == null || holeCards.Count < 2 || holeCards[0] == null || holeCards[1] == null)
+                return false;
+
+            if (holeCards[0].Rank != holeCards[1].Rank)
+                return false;
+
+            if (communityCards == null || communityCards.Count < 3)
+                return false;
+
+            if (GetMadeHandRank(holeCards, communityCards) != HandRank.TwoPair)
+                return false;
+
+            var boardCounts = new int[15];
+            bool anyBoard = false;
+            foreach (Card card in communityCards)
+            {
+                if (card == null)
+                    continue;
+                anyBoard = true;
+                boardCounts[(int)card.Rank]++;
+            }
+
+            if (!anyBoard)
+                return false;
+
+            for (int r = (int)Rank.Two; r <= (int)Rank.Ace; r++)
+            {
+                if (boardCounts[r] >= 2)
+                    return true;
+            }
+
             return false;
         }
 
