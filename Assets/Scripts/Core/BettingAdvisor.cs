@@ -30,6 +30,7 @@ namespace TexasHoldem
         private const float RiverThinBetPotFraction     = 0.33f;
         private const float PostflopRaisePotFraction    = 0.75f;
         private const float HugeCallStackFraction       = 0.5f;
+        private const float UnderpairSubstantialStackFraction = 0.25f;
 
         public static string LabelFor(BettingAdvice advice) =>
             advice switch
@@ -192,6 +193,11 @@ namespace TexasHoldem
                     Debug.Log($"[PostflopAI] EscalationCap {blockReason}");
                     // Fall through to existing call/fold pot-odds logic.
                 }
+                else if (IsWeakUnderpairRaiseBlocked(holeCards, communityCards, out string underpairReason))
+                {
+                    Debug.Log($"[PostflopAI] UnderpairRaiseBlock {underpairReason}");
+                    // Fall through to Call/Fold (pot odds + huge-call / underpair turn-river gate).
+                }
                 else
                 {
                     return BettingAdvice.Raise;
@@ -222,7 +228,81 @@ namespace TexasHoldem
                 return BettingAdvice.Fold;
             }
 
+            if (!PassesUnderpairTurnRiverCallGate(
+                    postflopPhase, callAmount, playerChips, holeCards, communityCards, out string underReason))
+            {
+                Debug.Log($"[PostflopAI] UnderpairCallGate Fold — {underReason}");
+                return BettingAdvice.Fold;
+            }
+
             return BettingAdvice.Call;
+        }
+
+        /// <summary>
+        /// Facing bet: pocket underpair (made One Pair only) without FD/OESD may never raise.
+        /// </summary>
+        internal static bool IsWeakUnderpairRaiseBlocked(
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards,
+            out string blockReason)
+        {
+            blockReason = null;
+
+            // Trips/full house from a pocket pair below board high are not "underpair" for this gate.
+            if (GetMadeHandRank(holeCards, communityCards) != HandRank.OnePair)
+                return false;
+
+            if (!IsPocketUnderpair(holeCards, communityCards))
+                return false;
+
+            PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
+            bool strongDraw =
+                (draws & (PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw)) != 0;
+            if (strongDraw)
+                return false;
+
+            blockReason = "Underpair without FD/OESD never raise";
+            return true;
+        }
+
+        /// <summary>
+        /// Turn/river: underpair (made One Pair) without strong draw folds to substantial bets (≥25% stack).
+        /// Flop and smaller bets keep normal pot-odds calling.
+        /// </summary>
+        internal static bool PassesUnderpairTurnRiverCallGate(
+            GamePhase postflopPhase,
+            int callAmount,
+            int playerChips,
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards,
+            out string blockReason)
+        {
+            blockReason = null;
+
+            if (postflopPhase != GamePhase.Turn && postflopPhase != GamePhase.River)
+                return true;
+
+            if (GetMadeHandRank(holeCards, communityCards) != HandRank.OnePair)
+                return true;
+
+            if (!IsPocketUnderpair(holeCards, communityCards))
+                return true;
+
+            PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
+            bool strongDraw =
+                (draws & (PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw)) != 0;
+            if (strongDraw)
+                return true;
+
+            if (playerChips <= 0
+                || callAmount < Mathf.CeilToInt(playerChips * UnderpairSubstantialStackFraction))
+            {
+                return true;
+            }
+
+            blockReason =
+                $"underpair vs substantial turn/river bet call={callAmount} chips={playerChips}";
+            return false;
         }
 
         /// <summary>
