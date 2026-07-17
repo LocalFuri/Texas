@@ -3,7 +3,10 @@ using UnityEngine;
 
 namespace TexasHoldem.Dev
 {
-    /// <summary>Regression tests for turn/river huge-call gate (weak underpairs vs shoves).</summary>
+    /// <summary>
+    /// Regression tests for turn/river huge-call gate:
+    /// underpairs, and board-pair + pocket-pair Two Pair as bluff-catchers.
+    /// </summary>
     public sealed class PostflopHugeCallGateTestRunner : MonoBehaviour
     {
         [ContextMenu("Run Postflop Huge-Call Gate Tests")]
@@ -28,6 +31,8 @@ namespace TexasHoldem.Dev
 
                 bool underpair = BettingAdvisor.IsPocketUnderpair(testCase.HoleCards, testCase.Board);
                 HandRank made = BettingAdvisor.GetMadeHandRank(testCase.HoleCards, testCase.Board);
+                bool boardPairPocket = BettingAdvisor.IsBoardPairPlusPocketPairTwoPair(
+                    testCase.HoleCards, testCase.Board);
 
                 // Equity high enough that pot-odds alone would Call (needed≈68% + 3% edge).
                 BettingAdvice advice = BettingAdvisor.Recommend(
@@ -47,7 +52,11 @@ namespace TexasHoldem.Dev
                     postflopPhase: testCase.Phase,
                     communityCards: testCase.Board);
 
-                bool ok = gateOk == testCase.ExpectPassGate && advice == testCase.ExpectedAdvice;
+                bool patternOk = !testCase.ExpectBoardPairPocket.HasValue
+                    || boardPairPocket == testCase.ExpectBoardPairPocket.Value;
+                bool ok = patternOk
+                    && gateOk == testCase.ExpectPassGate
+                    && advice == testCase.ExpectedAdvice;
                 if (ok)
                     passed++;
 
@@ -55,8 +64,10 @@ namespace TexasHoldem.Dev
                     $"[PostflopHugeCall] {testCase.Name}\n" +
                     $"  Hole: {testCase.HoleCards[0]} {testCase.HoleCards[1]} " +
                     $"Board: {FormatBoard(testCase.Board)} Phase={testCase.Phase}\n" +
-                    $"  Made={made} underpair={underpair} call={testCase.CallAmount} chips={testCase.PlayerChips}\n" +
-                    $"  Gate expectedPass={testCase.ExpectPassGate} actual={gateOk} block={blockReason ?? "(none)"}\n" +
+                    $"  Made={made} underpair={underpair} boardPairPocket={boardPairPocket} " +
+                    $"call={testCase.CallAmount} chips={testCase.PlayerChips}\n" +
+                    $"  Gate expectedPass={testCase.ExpectPassGate} actual={gateOk} " +
+                    $"block={blockReason ?? "(none)"}\n" +
                     $"  Advice expected={testCase.ExpectedAdvice} actual={advice}\n" +
                     $"  Result: {(ok ? "PASS" : "FAIL")}");
             }
@@ -67,9 +78,9 @@ namespace TexasHoldem.Dev
 
         private static List<HugeCallTestCase> BuildTestCases()
         {
-            // Victor 8♥8♣ on 2♦ 6♦ 10♦ J♣ facing near-stack shove → Fold (underpair, no strong draw).
-            Card[] eights = { C(Suit.Hearts, Rank.Eight), C(Suit.Clubs, Rank.Eight) };
-            Card[] board =
+            // Underpair on unpaired board vs near-stack shove → Fold.
+            Card[] underpairHole = { C(Suit.Hearts, Rank.Eight), C(Suit.Clubs, Rank.Eight) };
+            Card[] unpairedBoard =
             {
                 C(Suit.Diamonds, Rank.Two),
                 C(Suit.Diamonds, Rank.Six),
@@ -77,9 +88,9 @@ namespace TexasHoldem.Dev
                 C(Suit.Clubs, Rank.Jack),
             };
 
-            // JJ on A♠ A♥ K♦ 7♣ — board-pair + pocket-pair Two Pair bluff-catcher → Fold.
-            Card[] jacks = { C(Suit.Hearts, Rank.Jack), C(Suit.Clubs, Rank.Jack) };
-            Card[] aak7 =
+            // Pattern: pocket pair + paired board → Two Pair bluff-catcher.
+            Card[] pocketOnPairedBoard = { C(Suit.Hearts, Rank.Jack), C(Suit.Clubs, Rank.Jack) };
+            Card[] pairedBoard =
             {
                 C(Suit.Spades, Rank.Ace),
                 C(Suit.Hearts, Rank.Ace),
@@ -87,15 +98,15 @@ namespace TexasHoldem.Dev
                 C(Suit.Clubs, Rank.Seven),
             };
 
-            // Control: genuine two pair K7 on AAK7 may call huge shove.
-            Card[] kingSeven = { C(Suit.Spades, Rank.King), C(Suit.Hearts, Rank.Seven) };
+            // Pattern: both hole cards pair distinct board ranks → genuine Two Pair.
+            Card[] genuineTwoPairHole = { C(Suit.Spades, Rank.King), C(Suit.Hearts, Rank.Seven) };
 
             return new List<HugeCallTestCase>
             {
                 new HugeCallTestCase(
-                    "Victor 88 on 2d6dTdJc vs near-stack shove → Fold",
-                    eights,
-                    board,
+                    "Underpair vs near-stack turn shove → Fold",
+                    underpairHole,
+                    unpairedBoard,
                     GamePhase.Turn,
                     pot: 400,
                     callAmount: 850,
@@ -103,11 +114,10 @@ namespace TexasHoldem.Dev
                     expectPassGate: false,
                     expectedAdvice: BettingAdvice.Fold),
 
-                // Control: smaller call keeps pot-odds Call with same hand.
                 new HugeCallTestCase(
-                    "88 on same board vs small bet → Call (gate inactive)",
-                    eights,
-                    board,
+                    "Underpair vs small bet → Call (gate inactive)",
+                    underpairHole,
+                    unpairedBoard,
                     GamePhase.Turn,
                     pot: 100,
                     callAmount: 20,
@@ -116,26 +126,28 @@ namespace TexasHoldem.Dev
                     expectedAdvice: BettingAdvice.Call),
 
                 new HugeCallTestCase(
-                    "JJ on AAK7 vs near-stack turn shove → Fold (board-pair+pocket)",
-                    jacks,
-                    aak7,
+                    "Board-pair + pocket-pair TwoPair vs near-stack shove → Fold",
+                    pocketOnPairedBoard,
+                    pairedBoard,
                     GamePhase.Turn,
                     pot: 400,
                     callAmount: 850,
                     playerChips: 1000,
                     expectPassGate: false,
-                    expectedAdvice: BettingAdvice.Fold),
+                    expectedAdvice: BettingAdvice.Fold,
+                    expectBoardPairPocket: true),
 
                 new HugeCallTestCase(
-                    "K7 on AAK7 genuine TwoPair may Call huge shove",
-                    kingSeven,
-                    aak7,
+                    "Genuine TwoPair vs near-stack shove → Call",
+                    genuineTwoPairHole,
+                    pairedBoard,
                     GamePhase.Turn,
                     pot: 400,
                     callAmount: 850,
                     playerChips: 1000,
                     expectPassGate: true,
-                    expectedAdvice: BettingAdvice.Call),
+                    expectedAdvice: BettingAdvice.Call,
+                    expectBoardPairPocket: false),
             };
         }
 
@@ -160,6 +172,7 @@ namespace TexasHoldem.Dev
             public int PlayerChips { get; }
             public bool ExpectPassGate { get; }
             public BettingAdvice ExpectedAdvice { get; }
+            public bool? ExpectBoardPairPocket { get; }
 
             public HugeCallTestCase(
                 string name,
@@ -170,7 +183,8 @@ namespace TexasHoldem.Dev
                 int callAmount,
                 int playerChips,
                 bool expectPassGate,
-                BettingAdvice expectedAdvice)
+                BettingAdvice expectedAdvice,
+                bool? expectBoardPairPocket = null)
             {
                 Name = name;
                 HoleCards = holeCards;
@@ -181,6 +195,7 @@ namespace TexasHoldem.Dev
                 PlayerChips = playerChips;
                 ExpectPassGate = expectPassGate;
                 ExpectedAdvice = expectedAdvice;
+                ExpectBoardPairPocket = expectBoardPairPocket;
             }
         }
     }
