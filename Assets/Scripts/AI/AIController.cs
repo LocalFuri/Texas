@@ -522,7 +522,8 @@ namespace TexasHoldem
             int totalBet = ResolveTotalBetAfterAction(
                 action, tableCurrentBet, player, raiseAmount);
 
-            string handSummary = _handActionLog.FormatStreetSummary(street, action);
+            string handSummary = _handActionLog.FormatStreetSummary(
+                player?.Name, street, action);
             string category = FormatDetailedHandDescription(player, communityCards);
             string textureLabel = FormatBoardTextureLabel(texture);
 

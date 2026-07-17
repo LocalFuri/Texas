@@ -58,14 +58,25 @@ namespace TexasHoldem
         }
 
         /// <summary>
-        /// Short per-street summary (last action on each street), optionally appending the pending bot decision.
+        /// Short per-street summary of <paramref name="playerName"/>'s last action on each street,
+        /// optionally appending the pending bot decision for the current street.
         /// </summary>
-        public string FormatStreetSummary(GamePhase? pendingStreet = null, BettingAction? pendingAction = null)
+        public string FormatStreetSummary(
+            string playerName,
+            GamePhase? pendingStreet = null,
+            BettingAction? pendingAction = null)
         {
+            string name = playerName ?? string.Empty;
             var lastByStreet = new Dictionary<GamePhase, BettingAction>();
             for (int i = 0; i < _entries.Count; i++)
             {
                 HandActionEntry e = _entries[i];
+                if (!string.IsNullOrEmpty(name)
+                    && !string.Equals(e.PlayerName, name, System.StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
                 lastByStreet[NormalizeStreet(e.Street)] = e.Action;
             }
 
@@ -81,6 +92,15 @@ namespace TexasHoldem
             AppendStreetLine(lines, lastByStreet, GamePhase.Turn, "Turn");
             AppendStreetLine(lines, lastByStreet, GamePhase.River, "River");
             return lines.Count > 0 ? string.Join("\n", lines) : "(none)";
+        }
+
+        /// <summary>
+        /// Legacy overload: last action on each street from any player (tests / callers without a name).
+        /// Prefer <see cref="FormatStreetSummary(string, GamePhase?, BettingAction?)"/>.
+        /// </summary>
+        public string FormatStreetSummary(GamePhase? pendingStreet = null, BettingAction? pendingAction = null)
+        {
+            return FormatStreetSummary(playerName: null, pendingStreet, pendingAction);
         }
 
         private static GamePhase NormalizeStreet(GamePhase street) => street;
