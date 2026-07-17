@@ -19,6 +19,13 @@ namespace TexasHoldem
     /// <summary>Classifies community-card board texture (no hole cards).</summary>
     public static class BoardTextureAnalyzer
     {
+        /// <summary>Wet draw-heavy textures used by postflop AI policy.</summary>
+        public static readonly BoardTextureFlags WetFlags =
+            BoardTextureFlags.ThreeFlush
+            | BoardTextureFlags.FourFlush
+            | BoardTextureFlags.Connected
+            | BoardTextureFlags.FourStraight;
+
         private static readonly int[] WheelTemplate =
         {
             (int)Rank.Ace,
@@ -27,6 +34,9 @@ namespace TexasHoldem
             (int)Rank.Four,
             (int)Rank.Five,
         };
+
+        public static bool IsWet(IReadOnlyList<Card> communityCards) =>
+            (Analyze(communityCards) & WetFlags) != 0;
 
         public static BoardTextureFlags Analyze(IReadOnlyList<Card> communityCards)
         {

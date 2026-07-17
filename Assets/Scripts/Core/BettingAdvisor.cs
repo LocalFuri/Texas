@@ -149,7 +149,15 @@ namespace TexasHoldem
                 if (postflopPhase == GamePhase.River)
                 {
                     if (equityPercent >= strongRaiseThreshold)
+                    {
+                        if (IsWetOnePairRaiseBlocked(holeCards, communityCards, out string wetRiverReason))
+                        {
+                            Debug.Log($"[PostflopAI] WetOnePairRaiseBlock {wetRiverReason}");
+                            return BettingAdvice.Check;
+                        }
+
                         return BettingAdvice.Raise;
+                    }
 
                     // Former thin-value band (55–65% HU): check instead of betting.
                     if (equityPercent >= RiverThinValueBet)
@@ -164,7 +172,15 @@ namespace TexasHoldem
                 }
 
                 if (equityPercent >= strongRaiseThreshold)
+                {
+                    if (IsWetOnePairRaiseBlocked(holeCards, communityCards, out string wetOpenReason))
+                    {
+                        Debug.Log($"[PostflopAI] WetOnePairRaiseBlock {wetOpenReason}");
+                        return BettingAdvice.Check;
+                    }
+
                     return BettingAdvice.Raise;
+                }
 
                 return BettingAdvice.Check;
             }
@@ -210,6 +226,11 @@ namespace TexasHoldem
                 {
                     Debug.Log($"[PostflopAI] UnderpairRaiseBlock {underpairReason}");
                     // Fall through to Call/Fold (pot odds + huge-call / underpair turn-river gate).
+                }
+                else if (IsWetOnePairRaiseBlocked(holeCards, communityCards, out string wetRaiseReason))
+                {
+                    Debug.Log($"[PostflopAI] WetOnePairRaiseBlock {wetRaiseReason}");
+                    // Fall through to Call/Fold.
                 }
                 else
                 {
@@ -266,7 +287,88 @@ namespace TexasHoldem
                 return BettingAdvice.Fold;
             }
 
+            if (!PassesWetBluffCatcherLargeBetGate(
+                    postflopPhase, callAmount, playerChips, holeCards, communityCards, out string wetCallReason))
+            {
+                Debug.Log($"[PostflopAI] WetBluffCatcherGate Fold — {wetCallReason}");
+                return BettingAdvice.Fold;
+            }
+
             return BettingAdvice.Call;
+        }
+
+        /// <summary>
+        /// Wet boards: One Pair without FD/OESD may never raise (fall through to Call/Fold or Check).
+        /// Dry boards and Two Pair+ unchanged.
+        /// </summary>
+        internal static bool IsWetOnePairRaiseBlocked(
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards,
+            out string blockReason)
+        {
+            blockReason = null;
+
+            if (!BoardTextureAnalyzer.IsWet(communityCards))
+                return false;
+
+            if (GetMadeHandRank(holeCards, communityCards) != HandRank.OnePair)
+                return false;
+
+            if (HasStrongDraw(holeCards, communityCards))
+                return false;
+
+            blockReason = "wet board OnePair without FD/OESD never raise";
+            return true;
+        }
+
+        /// <summary>
+        /// Wet boards: bluff-catchers (One Pair or weaker, or board-pair+pocket Two Pair) without FD/OESD
+        /// fold to substantial turn/river bets (≥25% stack). Dry / Two Pair+ genuine / small bets unchanged.
+        /// </summary>
+        internal static bool PassesWetBluffCatcherLargeBetGate(
+            GamePhase postflopPhase,
+            int callAmount,
+            int playerChips,
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards,
+            out string blockReason)
+        {
+            blockReason = null;
+
+            if (postflopPhase != GamePhase.Turn && postflopPhase != GamePhase.River)
+                return true;
+
+            if (!BoardTextureAnalyzer.IsWet(communityCards))
+                return true;
+
+            if (playerChips <= 0
+                || callAmount < Mathf.CeilToInt(playerChips * UnderpairSubstantialStackFraction))
+            {
+                return true;
+            }
+
+            if (HasStrongDraw(holeCards, communityCards))
+                return true;
+
+            HandRank made = GetMadeHandRank(holeCards, communityCards);
+            bool bluffCatcher =
+                made <= HandRank.OnePair
+                || IsBoardPairPlusPocketPairTwoPair(holeCards, communityCards);
+
+            if (!bluffCatcher)
+                return true;
+
+            blockReason =
+                $"wet bluff-catcher vs substantial turn/river bet call={callAmount} chips={playerChips} made={made}";
+            return false;
+        }
+
+        private static bool HasStrongDraw(
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards)
+        {
+            PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
+            return (draws & (PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw)) != 0;
         }
 
         /// <summary>

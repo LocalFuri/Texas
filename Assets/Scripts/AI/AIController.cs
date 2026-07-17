@@ -17,11 +17,7 @@ namespace TexasHoldem
         private const float FlopSmallBetPotFraction     = 0.33f;
         private const float FlopLargeBetPotFraction     = 0.67f;
 
-        private static readonly BoardTextureFlags FlopWetTextureFlags =
-            BoardTextureFlags.ThreeFlush
-            | BoardTextureFlags.FourFlush
-            | BoardTextureFlags.Connected
-            | BoardTextureFlags.FourStraight;
+        private static readonly BoardTextureFlags FlopWetTextureFlags = BoardTextureAnalyzer.WetFlags;
 
         private static readonly PostflopDrawFlags FlopSemiBluffDraws =
             PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw;
