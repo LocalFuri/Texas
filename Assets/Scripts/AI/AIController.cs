@@ -376,6 +376,10 @@ namespace TexasHoldem
             if (activeOpponents >= 2)
                 return advice;
 
+            // Trips+ is never a semi-bluff (made hand, not a draw).
+            if (BettingAdvisor.GetMadeHandRank(holeCards, communityCards) >= HandRank.ThreeOfAKind)
+                return advice;
+
             PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
             if ((draws & FlopSemiBluffDraws) == 0)
                 return advice;

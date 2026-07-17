@@ -6,10 +6,13 @@ namespace TexasHoldem.Dev
     /// <summary>Developer-only fixed tests for <see cref="PostflopDrawDetector"/>.</summary>
     public sealed class PostflopDrawDetectorTestRunner : MonoBehaviour
     {
+        private static readonly PostflopDrawFlags SemiBluffDraws =
+            PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw;
+
         [ContextMenu("Run PostflopDrawDetector Tests")]
         private void RunTestsFromContextMenu() => RunAllTests();
 
-        public void RunAllTests()
+        public static (int passed, int total) RunAllTests()
         {
             var cases = BuildTestCases();
             int passed = 0;
@@ -22,18 +25,29 @@ namespace TexasHoldem.Dev
                     testCase.HoleCards,
                     testCase.Board);
 
-                bool ok = actual == testCase.Expected;
+                HandRank made = BettingAdvisor.GetMadeHandRank(testCase.HoleCards, testCase.Board);
+                bool drawsOk = actual == testCase.Expected;
+                bool madeOk = !testCase.ExpectedMade.HasValue || made == testCase.ExpectedMade.Value;
+                bool semiOk = true;
+                if (testCase.ExpectNoSemiBluff)
+                {
+                    bool wouldSemiBluff = made < HandRank.ThreeOfAKind
+                        && (actual & SemiBluffDraws) != 0;
+                    semiOk = !wouldSemiBluff && made >= HandRank.ThreeOfAKind;
+                }
+
+                bool ok = drawsOk && madeOk && semiOk;
                 if (ok)
                     passed++;
 
                 Debug.Log(
                     $"[PostflopDrawTest] {testCase.Name}\n" +
-                    $"  Expected: {FormatFlags(testCase.Expected)}\n" +
-                    $"  Actual:   {FormatFlags(actual)}\n" +
-                    $"  Result:   {(ok ? "PASS" : "FAIL")}");
+                    $"  Made={made} draws expected={FormatFlags(testCase.Expected)} actual={FormatFlags(actual)}\n" +
+                    $"  Result: {(ok ? "PASS" : "FAIL")}");
             }
 
             Debug.Log($"[PostflopDrawTest] Complete: {passed}/{cases.Count} passed.");
+            return (passed, cases.Count);
         }
 
         private static List<DrawTestCase> BuildTestCases()
@@ -105,6 +119,48 @@ namespace TexasHoldem.Dev
                         C(Suit.Hearts, Rank.Queen),
                         C(Suit.Hearts, Rank.Jack),
                         C(Suit.Hearts, Rank.Nine))),
+
+                // Four spades on board, no spade in hand → not a flush draw.
+                new DrawTestCase(
+                    "Four-flush board without hole suit → no FlushDraw",
+                    PostflopDrawFlags.None,
+                    Cards(
+                        C(Suit.Hearts, Rank.Three),
+                        C(Suit.Diamonds, Rank.Eight)),
+                    Cards(
+                        C(Suit.Spades, Rank.Two),
+                        C(Suit.Spades, Rank.Five),
+                        C(Suit.Spades, Rank.Nine),
+                        C(Suit.Spades, Rank.King))),
+
+                // AA on 2♠5♠3♠A♠ → Trips, no FD, no semi-bluff.
+                new DrawTestCase(
+                    "AA on 2s5s3sAs → Trips only, no FlushDraw, no Semi-bluff",
+                    PostflopDrawFlags.None,
+                    Cards(
+                        C(Suit.Hearts, Rank.Ace),
+                        C(Suit.Diamonds, Rank.Ace)),
+                    Cards(
+                        C(Suit.Spades, Rank.Two),
+                        C(Suit.Spades, Rank.Five),
+                        C(Suit.Spades, Rank.Three),
+                        C(Suit.Spades, Rank.Ace)),
+                    expectedMade: HandRank.ThreeOfAKind,
+                    expectNoSemiBluff: true),
+
+                // Trips on unpaired rainbow board still no draws / no semi-bluff.
+                new DrawTestCase(
+                    "Set on dry flop → Trips, no draws, no Semi-bluff",
+                    PostflopDrawFlags.None,
+                    Cards(
+                        C(Suit.Hearts, Rank.Seven),
+                        C(Suit.Clubs, Rank.Seven)),
+                    Cards(
+                        C(Suit.Spades, Rank.Seven),
+                        C(Suit.Diamonds, Rank.Two),
+                        C(Suit.Hearts, Rank.King)),
+                    expectedMade: HandRank.ThreeOfAKind,
+                    expectNoSemiBluff: true),
             };
         }
 
@@ -121,17 +177,23 @@ namespace TexasHoldem.Dev
             public PostflopDrawFlags Expected { get; }
             public Card[] HoleCards { get; }
             public Card[] Board { get; }
+            public HandRank? ExpectedMade { get; }
+            public bool ExpectNoSemiBluff { get; }
 
             public DrawTestCase(
                 string name,
                 PostflopDrawFlags expected,
                 Card[] holeCards,
-                Card[] board)
+                Card[] board,
+                HandRank? expectedMade = null,
+                bool expectNoSemiBluff = false)
             {
-                Name       = name;
-                Expected   = expected;
-                HoleCards  = holeCards;
-                Board      = board;
+                Name = name;
+                Expected = expected;
+                HoleCards = holeCards;
+                Board = board;
+                ExpectedMade = expectedMade;
+                ExpectNoSemiBluff = expectNoSemiBluff;
             }
         }
     }

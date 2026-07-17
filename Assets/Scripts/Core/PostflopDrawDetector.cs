@@ -24,39 +24,64 @@ namespace TexasHoldem
             if (holeCards == null || holeCards.Count < 2)
                 return PostflopDrawFlags.None;
 
-            var ranks = new HashSet<int>();
-            var suitCounts = new int[4];
+            // Made Trips+ is never a draw / semi-bluff candidate.
+            if (BettingAdvisor.GetMadeHandRank(holeCards, communityCards) >= HandRank.ThreeOfAKind)
+                return PostflopDrawFlags.None;
 
-            AddCard(holeCards[0], ranks, suitCounts);
-            AddCard(holeCards[1], ranks, suitCounts);
+            var ranks = new HashSet<int>();
+            var holeSuits = new int[4];
+            var boardSuits = new int[4];
+
+            AddRank(holeCards[0], ranks);
+            AddRank(holeCards[1], ranks);
+            AddSuit(holeCards[0], holeSuits);
+            AddSuit(holeCards[1], holeSuits);
+
             foreach (Card card in communityCards)
-                AddCard(card, ranks, suitCounts);
+            {
+                AddRank(card, ranks);
+                AddSuit(card, boardSuits);
+            }
 
             PostflopDrawFlags flags = PostflopDrawFlags.None;
-            flags |= DetectFlushDraw(suitCounts);
+            flags |= DetectFlushDraw(holeSuits, boardSuits);
             flags |= DetectStraightDraws(ranks);
             return flags;
         }
 
-        private static void AddCard(Card card, HashSet<int> ranks, int[] suitCounts)
+        private static void AddRank(Card card, HashSet<int> ranks)
         {
             if (card == null)
                 return;
-
             ranks.Add((int)card.Rank);
+        }
+
+        private static void AddSuit(Card card, int[] suitCounts)
+        {
+            if (card == null)
+                return;
             suitCounts[(int)card.Suit]++;
         }
 
-        private static PostflopDrawFlags DetectFlushDraw(int[] suitCounts)
+        /// <summary>
+        /// Flush draw only if hero holds ≥1 card of the suit and hole+board reach exactly 4.
+        /// Four board cards of a suit with zero hole cards of that suit is not a flush draw.
+        /// Five+ of a suit is a made flush (no draw).
+        /// </summary>
+        private static PostflopDrawFlags DetectFlushDraw(int[] holeSuits, int[] boardSuits)
         {
             bool madeFlush = false;
             bool flushDraw = false;
 
-            for (int i = 0; i < suitCounts.Length; i++)
+            for (int s = 0; s < 4; s++)
             {
-                if (suitCounts[i] >= 5)
+                int hole = holeSuits[s];
+                int board = boardSuits[s];
+                int total = hole + board;
+
+                if (total >= 5)
                     madeFlush = true;
-                if (suitCounts[i] == 4)
+                else if (total == 4 && hole >= 1)
                     flushDraw = true;
             }
 
