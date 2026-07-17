@@ -1809,7 +1809,8 @@ namespace TexasHoldem
                 _gameManager.PlayersBehind,
                 _gameManager.ShovePosition,
                 _gameManager.CallersBefore,
-                _gameManager.CommunityCards);
+                _gameManager.CommunityCards,
+                CountActiveOpponents());
 
             return BettingAdvisor.LabelFor(advice);
         }

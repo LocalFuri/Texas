@@ -10,7 +10,8 @@ namespace TexasHoldem
     {
         private const float FlopValueEquityThreshold   = 65f;
         private const float FlopThinValueEquityMin     = 52f;
-        private const int   FlopThinValueMaxOpponents  = 2;
+        /// <summary>Thin value only heads-up (1 opponent). 3+ players → disabled.</summary>
+        private const int   FlopThinValueMaxOpponents  = 1;
         private const float FlopDrawCallEquitySlack    = 5f;
         private const float TurnSecondBarrelEquityMin  = 50f;
         private const float FlopSmallBetPotFraction     = 0.33f;
@@ -106,6 +107,8 @@ namespace TexasHoldem
             if (isPreflop)
                 PreflopStrategy.LogEffectiveStack(player, allPlayers, tableCurrentBet, bigBlindAmount);
 
+            int opponentCount = CountActiveOpponents(allPlayers, player);
+
             BettingAdvice advice = BettingAdvisor.Recommend(
                 equityPercent,
                 potAmount,
@@ -124,14 +127,14 @@ namespace TexasHoldem
                 playersBehind,
                 shovePosition,
                 callersBefore,
-                communityCards);
+                communityCards,
+                opponentCount);
 
             BettingAdvice adviceAfterAdvisor = advice;
 
-            int opponentCount = CountActiveOpponents(allPlayers, player);
-
             advice = ApplyFlopOrTurnSemiBluffIfEligible(
-                advice, phase, canCheck, canRaise, player, player.HoleCards, communityCards);
+                advice, phase, canCheck, canRaise, player, player.HoleCards, communityCards,
+                opponentCount);
             BettingAdvice adviceAfterSemiBluff = advice;
 
             advice = ApplyFlopThinValueIfEligible(
@@ -245,8 +248,8 @@ namespace TexasHoldem
 
         /// <summary>
         /// Flop only, when checked to: small (~1/3 pot) thin value bet at 52–65% equity,
-        /// only with ≤2 opponents on a dry board. Strong ≥65% value stays in the advisor.
-        /// Runs after semi-bluff so FD/OESD stabs are unchanged.
+        /// only heads-up on a dry board. Strong value stays in the advisor.
+        /// Runs after semi-bluff so FD/OESD stabs are unchanged (also HU-only when multiway-disabled).
         /// </summary>
         private static BettingAdvice ApplyFlopThinValueIfEligible(
             BettingAdvice advice,
@@ -263,6 +266,7 @@ namespace TexasHoldem
             if (advice != BettingAdvice.Check)
                 return advice;
 
+            // 3+ players in pot (2+ opponents): no thin value.
             if (activeOpponents > FlopThinValueMaxOpponents)
                 return advice;
 
@@ -348,7 +352,7 @@ namespace TexasHoldem
 
         /// <summary>
         /// Flop/turn only, when checking is free: keep ≥65% value bets from the advisor, and also
-        /// bet open-ended straight draws / flush draws (not gutshots).
+        /// bet open-ended straight draws / flush draws (not gutshots). Disabled in multiway (3+ players).
         /// Turn: only if this player was the flop aggressor; otherwise draws check unless equity already bets.
         /// Turn uses existing ~2/3 pot sizing.
         /// </summary>
@@ -359,12 +363,17 @@ namespace TexasHoldem
             bool canRaise,
             PlayerState player,
             IReadOnlyList<Card> holeCards,
-            IReadOnlyList<Card> communityCards)
+            IReadOnlyList<Card> communityCards,
+            int activeOpponents)
         {
             if ((phase != GamePhase.Flop && phase != GamePhase.Turn) || !canCheck || !canRaise)
                 return advice;
 
             if (advice != BettingAdvice.Check)
+                return advice;
+
+            // Weak semi-bluffs off in multiway pots.
+            if (activeOpponents >= 2)
                 return advice;
 
             PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);

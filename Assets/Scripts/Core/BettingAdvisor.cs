@@ -26,6 +26,11 @@ namespace TexasHoldem
         private const float StrongRaise           = 65f;
         private const float RiverThinValueBet     = 55f;
 
+        /// <summary>Active opponents ≥ this means 3+ players in the pot (multiway).</summary>
+        private const int MultiwayMinOpponents = 2;
+        private const float MultiwayRaiseThresholdBonus = 10f;
+        private const float MultiwayMarginalCallBonus = 5f;
+
         private const float PostflopBetPotFraction      = 0.67f;
         private const float RiverThinBetPotFraction     = 0.33f;
         private const float PostflopRaisePotFraction    = 0.75f;
@@ -79,7 +84,8 @@ namespace TexasHoldem
             int playersBehind = 0,
             PreflopSeatBucket shovePosition = PreflopSeatBucket.Button,
             int callersBefore = 0,
-            System.Collections.Generic.IReadOnlyList<Card> communityCards = null)
+            System.Collections.Generic.IReadOnlyList<Card> communityCards = null,
+            int activeOpponentCount = 1)
         {
             if (isPreflop)
             {
@@ -111,7 +117,8 @@ namespace TexasHoldem
                 streetRaiseCount,
                 holeCards,
                 communityCards,
-                playerChips);
+                playerChips,
+                activeOpponentCount);
         }
 
         private static BettingAdvice RecommendPostflop(
@@ -125,9 +132,14 @@ namespace TexasHoldem
             int streetRaiseCount,
             System.Collections.Generic.IReadOnlyList<Card> holeCards,
             System.Collections.Generic.IReadOnlyList<Card> communityCards,
-            int playerChips)
+            int playerChips,
+            int activeOpponentCount)
         {
             equityPercent = Mathf.Clamp(equityPercent, 0f, 100f);
+            bool multiway = activeOpponentCount >= MultiwayMinOpponents;
+            float strongRaiseThreshold = StrongRaise + (multiway ? MultiwayRaiseThresholdBonus : 0f);
+            float raiseEdgeBase = postflopPhase == GamePhase.River ? RiverRaiseEdge : RaiseEdge;
+            float raiseEdge = raiseEdgeBase + (multiway ? MultiwayRaiseThresholdBonus : 0f);
 
             if (canCheck)
             {
@@ -136,21 +148,22 @@ namespace TexasHoldem
 
                 if (postflopPhase == GamePhase.River)
                 {
-                    if (equityPercent >= StrongRaise)
+                    if (equityPercent >= strongRaiseThreshold)
                         return BettingAdvice.Raise;
 
-                    // Former thin-value band (55–65%): check instead of betting.
+                    // Former thin-value band (55–65% HU): check instead of betting.
                     if (equityPercent >= RiverThinValueBet)
                     {
                         Debug.Log(
                             $"[PostflopAI] RiverThinCheck equity={equityPercent:F1}% " +
-                            $"(former thin-value band {RiverThinValueBet:F0}–{StrongRaise:F0}%)");
+                            $"(former thin-value band {RiverThinValueBet:F0}–{strongRaiseThreshold:F0}%)" +
+                            (multiway ? " multiway" : ""));
                     }
 
                     return BettingAdvice.Check;
                 }
 
-                if (equityPercent >= StrongRaise)
+                if (equityPercent >= strongRaiseThreshold)
                     return BettingAdvice.Raise;
 
                 return BettingAdvice.Check;
@@ -162,7 +175,8 @@ namespace TexasHoldem
             int denominator = potBeforeAction + callAmount;
             if (denominator <= 0)
             {
-                if (equityPercent >= 50f
+                float callFloor = 50f + MarginalCallBonus(multiway, holeCards, communityCards);
+                if (equityPercent >= callFloor
                     && PassesHugeCallGate(
                         postflopPhase, callAmount, playerChips, holeCards, communityCards, out _))
                 {
@@ -173,7 +187,6 @@ namespace TexasHoldem
             }
 
             float needed = 100f * callAmount / denominator;
-            float raiseEdge = postflopPhase == GamePhase.River ? RiverRaiseEdge : RaiseEdge;
 
             if (equityPercent >= needed + raiseEdge && canRaise)
             {
@@ -181,11 +194,11 @@ namespace TexasHoldem
                 {
                     Debug.Log(
                         $"[PostflopAI] RiverRaiseFloorBlock equity={equityPercent:F1}% " +
-                        $"(needed+{RiverRaiseEdge:F0}%={needed + RiverRaiseEdge:F1}%, " +
+                        $"(needed+{raiseEdge:F0}%={needed + raiseEdge:F1}%, " +
                         $"floor={RiverRaiseEquityFloor:F0}%) → Call");
                     return ResolveCallOrFoldAfterHugeGate(
                         equityPercent, needed, postflopPhase, callAmount, playerChips,
-                        holeCards, communityCards);
+                        holeCards, communityCards, multiway);
                 }
 
                 if (!CanEscalateFacingRaise(holeCards, communityCards, streetRaiseCount, out string blockReason))
@@ -206,7 +219,23 @@ namespace TexasHoldem
 
             return ResolveCallOrFoldAfterHugeGate(
                 equityPercent, needed, postflopPhase, callAmount, playerChips,
-                holeCards, communityCards);
+                holeCards, communityCards, multiway);
+        }
+
+        /// <summary>+5% call margin in multiway for One Pair or weaker; Two Pair+ unchanged.</summary>
+        private static float MarginalCallBonus(
+            bool multiway,
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards)
+        {
+            if (!multiway)
+                return 0f;
+
+            HandRank made = GetMadeHandRank(holeCards, communityCards);
+            if (made <= HandRank.OnePair)
+                return MultiwayMarginalCallBonus;
+
+            return 0f;
         }
 
         private static BettingAdvice ResolveCallOrFoldAfterHugeGate(
@@ -216,9 +245,11 @@ namespace TexasHoldem
             int callAmount,
             int playerChips,
             System.Collections.Generic.IReadOnlyList<Card> holeCards,
-            System.Collections.Generic.IReadOnlyList<Card> communityCards)
+            System.Collections.Generic.IReadOnlyList<Card> communityCards,
+            bool multiway)
         {
-            if (equityPercent < needed + EdgeMargin)
+            float callMargin = EdgeMargin + MarginalCallBonus(multiway, holeCards, communityCards);
+            if (equityPercent < needed + callMargin)
                 return BettingAdvice.Fold;
 
             if (!PassesHugeCallGate(
