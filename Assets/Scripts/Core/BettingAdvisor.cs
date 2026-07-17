@@ -222,6 +222,9 @@ namespace TexasHoldem
                             (multiway ? " multiway" : ""));
                     }
 
+                    if (ShouldValueBetDryOverpairOrTptk(holeCards, communityCards))
+                        return BettingAdvice.Raise;
+
                     return BettingAdvice.Check;
                 }
 
@@ -235,6 +238,10 @@ namespace TexasHoldem
 
                     return BettingAdvice.Raise;
                 }
+
+                // Dry Overpair / TPTK: value bet when checked to even below StrongRaise equity.
+                if (ShouldValueBetDryOverpairOrTptk(holeCards, communityCards))
+                    return BettingAdvice.Raise;
 
                 return BettingAdvice.Check;
             }
@@ -613,6 +620,88 @@ namespace TexasHoldem
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Checked-to: dry-board Overpair or TPTK may value-bet even below StrongRaise equity.
+        /// Wet boards and other one-pair hands unchanged.
+        /// </summary>
+        internal static bool ShouldValueBetDryOverpairOrTptk(
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards)
+        {
+            if (BoardTextureAnalyzer.IsWet(communityCards))
+                return false;
+
+            return IsOverpair(holeCards, communityCards)
+                || IsTopPairTopKicker(holeCards, communityCards);
+        }
+
+        /// <summary>Pocket pair strictly above the board's highest rank.</summary>
+        internal static bool IsOverpair(
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards)
+        {
+            if (holeCards == null || holeCards.Count < 2 || holeCards[0] == null || holeCards[1] == null)
+                return false;
+
+            if (holeCards[0].Rank != holeCards[1].Rank)
+                return false;
+
+            if (GetMadeHandRank(holeCards, communityCards) != HandRank.OnePair)
+                return false;
+
+            if (!TryGetBoardHigh(communityCards, out Rank boardHigh))
+                return false;
+
+            return holeCards[0].Rank > boardHigh;
+        }
+
+        /// <summary>Top pair using a hole card that matches board high, with Ace kicker.</summary>
+        internal static bool IsTopPairTopKicker(
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards)
+        {
+            if (holeCards == null || holeCards.Count < 2 || holeCards[0] == null || holeCards[1] == null)
+                return false;
+
+            if (holeCards[0].Rank == holeCards[1].Rank)
+                return false;
+
+            if (GetMadeHandRank(holeCards, communityCards) != HandRank.OnePair)
+                return false;
+
+            if (!TryGetBoardHigh(communityCards, out Rank boardHigh))
+                return false;
+
+            Rank h0 = holeCards[0].Rank;
+            Rank h1 = holeCards[1].Rank;
+            if (h0 != boardHigh && h1 != boardHigh)
+                return false;
+
+            Rank kicker = h0 == boardHigh ? h1 : h0;
+            return kicker == Rank.Ace;
+        }
+
+        private static bool TryGetBoardHigh(
+            System.Collections.Generic.IReadOnlyList<Card> communityCards,
+            out Rank boardHigh)
+        {
+            boardHigh = Rank.Two;
+            if (communityCards == null || communityCards.Count < 3)
+                return false;
+
+            bool any = false;
+            foreach (Card card in communityCards)
+            {
+                if (card == null)
+                    continue;
+                any = true;
+                if (card.Rank > boardHigh)
+                    boardHigh = card.Rank;
+            }
+
+            return any;
         }
 
         /// <summary>Pocket pair strictly below the board's highest rank.</summary>

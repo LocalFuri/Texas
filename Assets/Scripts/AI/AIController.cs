@@ -746,6 +746,12 @@ namespace TexasHoldem
             if (result == null || result.Rank != HandRank.OnePair)
                 return null;
 
+            if (BettingAdvisor.IsOverpair(holeCards, communityCards))
+                return "Overpair";
+
+            if (BettingAdvisor.IsTopPairTopKicker(holeCards, communityCards))
+                return "Top Pair, Top Kicker";
+
             Rank h0 = holeCards[0].Rank;
             Rank h1 = holeCards[1].Rank;
             bool pocketPair = h0 == h1;
@@ -757,15 +763,10 @@ namespace TexasHoldem
                     boardHigh = communityCards[i].Rank;
             }
 
-            if (pocketPair && h0 > boardHigh)
-                return "Overpair";
-
             Rank pairRank = (Rank)result.Tiebreakers[0];
             if (!pocketPair && (h0 == pairRank || h1 == pairRank) && pairRank == boardHigh)
             {
                 Rank kicker = h0 == pairRank ? h1 : h0;
-                if (kicker == Rank.Ace)
-                    return "Top Pair, Top Kicker";
                 return $"Top Pair, {HandDisplayNames.RankName((int)kicker)} kicker";
             }
 
