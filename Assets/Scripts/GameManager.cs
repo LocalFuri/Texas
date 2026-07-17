@@ -240,6 +240,8 @@ namespace TexasHoldem
             OnRoundEnded            ??= new UnityEvent();
             OnRoundStarting         ??= new UnityEvent();
             OnDealerButtonPlaced    ??= new UnityEvent<int>();
+
+            _suspiciousPreflopLog.LogPathOnce();
         }
 
         private void Start()

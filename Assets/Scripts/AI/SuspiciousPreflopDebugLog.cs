@@ -7,13 +7,15 @@ using UnityEngine;
 namespace TexasHoldem
 {
     /// <summary>
-    /// Appends hands with suspicious preflop action or any-street all-in to TexasHoldem_AI_Debug.txt.
-    /// Observes only — does not affect AI decisions.
+    /// Appends all-in hands (any street) and selected preflop spots to TexasHoldem_AI_Debug.txt
+    /// next to the game executable. Observes only — does not affect AI decisions.
     /// </summary>
     public sealed class SuspiciousPreflopDebugLog
     {
         private const string FileName = "TexasHoldem_AI_Debug.txt";
         private const float CommitFractionThreshold = 0.5f;
+
+        private static bool _pathLogged;
 
         private int  _handNumber;
         private bool _handActive;
@@ -22,6 +24,16 @@ namespace TexasHoldem
         private readonly List<PlayerSnapshot> _players = new List<PlayerSnapshot>(8);
         private readonly List<ActionLine>     _actions = new List<ActionLine>(64);
         private readonly Dictionary<string, int> _startStacks = new Dictionary<string, int>();
+
+        /// <summary>Logs the absolute debug file path once (Player.log / console).</summary>
+        public void LogPathOnce()
+        {
+            if (_pathLogged)
+                return;
+
+            _pathLogged = true;
+            Debug.Log($"[AIDebugLog] Writing to: {ResolveLogPath()}");
+        }
 
         public void BeginHand(IReadOnlyList<PlayerState> players, Func<PlayerState, PreflopSeatBucket> seatOf)
         {
@@ -97,8 +109,8 @@ namespace TexasHoldem
                 streetRaiseCount,
                 ClassifyTier(player.HoleCards)));
 
-            // All-in on any street (including river) marks the hand for logging.
-            if (action == BettingAction.AllIn || player.IsAllIn)
+            // Any street: log when the player is all-in after the action (Raise/Call that empties stack).
+            if (player.IsAllIn)
                 _suspicious = true;
 
             if (street != GamePhase.PreFlop)
@@ -133,7 +145,7 @@ namespace TexasHoldem
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[SuspiciousPreflopDebugLog] Append failed: {ex.Message}");
+                Debug.LogWarning($"[AIDebugLog] Append failed: {ex.Message}");
             }
         }
 
@@ -141,7 +153,7 @@ namespace TexasHoldem
         {
             var sb = new StringBuilder(512);
             sb.AppendLine();
-            sb.AppendLine($"=== Hand #{_handNumber} (suspicious / all-in) ===");
+            sb.AppendLine($"=== Hand #{_handNumber} (all-in / suspicious) ===");
 
             sb.Append("Players: ");
             for (int i = 0; i < _players.Count; i++)
@@ -185,13 +197,16 @@ namespace TexasHoldem
             return sb.ToString();
         }
 
-        private static string ResolveLogPath()
+        /// <summary>
+        /// Same folder as the Windows executable (parent of *_Data).
+        /// In Editor, project root (parent of Assets).
+        /// </summary>
+        public static string ResolveLogPath()
         {
-#if UNITY_EDITOR
-            return Path.GetFullPath(Path.Combine(Application.dataPath, "..", FileName));
-#else
-            return Path.Combine(Application.persistentDataPath, FileName);
-#endif
+            string dir = Path.GetDirectoryName(Application.dataPath);
+            if (string.IsNullOrEmpty(dir))
+                dir = ".";
+            return Path.GetFullPath(Path.Combine(dir, FileName));
         }
 
         private static string FormatHoleCards(IReadOnlyList<Card> cards)
