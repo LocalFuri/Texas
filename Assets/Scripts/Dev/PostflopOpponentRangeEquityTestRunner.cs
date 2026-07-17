@@ -31,18 +31,47 @@ namespace TexasHoldem.Dev
 
         private static bool RunResolveMappingCase()
         {
-            bool ok =
-                MonteCarloSimulator.ResolveOpponentRange(false, 0, 0, 1000)
-                    == OpponentRangeStrength.Wide
-                && MonteCarloSimulator.ResolveOpponentRange(true, 1, 100, 1000)
-                    == OpponentRangeStrength.Strong
-                && MonteCarloSimulator.ResolveOpponentRange(true, 2, 100, 1000)
-                    == OpponentRangeStrength.Strongest
-                && MonteCarloSimulator.ResolveOpponentRange(true, 1, 850, 1000)
-                    == OpponentRangeStrength.Strongest;
+            bool checkWide = AssertRange(
+                "check/call → Wide",
+                facingBet: false, streetRaiseCount: 0, callAmount: 0, chips: 1000,
+                OpponentRangeStrength.Wide);
 
+            bool betStrong = AssertRange(
+                "bet/raise → Strong",
+                facingBet: true, streetRaiseCount: 1, callAmount: 100, chips: 1000,
+                OpponentRangeStrength.Strong);
+
+            bool reraiseStrongest = AssertRange(
+                "re-raise → Strongest",
+                facingBet: true, streetRaiseCount: 2, callAmount: 100, chips: 1000,
+                OpponentRangeStrength.Strongest);
+
+            bool nearStackStrongest = AssertRange(
+                "≥50% stack call → Strongest",
+                facingBet: true, streetRaiseCount: 1, callAmount: 850, chips: 1000,
+                OpponentRangeStrength.Strongest);
+
+            bool ok = checkWide && betStrong && reraiseStrongest && nearStackStrongest;
             Debug.Log(
-                $"[PostflopOppRange] ResolveOpponentRange mapping\n" +
+                $"[PostflopOppRange] ResolveOpponentRange mapping (check/bet/re-raise/near-stack)\n" +
+                $"  Result: {(ok ? "PASS" : "FAIL")}");
+            return ok;
+        }
+
+        private static bool AssertRange(
+            string label,
+            bool facingBet,
+            int streetRaiseCount,
+            int callAmount,
+            int chips,
+            OpponentRangeStrength expected)
+        {
+            string why = MonteCarloSimulator.DescribeOpponentRangeSelection(
+                facingBet, streetRaiseCount, callAmount, chips, out OpponentRangeStrength actual);
+            bool ok = actual == expected;
+            Debug.Log(
+                $"[PostflopOppRange] {label}\n" +
+                $"  expected={expected} actual={actual} why={why}\n" +
                 $"  Result: {(ok ? "PASS" : "FAIL")}");
             return ok;
         }

@@ -88,6 +88,8 @@ namespace TexasHoldem
 
             PreflopHandGroup preflopGroup = PreflopHandGroup.Weak;
             float            equityPercent = 0f;
+            OpponentRangeStrength opponentRange = OpponentRangeStrength.Wide;
+            string opponentRangeWhy = "check/call (no bet faced)";
 
             if (player.HoleCards != null && player.HoleCards.Count >= 2)
             {
@@ -96,7 +98,8 @@ namespace TexasHoldem
                 if (!isPreflop)
                 {
                     equityPercent = EstimateEquityPercent(
-                        player, communityCards, allPlayers, callAmount, streetRaiseCount);
+                        player, communityCards, allPlayers, callAmount, streetRaiseCount,
+                        out opponentRange, out opponentRangeWhy);
                 }
             }
 
@@ -158,6 +161,8 @@ namespace TexasHoldem
                     phase,
                     communityCards,
                     equityPercent,
+                    opponentRange,
+                    opponentRangeWhy,
                     potAmount,
                     callAmount,
                     tableCurrentBet,
@@ -386,25 +391,28 @@ namespace TexasHoldem
             IReadOnlyList<Card> communityCards,
             IReadOnlyList<PlayerState> allPlayers,
             int callAmount,
-            int streetRaiseCount)
+            int streetRaiseCount,
+            out OpponentRangeStrength opponentRange,
+            out string opponentRangeWhy)
         {
+            opponentRangeWhy = MonteCarloSimulator.DescribeOpponentRangeSelection(
+                facingBet: callAmount > 0,
+                streetRaiseCount: streetRaiseCount,
+                callAmount: callAmount,
+                defenderChips: player != null ? player.Chips : 0,
+                out opponentRange);
+
             int opponents = CountActiveOpponents(allPlayers, player);
             if (opponents <= 0)
                 return 100f;
 
             var board = communityCards ?? System.Array.Empty<Card>();
-            OpponentRangeStrength range = MonteCarloSimulator.ResolveOpponentRange(
-                facingBet: callAmount > 0,
-                streetRaiseCount: streetRaiseCount,
-                callAmount: callAmount,
-                defenderChips: player != null ? player.Chips : 0);
-
             MonteCarloResult result = MonteCarloSimulator.Simulate(
                 player.HoleCards,
                 board,
                 opponents,
                 MonteCarloSimulator.DefaultSimulationCount,
-                range);
+                opponentRange);
 
             return result.EquityPercent;
         }
@@ -439,6 +447,8 @@ namespace TexasHoldem
             GamePhase street,
             IReadOnlyList<Card> communityCards,
             float equityPercent,
+            OpponentRangeStrength opponentRange,
+            string opponentRangeWhy,
             int potAmount,
             int callAmount,
             int tableCurrentBet,
@@ -510,7 +520,9 @@ namespace TexasHoldem
                 $"Hand: {FormatHoleCards(player)}\n" +
                 $"Board: {FormatBoard(communityCards)}\n" +
                 $"Category: {category}\n" +
-                $"Equity (MC): {equityPercent:F1}%\n" +
+                $"Opponent Range: {opponentRange}\n" +
+                $"Opponent Range Why: {opponentRangeWhy ?? "(none)"}\n" +
+                $"Equity (MC, {opponentRange}): {equityPercent:F1}%\n" +
                 $"Pot Odds: {FormatOptionalPercent(potOddsPercent)}\n" +
                 $"Call Amount: {callAmount}\n" +
                 $"Table Bet: {tableCurrentBet}\n" +

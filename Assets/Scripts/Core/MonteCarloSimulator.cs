@@ -72,6 +72,33 @@ namespace TexasHoldem
             return OpponentRangeStrength.Strong;
         }
 
+        /// <summary>Logging helper: same tier as <see cref="ResolveOpponentRange"/> plus a short why string.</summary>
+        public static string DescribeOpponentRangeSelection(
+            bool facingBet,
+            int streetRaiseCount,
+            int callAmount,
+            int defenderChips,
+            out OpponentRangeStrength range)
+        {
+            range = ResolveOpponentRange(facingBet, streetRaiseCount, callAmount, defenderChips);
+
+            if (!facingBet || callAmount <= 0)
+                return "check/call (no bet faced)";
+
+            bool nearStack = defenderChips > 0
+                && callAmount >= Mathf.CeilToInt(defenderChips * NearStackCallFraction);
+
+            if (streetRaiseCount >= 2)
+                return $"re-raise (streetRaiseCount={streetRaiseCount})";
+
+            if (nearStack)
+            {
+                return $"near-stack shove/call call={callAmount} ≥50% stack chips={defenderChips}";
+            }
+
+            return $"bet/raise (streetRaiseCount={streetRaiseCount})";
+        }
+
         public static MonteCarloResult Simulate(
             IReadOnlyList<Card> heroHoleCards,
             IReadOnlyList<Card> communityCards,
