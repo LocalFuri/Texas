@@ -117,7 +117,8 @@ namespace TexasHoldem
                 phase,
                 playersBehind,
                 shovePosition,
-                callersBefore);
+                callersBefore,
+                communityCards);
 
             BettingAdvice adviceAfterAdvisor = advice;
 

@@ -76,7 +76,8 @@ namespace TexasHoldem
             GamePhase postflopPhase = GamePhase.Flop,
             int playersBehind = 0,
             PreflopSeatBucket shovePosition = PreflopSeatBucket.Button,
-            int callersBefore = 0)
+            int callersBefore = 0,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards = null)
         {
             if (isPreflop)
             {
@@ -98,7 +99,16 @@ namespace TexasHoldem
             }
 
             return RecommendPostflop(
-                equityPercent, potBeforeAction, callAmount, canCheck, canRaise, canCall, postflopPhase);
+                equityPercent,
+                potBeforeAction,
+                callAmount,
+                canCheck,
+                canRaise,
+                canCall,
+                postflopPhase,
+                streetRaiseCount,
+                holeCards,
+                communityCards);
         }
 
         private static BettingAdvice RecommendPostflop(
@@ -108,7 +118,10 @@ namespace TexasHoldem
             bool canCheck,
             bool canRaise,
             bool canCall,
-            GamePhase postflopPhase)
+            GamePhase postflopPhase,
+            int streetRaiseCount,
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards)
         {
             equityPercent = Mathf.Clamp(equityPercent, 0f, 100f);
 
@@ -160,13 +173,116 @@ namespace TexasHoldem
                     return BettingAdvice.Call;
                 }
 
-                return BettingAdvice.Raise;
+                if (!CanEscalateFacingRaise(holeCards, communityCards, streetRaiseCount, out string blockReason))
+                {
+                    Debug.Log($"[PostflopAI] EscalationCap {blockReason}");
+                    // Fall through to existing call/fold pot-odds logic.
+                }
+                else
+                {
+                    return BettingAdvice.Raise;
+                }
             }
 
             if (equityPercent >= needed + EdgeMargin)
                 return BettingAdvice.Call;
 
             return BettingAdvice.Fold;
+        }
+
+        /// <summary>
+        /// Facing-bet raise escalation caps. Checked-to opens/semi-bluffs unchanged.
+        /// </summary>
+        internal static bool CanEscalateFacingRaise(
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards,
+            int streetRaiseCount,
+            out string blockReason)
+        {
+            blockReason = null;
+            HandRank made = GetMadeHandRank(holeCards, communityCards);
+            PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
+            bool hasSemiBluffDraw =
+                (draws & (PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw)) != 0;
+
+            // After StreetRaiseCount >= 4, require Trips or better.
+            if (streetRaiseCount >= 4)
+            {
+                if (made < HandRank.ThreeOfAKind)
+                {
+                    blockReason = $"StreetRaiseCount={streetRaiseCount} needs Trips+ (made={made})";
+                    return false;
+                }
+
+                return true;
+            }
+
+            // High Card may never re-raise (draw-only may raise once — see below).
+            if (made == HandRank.HighCard)
+            {
+                if (!hasSemiBluffDraw)
+                {
+                    blockReason = $"HighCard never re-raise (made={made})";
+                    return false;
+                }
+
+                // Draw-only: raise only once per street.
+                if (streetRaiseCount >= 2)
+                {
+                    blockReason =
+                        $"DrawOnly one raise/street (StreetRaiseCount={streetRaiseCount}, draws={draws})";
+                    return false;
+                }
+
+                return true;
+            }
+
+            // One Pair may not raise when StreetRaiseCount >= 3.
+            if (made == HandRank.OnePair)
+            {
+                if (streetRaiseCount >= 3)
+                {
+                    blockReason = $"OnePair blocked at StreetRaiseCount={streetRaiseCount}";
+                    return false;
+                }
+
+                return true;
+            }
+
+            // Two Pair or better: existing raise logic (until StreetRaiseCount >= 4 gate above).
+            return true;
+        }
+
+        internal static HandRank GetMadeHandRank(
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards)
+        {
+            if (holeCards == null || holeCards.Count < 2
+                || communityCards == null || communityCards.Count < 3)
+            {
+                return HandRank.HighCard;
+            }
+
+            var cards = new System.Collections.Generic.List<Card>(2 + communityCards.Count);
+            cards.Add(holeCards[0]);
+            cards.Add(holeCards[1]);
+            foreach (Card card in communityCards)
+            {
+                if (card != null)
+                    cards.Add(card);
+            }
+
+            if (cards.Count < 5)
+                return HandRank.HighCard;
+
+            try
+            {
+                return HandEvaluator.Evaluate(cards).Rank;
+            }
+            catch (System.Exception)
+            {
+                return HandRank.HighCard;
+            }
         }
 
         /// <summary>Maps HUD advice into a legal table action (same rules the human follows).</summary>
