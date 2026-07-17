@@ -15,6 +15,18 @@ namespace TexasHoldem
         private const string FileName = "TexasHoldem_AI_Debug.txt";
         private const float CommitFractionThreshold = 0.5f;
 
+        private const string FileHeader =
+            "Texas Hold'em AI Debug Log\n" +
+            "==========================\n" +
+            "\n" +
+            "(Append AI decision / debug lines below.)\n";
+
+        /// <summary>
+        /// When true, overwrite <c>TexasHoldem_AI_Debug.txt</c> with the header at startup.
+        /// When false, keep existing contents and append as usual.
+        /// </summary>
+        public static bool ClearDebugLogOnStartup = true;
+
         private static bool _pathLogged;
 
         private int  _handNumber;
@@ -40,14 +52,28 @@ namespace TexasHoldem
             _activeHand._postflopDecisions.Add(decisionBlock);
         }
 
-        /// <summary>Logs the absolute debug file path once (Player.log / console).</summary>
+        /// <summary>Logs the absolute debug file path once; optionally clears the file to header only.</summary>
         public void LogPathOnce()
         {
             if (_pathLogged)
                 return;
 
             _pathLogged = true;
-            Debug.Log($"[AIDebugLog] Writing to: {ResolveLogPath()}");
+            string path = ResolveLogPath();
+            Debug.Log($"[AIDebugLog] Writing to: {path}");
+
+            if (!ClearDebugLogOnStartup)
+                return;
+
+            try
+            {
+                File.WriteAllText(path, FileHeader, Encoding.UTF8);
+                Debug.Log("[AIDebugLog] Cleared log file (header only).");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[AIDebugLog] Clear on startup failed: {ex.Message}");
+            }
         }
 
         public void BeginHand(IReadOnlyList<PlayerState> players, Func<PlayerState, PreflopSeatBucket> seatOf)
