@@ -161,6 +161,51 @@ namespace TexasHoldem.Dev
                         C(Suit.Hearts, Rank.King)),
                     expectedMade: HandRank.ThreeOfAKind,
                     expectNoSemiBluff: true),
+
+                // River: no incomplete draws (even if a turn-style diamond draw would exist).
+                new DrawTestCase(
+                    "River AA on 5c Kd Td Js 5h → Draw None",
+                    PostflopDrawFlags.None,
+                    Cards(
+                        C(Suit.Hearts, Rank.Ace),
+                        C(Suit.Diamonds, Rank.Ace)),
+                    Cards(
+                        C(Suit.Clubs, Rank.Five),
+                        C(Suit.Diamonds, Rank.King),
+                        C(Suit.Diamonds, Rank.Ten),
+                        C(Suit.Spades, Rank.Jack),
+                        C(Suit.Hearts, Rank.Five)),
+                    expectedMade: HandRank.TwoPair),
+
+                // Made river flush still classified as Flush (not a draw flag).
+                new DrawTestCase(
+                    "River made flush → HandRank.Flush, Draw None",
+                    PostflopDrawFlags.None,
+                    Cards(
+                        C(Suit.Hearts, Rank.Ace),
+                        C(Suit.Hearts, Rank.King)),
+                    Cards(
+                        C(Suit.Hearts, Rank.Queen),
+                        C(Suit.Hearts, Rank.Jack),
+                        C(Suit.Hearts, Rank.Nine),
+                        C(Suit.Clubs, Rank.Two),
+                        C(Suit.Diamonds, Rank.Three)),
+                    expectedMade: HandRank.Flush),
+
+                // Made river straight still classified as Straight.
+                new DrawTestCase(
+                    "River made straight → HandRank.Straight, Draw None",
+                    PostflopDrawFlags.None,
+                    Cards(
+                        C(Suit.Clubs, Rank.Nine),
+                        C(Suit.Diamonds, Rank.Ten)),
+                    Cards(
+                        C(Suit.Spades, Rank.Eight),
+                        C(Suit.Hearts, Rank.Seven),
+                        C(Suit.Diamonds, Rank.Six),
+                        C(Suit.Clubs, Rank.Two),
+                        C(Suit.Hearts, Rank.Ace)),
+                    expectedMade: HandRank.Straight),
             };
         }
 

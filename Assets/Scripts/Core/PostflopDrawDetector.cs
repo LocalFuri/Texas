@@ -24,6 +24,10 @@ namespace TexasHoldem
             if (holeCards == null || holeCards.Count < 2)
                 return PostflopDrawFlags.None;
 
+            // River (5 board cards): no incomplete draws; made hands use HandEvaluator separately.
+            if (communityCards.Count >= 5)
+                return PostflopDrawFlags.None;
+
             // Made Trips+ is never a draw / semi-bluff candidate.
             if (BettingAdvisor.GetMadeHandRank(holeCards, communityCards) >= HandRank.ThreeOfAKind)
                 return PostflopDrawFlags.None;
