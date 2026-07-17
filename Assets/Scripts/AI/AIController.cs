@@ -444,7 +444,11 @@ namespace TexasHoldem
             if (player?.HoleCards != null && player.HoleCards.Count >= 2)
                 draws = PostflopDrawDetector.Detect(player.HoleCards, communityCards);
 
+            string branch = canCheck ? "checked-to" : "facing-bet";
+
             float? potOddsPercent = null;
+            float? raiseThreshold = null;
+            float? callThreshold = null;
             float? decisionThreshold = null;
             if (!canCheck && callAmount > 0)
             {
@@ -454,6 +458,8 @@ namespace TexasHoldem
                     float needed = 100f * callAmount / denominator;
                     potOddsPercent = needed;
                     float raiseEdge = street == GamePhase.River ? AdvisorRiverRaiseEdge : AdvisorRaiseEdge;
+                    raiseThreshold = needed + raiseEdge;
+                    callThreshold  = needed + AdvisorCallMargin;
                     decisionThreshold = ResolveFacingDecisionThreshold(
                         afterAdvisor, needed, raiseEdge);
                 }
@@ -462,6 +468,7 @@ namespace TexasHoldem
             {
                 decisionThreshold = ResolveCheckedToThreshold(
                     afterAdvisor, afterSemiBluff, afterThinValue, afterBarrel, street, equityPercent);
+                raiseThreshold = decisionThreshold;
             }
 
             string reason = BuildPlainEnglishReason(
@@ -475,29 +482,43 @@ namespace TexasHoldem
                 canCheck,
                 street);
 
+            int playerStreetBet = player != null ? player.CurrentBet : 0;
             int totalBet = ResolveTotalBetAfterAction(
                 action, tableCurrentBet, player, raiseAmount);
 
             string handSummary = _handActionLog.FormatStreetSummary(street, action);
+            string category = FormatDetailedHandDescription(player, communityCards);
+            string textureLabel = FormatBoardTextureLabel(texture);
 
-            Debug.Log(
+            string block =
                 "[PostflopAI]\n" +
                 $"Player: {player?.Name ?? "(null)"}\n" +
                 $"Street: {FormatStreetLabel(street)}\n" +
                 $"Hand: {FormatHoleCards(player)}\n" +
                 $"Board: {FormatBoard(communityCards)}\n" +
-                $"Category: {FormatDetailedHandDescription(player, communityCards)}\n" +
-                $"Equity: {equityPercent:F1}%\n" +
+                $"Category: {category}\n" +
+                $"Equity (MC): {equityPercent:F1}%\n" +
                 $"Pot Odds: {FormatOptionalPercent(potOddsPercent)}\n" +
-                $"Threshold: {FormatOptionalPercent(decisionThreshold)}\n" +
+                $"Call Amount: {callAmount}\n" +
+                $"Table Bet: {tableCurrentBet}\n" +
+                $"Player Street Bet: {playerStreetBet}\n" +
+                $"Pot: {potAmount}\n" +
+                $"Branch: {branch}\n" +
+                $"Raise Threshold: {FormatOptionalPercent(raiseThreshold)}\n" +
+                $"Call Threshold: {FormatOptionalPercent(callThreshold)}\n" +
+                $"Decision Threshold: {FormatOptionalPercent(decisionThreshold)}\n" +
                 $"Opponents: {opponentCount}\n" +
                 $"Draw: {FormatDrawFlags(draws)}\n" +
-                $"Board Texture: {FormatBoardTextureLabel(texture)}\n" +
+                $"Board Texture: {textureLabel}\n" +
                 $"Decision: {action}\n" +
+                $"Raise Amount: {raiseAmount}\n" +
                 $"Reason: {reason}\n" +
                 $"Bet Size: {totalBet}\n" +
                 "Hand Summary:\n" +
-                handSummary);
+                handSummary;
+
+            Debug.Log(block);
+            SuspiciousPreflopDebugLog.RecordPostflopDecision(block);
         }
 
         private static float? ResolveFacingDecisionThreshold(

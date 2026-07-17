@@ -23,7 +23,22 @@ namespace TexasHoldem
 
         private readonly List<PlayerSnapshot> _players = new List<PlayerSnapshot>(8);
         private readonly List<ActionLine>     _actions = new List<ActionLine>(64);
+        private readonly List<string>         _postflopDecisions = new List<string>(32);
         private readonly Dictionary<string, int> _startStacks = new Dictionary<string, int>();
+
+        private static SuspiciousPreflopDebugLog _activeHand;
+
+        /// <summary>
+        /// Records a postflop AI decision block for the active hand (file flush only if hand is logged).
+        /// Observes only — safe to call from <see cref="AIController"/>.
+        /// </summary>
+        public static void RecordPostflopDecision(string decisionBlock)
+        {
+            if (_activeHand == null || string.IsNullOrEmpty(decisionBlock))
+                return;
+
+            _activeHand._postflopDecisions.Add(decisionBlock);
+        }
 
         /// <summary>Logs the absolute debug file path once (Player.log / console).</summary>
         public void LogPathOnce()
@@ -42,7 +57,9 @@ namespace TexasHoldem
             _suspicious  = false;
             _players.Clear();
             _actions.Clear();
+            _postflopDecisions.Clear();
             _startStacks.Clear();
+            _activeHand = this;
 
             if (players == null)
                 return;
@@ -134,6 +151,8 @@ namespace TexasHoldem
 
             bool shouldWrite = _suspicious;
             _handActive = false;
+            if (_activeHand == this)
+                _activeHand = null;
 
             if (!shouldWrite)
                 return;
@@ -175,6 +194,17 @@ namespace TexasHoldem
                 sb.AppendLine(
                     $"  {a.Street} | {a.PlayerName} | {a.Action} | raise={a.RaiseAmount} | " +
                     $"pot={a.PotAfter} | streetRaiseCount={a.StreetRaiseCount} | tier={a.Tier}");
+            }
+
+            if (_postflopDecisions.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Postflop decisions:");
+                for (int i = 0; i < _postflopDecisions.Count; i++)
+                {
+                    sb.AppendLine(_postflopDecisions[i]);
+                    sb.AppendLine("---");
+                }
             }
 
             sb.Append("Winner: ");
