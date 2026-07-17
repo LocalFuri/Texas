@@ -29,6 +29,7 @@ namespace TexasHoldem
         private const float PostflopBetPotFraction      = 0.67f;
         private const float RiverThinBetPotFraction     = 0.33f;
         private const float PostflopRaisePotFraction    = 0.75f;
+        private const float HugeCallStackFraction       = 0.5f;
 
         public static string LabelFor(BettingAdvice advice) =>
             advice switch
@@ -108,7 +109,8 @@ namespace TexasHoldem
                 postflopPhase,
                 streetRaiseCount,
                 holeCards,
-                communityCards);
+                communityCards,
+                playerChips);
         }
 
         private static BettingAdvice RecommendPostflop(
@@ -121,7 +123,8 @@ namespace TexasHoldem
             GamePhase postflopPhase,
             int streetRaiseCount,
             System.Collections.Generic.IReadOnlyList<Card> holeCards,
-            System.Collections.Generic.IReadOnlyList<Card> communityCards)
+            System.Collections.Generic.IReadOnlyList<Card> communityCards,
+            int playerChips)
         {
             equityPercent = Mathf.Clamp(equityPercent, 0f, 100f);
 
@@ -157,7 +160,16 @@ namespace TexasHoldem
 
             int denominator = potBeforeAction + callAmount;
             if (denominator <= 0)
-                return equityPercent >= 50f ? BettingAdvice.Call : BettingAdvice.Fold;
+            {
+                if (equityPercent >= 50f
+                    && PassesHugeCallGate(
+                        postflopPhase, callAmount, playerChips, holeCards, communityCards, out _))
+                {
+                    return BettingAdvice.Call;
+                }
+
+                return BettingAdvice.Fold;
+            }
 
             float needed = 100f * callAmount / denominator;
             float raiseEdge = postflopPhase == GamePhase.River ? RiverRaiseEdge : RaiseEdge;
@@ -170,7 +182,9 @@ namespace TexasHoldem
                         $"[PostflopAI] RiverRaiseFloorBlock equity={equityPercent:F1}% " +
                         $"(needed+{RiverRaiseEdge:F0}%={needed + RiverRaiseEdge:F1}%, " +
                         $"floor={RiverRaiseEquityFloor:F0}%) → Call");
-                    return BettingAdvice.Call;
+                    return ResolveCallOrFoldAfterHugeGate(
+                        equityPercent, needed, postflopPhase, callAmount, playerChips,
+                        holeCards, communityCards);
                 }
 
                 if (!CanEscalateFacingRaise(holeCards, communityCards, streetRaiseCount, out string blockReason))
@@ -184,10 +198,114 @@ namespace TexasHoldem
                 }
             }
 
-            if (equityPercent >= needed + EdgeMargin)
-                return BettingAdvice.Call;
+            return ResolveCallOrFoldAfterHugeGate(
+                equityPercent, needed, postflopPhase, callAmount, playerChips,
+                holeCards, communityCards);
+        }
 
-            return BettingAdvice.Fold;
+        private static BettingAdvice ResolveCallOrFoldAfterHugeGate(
+            float equityPercent,
+            float needed,
+            GamePhase postflopPhase,
+            int callAmount,
+            int playerChips,
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards)
+        {
+            if (equityPercent < needed + EdgeMargin)
+                return BettingAdvice.Fold;
+
+            if (!PassesHugeCallGate(
+                    postflopPhase, callAmount, playerChips, holeCards, communityCards, out string reason))
+            {
+                Debug.Log($"[PostflopAI] HugeCallGate Fold — {reason}");
+                return BettingAdvice.Fold;
+            }
+
+            return BettingAdvice.Call;
+        }
+
+        /// <summary>
+        /// Turn/river: huge calls (≥50% stack) need Two Pair+ or strong pair + strong draw.
+        /// Smaller bets keep normal pot-odds calling.
+        /// </summary>
+        internal static bool PassesHugeCallGate(
+            GamePhase postflopPhase,
+            int callAmount,
+            int playerChips,
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards,
+            out string blockReason)
+        {
+            blockReason = null;
+
+            if (postflopPhase != GamePhase.Turn && postflopPhase != GamePhase.River)
+                return true;
+
+            if (playerChips <= 0 || callAmount < Mathf.CeilToInt(playerChips * HugeCallStackFraction))
+                return true;
+
+            HandRank made = GetMadeHandRank(holeCards, communityCards);
+            PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
+            bool strongDraw =
+                (draws & (PostflopDrawFlags.FlushDraw | PostflopDrawFlags.OpenEndedStraightDraw)) != 0;
+
+            if (made >= HandRank.TwoPair)
+                return true;
+
+            if (made == HandRank.OnePair)
+            {
+                bool weakUnderpair = IsPocketUnderpair(holeCards, communityCards);
+                if (weakUnderpair)
+                {
+                    blockReason =
+                        $"call={callAmount} ≥50% stack={playerChips}; underpair without Trips+ " +
+                        $"(draws={draws})";
+                    return false;
+                }
+
+                // Strong one pair (top pair / overpair / board pair with hole) needs a strong draw.
+                if (strongDraw)
+                    return true;
+
+                blockReason =
+                    $"call={callAmount} ≥50% stack={playerChips}; OnePair without strong draw";
+                return false;
+            }
+
+            blockReason =
+                $"call={callAmount} ≥50% stack={playerChips}; made={made} needs TwoPair+ " +
+                $"or strong pair+draw";
+            return false;
+        }
+
+        /// <summary>Pocket pair strictly below the board's highest rank.</summary>
+        internal static bool IsPocketUnderpair(
+            System.Collections.Generic.IReadOnlyList<Card> holeCards,
+            System.Collections.Generic.IReadOnlyList<Card> communityCards)
+        {
+            if (holeCards == null || holeCards.Count < 2 || holeCards[0] == null || holeCards[1] == null)
+                return false;
+
+            if (holeCards[0].Rank != holeCards[1].Rank)
+                return false;
+
+            if (communityCards == null || communityCards.Count < 3)
+                return false;
+
+            Rank pairRank = holeCards[0].Rank;
+            Rank boardHigh = Rank.Two;
+            bool any = false;
+            foreach (Card card in communityCards)
+            {
+                if (card == null)
+                    continue;
+                any = true;
+                if (card.Rank > boardHigh)
+                    boardHigh = card.Rank;
+            }
+
+            return any && pairRank < boardHigh;
         }
 
         /// <summary>
