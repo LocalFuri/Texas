@@ -16,11 +16,15 @@ namespace TexasHoldem.Dev
         public static (int passed, int total) RunAllTests()
         {
             int passed = 0;
-            const int total = 2;
+            const int total = 4;
 
             Debug.Log("[PostflopOppRange] Running opponent-range equity regression(s)...");
 
             if (RunResolveMappingCase())
+                passed++;
+            if (RunCheckedToFourBetPotUsesStrongest())
+                passed++;
+            if (RunCheckedToSingleRaisedKeepsWide())
                 passed++;
             if (RunShoveVsPassiveEquityCase())
                 passed++;
@@ -34,26 +38,56 @@ namespace TexasHoldem.Dev
             bool checkWide = AssertRange(
                 "check/call → Wide",
                 facingBet: false, streetRaiseCount: 0, callAmount: 0, chips: 1000,
+                preflopRaiseCount: 0,
                 OpponentRangeStrength.Wide);
 
             bool betStrong = AssertRange(
                 "bet/raise → Strong",
                 facingBet: true, streetRaiseCount: 1, callAmount: 100, chips: 1000,
+                preflopRaiseCount: 0,
                 OpponentRangeStrength.Strong);
 
             bool reraiseStrongest = AssertRange(
                 "re-raise → Strongest",
                 facingBet: true, streetRaiseCount: 2, callAmount: 100, chips: 1000,
+                preflopRaiseCount: 0,
                 OpponentRangeStrength.Strongest);
 
             bool nearStackStrongest = AssertRange(
                 "≥50% stack call → Strongest",
                 facingBet: true, streetRaiseCount: 1, callAmount: 850, chips: 1000,
+                preflopRaiseCount: 0,
                 OpponentRangeStrength.Strongest);
 
             bool ok = checkWide && betStrong && reraiseStrongest && nearStackStrongest;
             Debug.Log(
                 $"[PostflopOppRange] ResolveOpponentRange mapping (check/bet/re-raise/near-stack)\n" +
+                $"  Result: {(ok ? "PASS" : "FAIL")}");
+            return ok;
+        }
+
+        private static bool RunCheckedToFourBetPotUsesStrongest()
+        {
+            bool ok = AssertRange(
+                "checked-to in 4-bet pot → Strongest (not Wide)",
+                facingBet: false, streetRaiseCount: 0, callAmount: 0, chips: 1000,
+                preflopRaiseCount: 3,
+                OpponentRangeStrength.Strongest);
+            Debug.Log(
+                $"[PostflopOppRange] Checked-to 4-bet pot floor\n" +
+                $"  Result: {(ok ? "PASS" : "FAIL")}");
+            return ok;
+        }
+
+        private static bool RunCheckedToSingleRaisedKeepsWide()
+        {
+            bool ok = AssertRange(
+                "checked-to in single-raised pot → Wide (unchanged)",
+                facingBet: false, streetRaiseCount: 0, callAmount: 0, chips: 1000,
+                preflopRaiseCount: 1,
+                OpponentRangeStrength.Wide);
+            Debug.Log(
+                $"[PostflopOppRange] Checked-to single-raised pot\n" +
                 $"  Result: {(ok ? "PASS" : "FAIL")}");
             return ok;
         }
@@ -64,10 +98,12 @@ namespace TexasHoldem.Dev
             int streetRaiseCount,
             int callAmount,
             int chips,
+            int preflopRaiseCount,
             OpponentRangeStrength expected)
         {
             string why = MonteCarloSimulator.DescribeOpponentRangeSelection(
-                facingBet, streetRaiseCount, callAmount, chips, out OpponentRangeStrength actual);
+                facingBet, streetRaiseCount, callAmount, chips,
+                out OpponentRangeStrength actual, preflopRaiseCount);
             bool ok = actual == expected;
             Debug.Log(
                 $"[PostflopOppRange] {label}\n" +

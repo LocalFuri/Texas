@@ -41,6 +41,25 @@ namespace TexasHoldem
 
         public void Clear() => _entries.Clear();
 
+        /// <summary>
+        /// Max preflop street-raise count from logged actions
+        /// (after each raise is recorded: open=1, 3-bet pot=2, 4-bet pot=3).
+        /// </summary>
+        public int ResolvePreflopRaiseCount()
+        {
+            int max = 0;
+            for (int i = 0; i < _entries.Count; i++)
+            {
+                HandActionEntry e = _entries[i];
+                if (e.Street != GamePhase.PreFlop)
+                    continue;
+                if (e.StreetRaiseCount > max)
+                    max = e.StreetRaiseCount;
+            }
+
+            return max;
+        }
+
         /// <summary>Compact one-line summary of actions recorded so far this hand.</summary>
         public string FormatSummary()
         {

@@ -397,7 +397,7 @@ namespace TexasHoldem
             return BettingAdvice.Raise;
         }
 
-        private static float EstimateEquityPercent(
+        private float EstimateEquityPercent(
             PlayerState player,
             IReadOnlyList<Card> communityCards,
             IReadOnlyList<PlayerState> allPlayers,
@@ -406,12 +406,14 @@ namespace TexasHoldem
             out OpponentRangeStrength opponentRange,
             out string opponentRangeWhy)
         {
+            int preflopRaiseCount = _handActionLog.ResolvePreflopRaiseCount();
             opponentRangeWhy = MonteCarloSimulator.DescribeOpponentRangeSelection(
                 facingBet: callAmount > 0,
                 streetRaiseCount: streetRaiseCount,
                 callAmount: callAmount,
                 defenderChips: player != null ? player.Chips : 0,
-                out opponentRange);
+                out opponentRange,
+                preflopRaiseCount);
 
             int opponents = CountActiveOpponents(allPlayers, player);
             if (opponents <= 0)

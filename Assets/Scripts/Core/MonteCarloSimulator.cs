@@ -51,10 +51,37 @@ namespace TexasHoldem
         private const int PerformanceBenchmarkOpponentCount = 2;
 
         /// <summary>
-        /// Maps facing-bet context to an opponent range tier.
-        /// Check/call → Wide; bet/raise → Strong; re-raise or ≥50% stack call → Strongest.
+        /// Maps facing-bet context to an opponent range tier, floored by preflop aggression.
+        /// Street: check → Wide; bet/raise → Strong; re-raise or ≥50% stack call → Strongest.
+        /// Preflop floor: 3-bet pot → Strong; 4-bet+ pot → Strongest. Never widens below that floor.
         /// </summary>
+        /// <param name="preflopRaiseCount">
+        /// Raises completed preflop (open=1, 3-bet pot=2, 4-bet pot=3).
+        /// </param>
         public static OpponentRangeStrength ResolveOpponentRange(
+            bool facingBet,
+            int streetRaiseCount,
+            int callAmount,
+            int defenderChips,
+            int preflopRaiseCount = 0)
+        {
+            OpponentRangeStrength street = ResolveStreetOpponentRange(
+                facingBet, streetRaiseCount, callAmount, defenderChips);
+            OpponentRangeStrength floor = ResolvePreflopRangeFloor(preflopRaiseCount);
+            return street >= floor ? street : floor;
+        }
+
+        /// <summary>Preflop pot-type floor only (Wide / Strong / Strongest).</summary>
+        public static OpponentRangeStrength ResolvePreflopRangeFloor(int preflopRaiseCount)
+        {
+            if (preflopRaiseCount >= 3)
+                return OpponentRangeStrength.Strongest;
+            if (preflopRaiseCount >= 2)
+                return OpponentRangeStrength.Strong;
+            return OpponentRangeStrength.Wide;
+        }
+
+        private static OpponentRangeStrength ResolveStreetOpponentRange(
             bool facingBet,
             int streetRaiseCount,
             int callAmount,
@@ -78,25 +105,40 @@ namespace TexasHoldem
             int streetRaiseCount,
             int callAmount,
             int defenderChips,
-            out OpponentRangeStrength range)
+            out OpponentRangeStrength range,
+            int preflopRaiseCount = 0)
         {
-            range = ResolveOpponentRange(facingBet, streetRaiseCount, callAmount, defenderChips);
+            OpponentRangeStrength street = ResolveStreetOpponentRange(
+                facingBet, streetRaiseCount, callAmount, defenderChips);
+            OpponentRangeStrength floor = ResolvePreflopRangeFloor(preflopRaiseCount);
+            range = street >= floor ? street : floor;
 
+            string streetWhy;
             if (!facingBet || callAmount <= 0)
-                return "check/call (no bet faced)";
-
-            bool nearStack = defenderChips > 0
-                && callAmount >= Mathf.CeilToInt(defenderChips * NearStackCallFraction);
-
-            if (streetRaiseCount >= 2)
-                return $"re-raise (streetRaiseCount={streetRaiseCount})";
-
-            if (nearStack)
+                streetWhy = "check/call (no bet faced)";
+            else if (streetRaiseCount >= 2)
+                streetWhy = $"re-raise (streetRaiseCount={streetRaiseCount})";
+            else
             {
-                return $"near-stack shove/call call={callAmount} ≥50% stack chips={defenderChips}";
+                bool nearStack = defenderChips > 0
+                    && callAmount >= Mathf.CeilToInt(defenderChips * NearStackCallFraction);
+                streetWhy = nearStack
+                    ? $"near-stack shove/call call={callAmount} ≥50% stack chips={defenderChips}"
+                    : $"bet/raise (streetRaiseCount={streetRaiseCount})";
             }
 
-            return $"bet/raise (streetRaiseCount={streetRaiseCount})";
+            if (floor > street)
+            {
+                string pot =
+                    floor == OpponentRangeStrength.Strongest ? "4-bet+ pot" :
+                    floor == OpponentRangeStrength.Strong ? "3-bet pot" : "preflop";
+                return $"{streetWhy}; floored to {floor} by {pot} (preflopRaises={preflopRaiseCount})";
+            }
+
+            if (preflopRaiseCount >= 2)
+                return $"{streetWhy}; preflopRaises={preflopRaiseCount} floor={floor}";
+
+            return streetWhy;
         }
 
         public static MonteCarloResult Simulate(
