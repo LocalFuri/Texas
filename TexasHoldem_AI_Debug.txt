@@ -1,0 +1,5 @@
+Texas Hold'em AI Debug Log
+==========================
+Created: 2026-07-17
+
+(Append AI decision / debug lines below.)

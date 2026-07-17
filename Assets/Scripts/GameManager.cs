@@ -201,6 +201,7 @@ namespace TexasHoldem
         private BettingManager _bettingManager;
         private BoardManager   _boardManager;
         private AIController   _aiController;
+        private readonly SuspiciousPreflopDebugLog _suspiciousPreflopLog = new SuspiciousPreflopDebugLog();
 
         private int           _currentPlayersBehind;
         private int           _currentCallersBefore;
@@ -396,6 +397,7 @@ namespace TexasHoldem
             // Snapshot seats + dealer for the whole hand so all-ins do not shift preflop positions.
             _handPlayers             = active;
             _handDealerIndexInHand   = ((DealerIndex % active.Count) + active.Count) % active.Count;
+            _suspiciousPreflopLog.BeginHand(active, GetPreflopSeatBucket);
             int sbIndex  = (DealerIndex + 1) % active.Count;
             int bbIndex  = (DealerIndex + 2) % active.Count;
 
@@ -409,6 +411,7 @@ namespace TexasHoldem
 
             yield return DelaySeconds(_blindPostDelay);
             yield return DealPreflopHoleCards(active, sbIndex);
+            _suspiciousPreflopLog.RefreshHoleCards(active);
             NotifyPlayersUpdated();
             yield return DelaySeconds(GetCommunityRevealDuration(2));
 
@@ -591,6 +594,8 @@ namespace TexasHoldem
                         OnPlayerAction?.Invoke(player, action, displayAmount);
                         _aiController.RecordHandAction(
                             CurrentPhase, player, action, displayAmount, PotAmount, StreetRaiseCount);
+                        _suspiciousPreflopLog.RecordAction(
+                            CurrentPhase, player, action, raise, PotAmount, StreetRaiseCount);
                         string detail = action == BettingAction.Raise ? $" +${raise}" : "";
                         OnGameMessage?.Invoke($"{player.Name}: {action}{detail}");
                     }
@@ -614,6 +619,8 @@ namespace TexasHoldem
                         OnPlayerAction?.Invoke(player, _humanAction, displayAmount);
                         _aiController.RecordHandAction(
                             CurrentPhase, player, _humanAction, displayAmount, PotAmount, StreetRaiseCount);
+                        _suspiciousPreflopLog.RecordAction(
+                            CurrentPhase, player, _humanAction, _humanRaiseAmount, PotAmount, StreetRaiseCount);
                         string detail = _humanAction == BettingAction.Raise ? $" +${_humanRaiseAmount}" : "";
                         OnGameMessage?.Invoke($"You: {_humanAction}{detail}");
                     }
@@ -738,7 +745,10 @@ namespace TexasHoldem
 
             var contenders = GetNonFolded(active);
             if (contenders.Count == 0)
+            {
+                _suspiciousPreflopLog.FlushIfSuspicious(null);
                 yield break;
+            }
 
             RoundWinners roundWinners = ResolveRoundWinners(contenders);
             LastWinningHand   = roundWinners.BestEvaluation;
@@ -759,6 +769,7 @@ namespace TexasHoldem
 
             OnGameMessage?.Invoke(BuildRoundEndMessage(
                 LastRoundWinners, LastPotAwarded, LastRakeAmount, LastRakeDisplayText, LastHandWasBbWalk, LastBbWalkNetWin));
+            _suspiciousPreflopLog.FlushIfSuspicious(LastRoundWinners);
             _awaitingWinnerDismiss = true;
             OnWinnerDetermined?.Invoke(LastRoundWinners[0]);
             NotifyPlayersUpdated();
