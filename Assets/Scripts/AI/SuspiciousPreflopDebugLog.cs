@@ -7,7 +7,7 @@ using UnityEngine;
 namespace TexasHoldem
 {
     /// <summary>
-    /// Appends suspicious preflop hands to TexasHoldem_AI_Debug.txt.
+    /// Appends hands with suspicious preflop action or any-street all-in to TexasHoldem_AI_Debug.txt.
     /// Observes only — does not affect AI decisions.
     /// </summary>
     public sealed class SuspiciousPreflopDebugLog
@@ -97,13 +97,14 @@ namespace TexasHoldem
                 streetRaiseCount,
                 ClassifyTier(player.HoleCards)));
 
+            // All-in on any street (including river) marks the hand for logging.
+            if (action == BettingAction.AllIn || player.IsAllIn)
+                _suspicious = true;
+
             if (street != GamePhase.PreFlop)
                 return;
 
             if (streetRaiseCount >= 3)
-                _suspicious = true;
-
-            if (action == BettingAction.AllIn || player.IsAllIn)
                 _suspicious = true;
 
             if (_startStacks.TryGetValue(player.Name, out int start)
@@ -140,7 +141,7 @@ namespace TexasHoldem
         {
             var sb = new StringBuilder(512);
             sb.AppendLine();
-            sb.AppendLine($"=== Hand #{_handNumber} (suspicious preflop) ===");
+            sb.AppendLine($"=== Hand #{_handNumber} (suspicious / all-in) ===");
 
             sb.Append("Players: ");
             for (int i = 0; i < _players.Count; i++)
