@@ -635,8 +635,7 @@ namespace TexasHoldem
                 if (txt != null)
                 {
                     RecordObj(txt);
-                    txt.alignment          = PlayerHudLayout.HudPanelTextAlign;
-                    txt.fontStyle          = FontStyles.Bold;
+                    txt.fontStyle             = FontStyles.Bold;
                     if (!_useUndo)
                     {
                         txt.enableAutoSizing = true;
@@ -644,10 +643,14 @@ namespace TexasHoldem
                         txt.fontSizeMin      = 14f;
                         txt.fontSizeMax      = NameFontSize;
                     }
-                    txt.color              = NameColor;
-                    txt.overflowMode       = TextOverflowModes.Ellipsis;
-                    txt.enableWordWrapping = false;
-                    txt.raycastTarget      = false;
+                    txt.color                 = NameColor;
+                    txt.overflowMode          = TextOverflowModes.Ellipsis;
+                    txt.enableWordWrapping    = false;
+                    txt.raycastTarget         = false;
+                    txt.margin                = Vector4.zero;
+                    txt.horizontalAlignment   = HorizontalAlignmentOptions.Center;
+                    txt.verticalAlignment     = VerticalAlignmentOptions.Middle;
+                    txt.alignment             = PlayerHudLayout.HudPanelTextAlign;
                 }
 
                 string seatName = view.ResolveDisplayName();
@@ -664,19 +667,22 @@ namespace TexasHoldem
             RecordObj(netProfitGo);
             RecordObj(netProfitTmp);
             {
-                netProfitTmp.alignment          = PlayerHudLayout.HudPanelTextAlign;
-                netProfitTmp.fontStyle          = FontStyles.Bold;
+                netProfitTmp.fontStyle            = FontStyles.Bold;
                 PlayerHudLayout.ApplyStackAmountFontIfMissing(netProfitTmp);
                 if (!_useUndo)
                 {
                     netProfitTmp.enableAutoSizing = false;
                     netProfitTmp.fontSize         = NameFontSize * PlayerHudLayout.NetProfitFontScale;
                 }
-                netProfitTmp.text              = "0.0";
-                netProfitTmp.color             = Color.white;
-                netProfitTmp.overflowMode      = TextOverflowModes.Overflow;
-                netProfitTmp.enableWordWrapping = false;
-                netProfitTmp.raycastTarget     = false;
+                netProfitTmp.text                 = "0.0";
+                netProfitTmp.color                = Color.white;
+                netProfitTmp.overflowMode         = TextOverflowModes.Overflow;
+                netProfitTmp.enableWordWrapping   = false;
+                netProfitTmp.raycastTarget        = false;
+                netProfitTmp.margin               = Vector4.zero;
+                netProfitTmp.horizontalAlignment  = HorizontalAlignmentOptions.Center;
+                netProfitTmp.verticalAlignment    = VerticalAlignmentOptions.Middle;
+                netProfitTmp.alignment            = PlayerHudLayout.HudPanelTextAlign;
             }
 
             // 8. ChipsText — centered in HudPanel, below name.
@@ -688,13 +694,16 @@ namespace TexasHoldem
                 if (txt != null)
                 {
                     RecordObj(txt);
-                    txt.alignment          = PlayerHudLayout.HudPanelTextAlign;
-                    txt.fontStyle          = FontStyles.Bold;
+                    txt.fontStyle             = FontStyles.Bold;
                     PlayerHudLayout.ApplyStackAmountFontIfMissing(txt);
-                    txt.color              = ChipsColor;
-                    txt.overflowMode       = TextOverflowModes.Ellipsis;
-                    txt.enableWordWrapping = false;
-                    txt.raycastTarget      = false;
+                    txt.color                 = ChipsColor;
+                    txt.overflowMode          = TextOverflowModes.Ellipsis;
+                    txt.enableWordWrapping    = false;
+                    txt.raycastTarget         = false;
+                    txt.margin                = Vector4.zero;
+                    txt.horizontalAlignment   = HorizontalAlignmentOptions.Center;
+                    txt.verticalAlignment     = VerticalAlignmentOptions.Middle;
+                    txt.alignment             = PlayerHudLayout.HudPanelTextAlign;
                 }
             }
 

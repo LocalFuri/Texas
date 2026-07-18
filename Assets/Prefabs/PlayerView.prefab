@@ -1480,7 +1480,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 35.25, y: -30.692307}
-  m_SizeDelta: {x: 200, y: 22}
+  m_SizeDelta: {x: 182.5, y: 22}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6104001700827892944
 CanvasRenderer:
@@ -2488,6 +2488,14 @@ MonoBehaviour:
   _useCustomLayout: 0
   _customAnchoredPosition: {x: 0, y: 55}
   _customHeight: 40
+  _winnerPopDuration: 0.18
+  _winnerPopScaleMin: 0.95
+  _winnerPopScalePeak: 1.05
+  _winnerGradientTop: {r: 1, g: 0.85, b: 0.2, a: 0.42}
+  _winnerGradientBottom: {r: 0.65, g: 0.55, b: 0.13, a: 0.58}
+  _winnerShadowColor: {r: 0, g: 0, b: 0, a: 0.25}
+  _winnerShadowDistance: {x: 1, y: -2}
+  _winnerBackdropInset: 2
 --- !u!1 &6654086246972218361
 GameObject:
   m_ObjectHideFlags: 0
@@ -2670,8 +2678,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _nameText: {fileID: 5309167095648279648}
+  _netProfitText: {fileID: 0}
   _chipsText: {fileID: 8916208608776977219}
   _statusText: {fileID: 3893679310701984373}
+  _equityText: {fileID: 0}
   _displayName: Alex Hunter
   _nameFontSize: 20
   _nameFontSizeMin: 14
@@ -2697,6 +2707,7 @@ MonoBehaviour:
   _ringUrgentColorTop: {r: 1, g: 0.35, b: 0.25, a: 1}
   _ringUrgentColorBot: {r: 0.55, g: 0.08, b: 0.05, a: 1}
   _hudMirrored: 0
+  _equityFontSize: 20
   _showAvatarImages: 1
   _showChromeRing: 1
 --- !u!1 &7558858468542828735
@@ -3242,8 +3253,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 35.25, y: 8.3076935}
-  m_SizeDelta: {x: 200, y: 36}
+  m_AnchoredPosition: {x: 35.25, y: 18.307693}
+  m_SizeDelta: {x: 182.5, y: 36}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &5832528527431974395
 CanvasRenderer:
@@ -3523,7 +3534,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 35.25, y: -30.692307}
-  m_SizeDelta: {x: 200, y: 26}
+  m_SizeDelta: {x: 182.5, y: 26}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6135366228180361010
 CanvasRenderer:

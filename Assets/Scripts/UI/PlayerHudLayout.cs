@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace TexasHoldem
 {
@@ -196,7 +197,8 @@ namespace TexasHoldem
         }
 
         /// <summary>
-        /// NameText + ChipsText share the center of the uncovered HudPanel area (excluding avatar), stacked vertically.
+        /// Name / NetProfit / Chips share one horizontal geometry in the uncovered HudPanel band
+        /// (same parent, width, anchors, pivot, X, TMP center alignment, zero margins).
         /// </summary>
         public static void ApplyHudPanelTextBlock(Transform root, float panelCenterX, float panelCenterY, float panelWidth)
         {
@@ -222,15 +224,87 @@ namespace TexasHoldem
                 uncoveredWidth = panelRight - avatarRight;
             }
 
-            float textWidth   = Mathf.Max(uncoveredWidth - HudTextPadPx * 2f, TextW);
+            // Width is exactly the uncovered band (not a wider TextW floor), so every row
+            // centers in the same visible HUD text area.
+            float textWidth   = Mathf.Max(uncoveredWidth - HudTextPadPx * 2f, 1f);
             float nameY       = GetCenteredNameY(panelCenterY);
             float netProfitY  = GetNetProfitY(panelCenterY);
             float chipsY      = GetCenteredChipsY(panelCenterY);
 
-            ApplyText(FindChild(root, "NameText"),      textCenterX, nameY, textWidth, NameTextH, HudPanelTextAlign);
-            ApplyText(FindChild(root, "NetProfitText"), textCenterX, netProfitY, textWidth, NetProfitTextH, HudPanelTextAlign);
-            ApplyText(FindChild(root, "ChipsText"),     textCenterX, chipsY, textWidth, ChipsTextH, HudPanelTextAlign);
-            ApplyText(FindChild(root, "StatusText"),    textCenterX, chipsY, textWidth, 22f, HudPanelTextAlign);
+            Transform nameT      = ResolveHudText(root, pv, "NameText");
+            Transform netProfitT = ResolveHudText(root, pv, "NetProfitText");
+            Transform chipsT     = ResolveHudText(root, pv, "ChipsText");
+            Transform statusT    = FindChild(root, "StatusText");
+
+            ApplyHudPanelTextRow(root, nameT,      textCenterX, nameY, textWidth, NameTextH);
+            ApplyHudPanelTextRow(root, netProfitT, textCenterX, netProfitY, textWidth, NetProfitTextH);
+            ApplyHudPanelTextRow(root, chipsT,     textCenterX, chipsY, textWidth, ChipsTextH);
+            ApplyHudPanelTextRow(root, statusT,    textCenterX, chipsY, textWidth, 22f);
+        }
+
+        /// <summary>Prefers PlayerView serialized refs so layout and RefreshHud hit the same objects.</summary>
+        private static Transform ResolveHudText(Transform root, PlayerView pv, string childName)
+        {
+            if (pv != null)
+            {
+                TMP_Text bound = pv.GetHudText(childName);
+                if (bound != null)
+                    return bound.transform;
+            }
+
+            return FindChild(root, childName);
+        }
+
+        /// <summary>
+        /// Forces identical horizontal geometry + TMP centering for one HUD text row.
+        /// Vertical Y/height stay as passed; fonts/sizes/colors are left alone.
+        /// </summary>
+        private static void ApplyHudPanelTextRow(
+            Transform seatRoot, Transform textTransform, float x, float y, float w, float h)
+        {
+            if (textTransform == null)
+                return;
+
+            if (seatRoot != null && textTransform.parent != seatRoot)
+                textTransform.SetParent(seatRoot, false);
+
+            StripHudTextLayoutDrivers(textTransform);
+
+            var rt = textTransform as RectTransform;
+            if (rt != null)
+            {
+                rt.localScale         = Vector3.one;
+                rt.anchorMin          = new Vector2(0.5f, 0.5f);
+                rt.anchorMax          = new Vector2(0.5f, 0.5f);
+                rt.pivot              = new Vector2(0.5f, 0.5f);
+                rt.sizeDelta          = new Vector2(w, h);
+                rt.anchoredPosition   = new Vector2(x, y);
+            }
+
+            var tmp = textTransform.GetComponent<TMP_Text>();
+            if (tmp == null)
+                return;
+
+            tmp.margin              = Vector4.zero;
+            tmp.enableWordWrapping  = false;
+            // Explicit horizontal center — Midline alone can leave stale left-align on some TMP versions.
+            tmp.horizontalAlignment = HorizontalAlignmentOptions.Center;
+            tmp.verticalAlignment   = VerticalAlignmentOptions.Middle;
+            tmp.alignment           = HudPanelTextAlign;
+        }
+
+        private static void StripHudTextLayoutDrivers(Transform textTransform)
+        {
+            if (textTransform == null)
+                return;
+
+            var fitter = textTransform.GetComponent<ContentSizeFitter>();
+            if (fitter != null)
+                fitter.enabled = false;
+
+            var layout = textTransform.GetComponent<LayoutElement>();
+            if (layout != null)
+                layout.enabled = false;
         }
 
         /// <summary>Fixed left edge of the HUD content band (avatar overlap side).</summary>

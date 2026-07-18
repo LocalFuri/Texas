@@ -278,11 +278,29 @@ namespace TexasHoldem
             if (_nameText != null && _nameText.font != null)
                 _netProfitText.font = _nameText.font;
 
-            _netProfitText.enableAutoSizing   = false;
-            _netProfitText.fontSize           = _nameFontSize * PlayerHudLayout.NetProfitFontScale;
-            _netProfitText.alignment          = PlayerHudLayout.HudPanelTextAlign;
-            _netProfitText.enableWordWrapping = false;
-            _netProfitText.overflowMode       = TextOverflowModes.Overflow;
+            _netProfitText.enableAutoSizing     = false;
+            _netProfitText.fontSize             = _nameFontSize * PlayerHudLayout.NetProfitFontScale;
+            _netProfitText.enableWordWrapping   = false;
+            _netProfitText.overflowMode         = TextOverflowModes.Overflow;
+            _netProfitText.margin               = Vector4.zero;
+            _netProfitText.horizontalAlignment  = HorizontalAlignmentOptions.Center;
+            _netProfitText.verticalAlignment    = VerticalAlignmentOptions.Middle;
+            _netProfitText.alignment            = PlayerHudLayout.HudPanelTextAlign;
+        }
+
+        /// <summary>
+        /// Serialized HUD text for layout — same objects <see cref="RefreshHud"/> updates.
+        /// </summary>
+        public TMP_Text GetHudText(string childName)
+        {
+            switch (childName)
+            {
+                case "NameText":      return _nameText;
+                case "NetProfitText": return _netProfitText;
+                case "ChipsText":     return _chipsText;
+                case "StatusText":    return _statusText;
+                default:              return null;
+            }
         }
 
         /// <summary>Signed, one-decimal net profit, e.g. "+127.0", "-53.5", "0.0".</summary>
@@ -359,22 +377,28 @@ namespace TexasHoldem
             ApplyNetProfitTextStyle();
             if (_nameText == null) return;
             float min = Mathf.Clamp(_nameFontSizeMin, 8f, _nameFontSize);
-            _nameText.enableAutoSizing   = true;
-            _nameText.fontSize           = _nameFontSize;
-            _nameText.fontSizeMin        = min;
-            _nameText.fontSizeMax        = _nameFontSize;
-            _nameText.enableWordWrapping = false;
-            _nameText.overflowMode       = TextOverflowModes.Ellipsis;
-            _nameText.alignment          = PlayerHudLayout.HudPanelTextAlign;
+            _nameText.enableAutoSizing    = true;
+            _nameText.fontSize            = _nameFontSize;
+            _nameText.fontSizeMin         = min;
+            _nameText.fontSizeMax         = _nameFontSize;
+            _nameText.enableWordWrapping  = false;
+            _nameText.overflowMode        = TextOverflowModes.Ellipsis;
+            _nameText.margin              = Vector4.zero;
+            _nameText.horizontalAlignment = HorizontalAlignmentOptions.Center;
+            _nameText.verticalAlignment   = VerticalAlignmentOptions.Middle;
+            _nameText.alignment           = PlayerHudLayout.HudPanelTextAlign;
         }
 
         /// <summary>Sets a fixed font size on the text element without altering its RectTransform dimensions.</summary>
         private void ApplyFontSize(TMP_Text text, float size)
         {
             if (text == null) return;
-            text.enableAutoSizing = false;
-            text.fontSize         = size;
-            text.alignment        = PlayerHudLayout.HudPanelTextAlign;
+            text.enableAutoSizing     = false;
+            text.fontSize             = size;
+            text.margin               = Vector4.zero;
+            text.horizontalAlignment  = HorizontalAlignmentOptions.Center;
+            text.verticalAlignment    = VerticalAlignmentOptions.Middle;
+            text.alignment            = PlayerHudLayout.HudPanelTextAlign;
         }
 
         private void EnsureDisplayNameFromLabel()
