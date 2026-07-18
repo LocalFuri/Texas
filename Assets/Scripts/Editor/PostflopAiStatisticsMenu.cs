@@ -46,7 +46,7 @@ namespace TexasHoldem
                                 (float)handNumber / total);
                         });
 
-                Debug.Log(
+                Debug.LogWarning(
                     $"[PostflopStats] Menu complete: " +
                     $"ok={result.Ok} completed={result.Stats.HandsCompleted}/{result.Stats.HandsAttempted}");
             }
