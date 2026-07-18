@@ -1471,6 +1471,17 @@ namespace TexasHoldem
             StartCoroutine(HideStartButtonAfterPress());
         }
 
+        /// <summary>
+        /// Called when a debug hand starts outside the Start button so AutoStart / Start
+        /// cannot launch a competing normal <see cref="GameManager.StartGame"/>.
+        /// </summary>
+        public void NotifyExternalDebugHandStarting()
+        {
+            _gameStarted = true;
+            SetStartButtonVisible(false);
+            ApplyButtonRowSize();
+        }
+
         private IEnumerator HideStartButtonAfterPress()
         {
             yield return new WaitForSeconds(StartHideDelaySecs);

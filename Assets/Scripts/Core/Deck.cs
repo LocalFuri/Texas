@@ -38,5 +38,21 @@ namespace TexasHoldem
             _cards.RemoveAt(0);
             return card;
         }
+
+        /// <summary>Removes and returns a specific card (debug / scripted deals).</summary>
+        public Card Take(Suit suit, Rank rank)
+        {
+            for (int i = 0; i < _cards.Count; i++)
+            {
+                Card card = _cards[i];
+                if (card.Suit == suit && card.Rank == rank)
+                {
+                    _cards.RemoveAt(i);
+                    return card;
+                }
+            }
+
+            throw new InvalidOperationException($"Card not in deck: {rank} of {suit}");
+        }
     }
 }

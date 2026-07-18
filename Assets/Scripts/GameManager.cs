@@ -203,6 +203,11 @@ namespace TexasHoldem
         private AIController   _aiController;
         private readonly SuspiciousPreflopDebugLog _suspiciousPreflopLog = new SuspiciousPreflopDebugLog();
 
+        /// <summary>Temporary: force the Jasmine call-down scripted hand for one round.</summary>
+        private bool _jasmineCallDownHandPending;
+        private bool _jasmineCallDownHandActive;
+        private bool _restrictRebuyToDebugDuo;
+
         private int           _currentPlayersBehind;
         private int           _currentCallersBefore;
         private PreflopSeatBucket _currentShovePosition = PreflopSeatBucket.Button;
@@ -319,9 +324,149 @@ namespace TexasHoldem
                 TableSounds = gameObject.AddComponent<TableSoundManager>();
         }
 
+        /// <summary>
+        /// Temporary debug: HU Ace Maverick vs Jasmine Vale with fixed cards.
+        /// Normal AI / betting; Jasmine is not scripted. Writes full hand protocol.
+        /// </summary>
+        public void StartJasmineCallDownDebugHand()
+        {
+            StopAllCoroutines();
+            _awaitingHumanInput    = false;
+            _awaitingWinnerDismiss = false;
+            _potAwardPending       = false;
+            HideWinnerDismissControls();
+            _humanAction      = default;
+            _humanRaiseAmount = 0;
+
+            // Block AutoStart / Start button from launching a normal GameLoop.
+            ResolveUiManager()?.NotifyExternalDebugHandStarting();
+
+            InitializePlayersForJasmineCallDown();
+            PrepareJasmineCallDownSeats();
+
+            if (!HasPlayerNamed("Ace Maverick") || !HasPlayerNamed("Jasmine Vale"))
+            {
+                Debug.LogError(
+                    "[JasmineCallDown] Ace Maverick and Jasmine Vale must both be seated. Aborting.");
+                return;
+            }
+
+            _jasmineCallDownHandPending = true;
+            _jasmineCallDownHandActive  = true;
+            _restrictRebuyToDebugDuo    = true;
+
+            OnGameMessage?.Invoke(
+                "Debug hand: Ace Maverick (Kc 8c) vs Jasmine Vale (Qh Th). " +
+                "Board Kh 8s 5h | As | Ac. Normal AI.");
+            NotifyPlayersUpdated();
+            Debug.Log(
+                $"[JasmineCallDown] Seats ready: active=" +
+                $"{Players.FindAll(p => p.Chips > 0).Count}, dealerIndex={DealerIndex}, " +
+                $"Ace chips={FindPlayerChips("Ace Maverick")}, Jasmine chips={FindPlayerChips("Jasmine Vale")}");
+            StartCoroutine(RunJasmineCallDownDebugHand());
+        }
+
+        private IEnumerator RunJasmineCallDownDebugHand()
+        {
+            yield return StartCoroutine(PlayRound());
+            _jasmineCallDownHandPending = false;
+            _jasmineCallDownHandActive  = false;
+            _restrictRebuyToDebugDuo    = false;
+            SetPhase(GamePhase.WaitingToStart);
+            OnGameMessage?.Invoke("Jasmine call-down debug hand finished. Protocol written to AI debug log.");
+        }
+
+        /// <summary>Always seats all six named players so Jasmine (seat 4) exists.</summary>
+        private void InitializePlayersForJasmineCallDown()
+        {
+            _tableLayout?.SyncPlayerDisplayNames();
+            Players.Clear();
+
+            // Canonical names — do not depend on _aiPlayerCount (which often omits Jasmine).
+            string[] names =
+            {
+                "Ace Maverick",
+                "Lady Luck",
+                "Prince Beaumont",
+                "Victor Shark",
+                "Jasmine Vale",
+                "Alex Hunter",
+            };
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                PlayerType type = i == 0 ? PlayerType.Human : PlayerType.AI;
+                Players.Add(new PlayerState(names[i], type, _startingChips));
+            }
+        }
+
+        private void PrepareJasmineCallDownSeats()
+        {
+            const int stack = 1000;
+            int aceIndex = -1;
+            int jasmineIndex = -1;
+
+            for (int i = 0; i < Players.Count; i++)
+            {
+                PlayerState p = Players[i];
+                if (p == null)
+                    continue;
+
+                if (p.Name == "Ace Maverick")
+                {
+                    p.Chips = stack;
+                    aceIndex = i;
+                }
+                else if (p.Name == "Jasmine Vale")
+                {
+                    p.Chips = stack;
+                    jasmineIndex = i;
+                }
+                else
+                {
+                    p.Chips = 0;
+                }
+            }
+
+            // Ace = dealer = BB in this engine's 2-player indexing; Jasmine = SB.
+            DealerIndex = aceIndex >= 0 ? aceIndex : 0;
+
+            Debug.Log(
+                $"[JasmineCallDown] PrepareSeats aceIndex={aceIndex} jasmineIndex={jasmineIndex} " +
+                $"dealerIndex={DealerIndex}");
+        }
+
+        private bool HasPlayerNamed(string name)
+        {
+            for (int i = 0; i < Players.Count; i++)
+            {
+                if (Players[i] != null && Players[i].Name == name)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private int FindPlayerChips(string name)
+        {
+            for (int i = 0; i < Players.Count; i++)
+            {
+                if (Players[i] != null && Players[i].Name == name)
+                    return Players[i].Chips;
+            }
+
+            return -1;
+        }
+
         /// <summary>Called by the UI Start button to begin the game loop.</summary>
         public void StartGame()
         {
+            if (_jasmineCallDownHandPending || _jasmineCallDownHandActive)
+            {
+                Debug.LogWarning("[GameManager] Ignoring StartGame — Jasmine call-down debug hand in progress.");
+                return;
+            }
+
             AssignRandomDealer();
             StartCoroutine(GameLoop());
         }
@@ -404,11 +549,19 @@ namespace TexasHoldem
             LastBbWalkNetWin   = 0;
             LastBbWalkSbPlayer = null;
 
+            if (_jasmineCallDownHandPending || _jasmineCallDownHandActive)
+            {
+                _jasmineCallDownHandPending = false;
+                _jasmineCallDownHandActive  = true;
+                PrepareJasmineCallDownSeats();
+            }
+
             // Reset the board display at the start of every round.
             OnCommunityCardsUpdated?.Invoke(_boardManager.CommunityCards);
 
             var active   = Players.Where(p => p.Chips > 0).ToList();
-            ApplyGodModeIfEnabled(active);
+            if (!_jasmineCallDownHandActive)
+                ApplyGodModeIfEnabled(active);
             // Snapshot seats + dealer for the whole hand so all-ins do not shift preflop positions.
             _handPlayers             = active;
             _handDealerIndexInHand   = ((DealerIndex % active.Count) + active.Count) % active.Count;
@@ -470,7 +623,13 @@ namespace TexasHoldem
 
             // ── Flop ──────────────────────────────────────────────────────
             yield return CollectStreetBetsBeforeNextStreet(active);
-            _boardManager.DealFlop();
+            if (_jasmineCallDownHandActive)
+                _boardManager.DealScriptedFlop(
+                    Suit.Hearts, Rank.King,
+                    Suit.Spades, Rank.Eight,
+                    Suit.Hearts, Rank.Five);
+            else
+                _boardManager.DealFlop();
             var flop = _boardManager.CommunityCards;
             SetPhase(GamePhase.Flop);
             _suspiciousPreflopLog.RecordBoard(GamePhase.Flop, flop);
@@ -484,7 +643,10 @@ namespace TexasHoldem
 
             // ── Turn ──────────────────────────────────────────────────────
             yield return CollectStreetBetsBeforeNextStreet(active);
-            _boardManager.DealTurn();
+            if (_jasmineCallDownHandActive)
+                _boardManager.DealScriptedTurn(Suit.Spades, Rank.Ace);
+            else
+                _boardManager.DealTurn();
             var board4 = _boardManager.CommunityCards;
             SetPhase(GamePhase.Turn);
             _suspiciousPreflopLog.RecordBoard(GamePhase.Turn, board4);
@@ -497,7 +659,10 @@ namespace TexasHoldem
 
             // ── River ─────────────────────────────────────────────────────
             yield return CollectStreetBetsBeforeNextStreet(active);
-            _boardManager.DealRiver();
+            if (_jasmineCallDownHandActive)
+                _boardManager.DealScriptedRiver(Suit.Clubs, Rank.Ace);
+            else
+                _boardManager.DealRiver();
             var board5 = _boardManager.CommunityCards;
             SetPhase(GamePhase.River);
             _suspiciousPreflopLog.RecordBoard(GamePhase.River, board5);
@@ -1075,6 +1240,14 @@ namespace TexasHoldem
             int maxBuyIn = _startingChips;
             foreach (PlayerState player in Players)
             {
+                if (_restrictRebuyToDebugDuo
+                    && player.Name != "Ace Maverick"
+                    && player.Name != "Jasmine Vale")
+                {
+                    player.Chips = 0;
+                    continue;
+                }
+
                 if (player.Chips >= maxBuyIn)
                     continue;
 
@@ -1104,7 +1277,29 @@ namespace TexasHoldem
 
             try
             {
-                if (ui != null && ui.AnimatePreflopDeal)
+                if (_jasmineCallDownHandActive)
+                {
+                    PlayerState ace = active.Find(p => p.Name == "Ace Maverick");
+                    PlayerState jasmine = active.Find(p => p.Name == "Jasmine Vale");
+                    if (ace != null)
+                        _boardManager.AssignHoleCards(
+                            ace, Suit.Clubs, Rank.King, Suit.Clubs, Rank.Eight);
+                    if (jasmine != null)
+                        _boardManager.AssignHoleCards(
+                            jasmine, Suit.Hearts, Rank.Queen, Suit.Hearts, Rank.Ten);
+
+                    if (ui != null)
+                    {
+                        for (int i = 0; i < active.Count; i++)
+                        {
+                            PlayerState player = active[i];
+                            int seatIndex = Players.IndexOf(player);
+                            ui.PlacePreflopHoleCard(seatIndex, 0, player);
+                            ui.PlacePreflopHoleCard(seatIndex, 1, player);
+                        }
+                    }
+                }
+                else if (ui != null && ui.AnimatePreflopDeal)
                 {
                     for (int round = 0; round < 2; round++)
                     {
@@ -1144,6 +1339,9 @@ namespace TexasHoldem
         }
 
 #if UNITY_EDITOR
+        [ContextMenu("Debug/Start Jasmine Call-Down Hand")]
+        private void ContextStartJasmineCallDownDebugHand() => StartJasmineCallDownDebugHand();
+
         private void OnValidate()
         {
             if (Application.isPlaying) return;

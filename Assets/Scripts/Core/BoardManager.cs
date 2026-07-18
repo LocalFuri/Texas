@@ -73,5 +73,39 @@ namespace TexasHoldem
             _deck.Deal(); // burn
             CommunityCards.Add(_deck.Deal());
         }
+
+        /// <summary>Debug: assign exact hole cards (removes them from the deck).</summary>
+        public void AssignHoleCards(PlayerState player, Suit s0, Rank r0, Suit s1, Rank r1)
+        {
+            if (player == null)
+                return;
+
+            player.HoleCards.Clear();
+            player.HoleCards.Add(_deck.Take(s0, r0));
+            player.HoleCards.Add(_deck.Take(s1, r1));
+        }
+
+        /// <summary>Debug: burn one, then reveal three exact flop cards.</summary>
+        public void DealScriptedFlop(Suit s0, Rank r0, Suit s1, Rank r1, Suit s2, Rank r2)
+        {
+            _deck.Deal(); // burn
+            CommunityCards.Add(_deck.Take(s0, r0));
+            CommunityCards.Add(_deck.Take(s1, r1));
+            CommunityCards.Add(_deck.Take(s2, r2));
+        }
+
+        /// <summary>Debug: burn one, then reveal an exact turn card.</summary>
+        public void DealScriptedTurn(Suit suit, Rank rank)
+        {
+            _deck.Deal(); // burn
+            CommunityCards.Add(_deck.Take(suit, rank));
+        }
+
+        /// <summary>Debug: burn one, then reveal an exact river card.</summary>
+        public void DealScriptedRiver(Suit suit, Rank rank)
+        {
+            _deck.Deal(); // burn
+            CommunityCards.Add(_deck.Take(suit, rank));
+        }
     }
 }

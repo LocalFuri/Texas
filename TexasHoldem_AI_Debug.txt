@@ -1,0 +1,33 @@
+﻿Texas Hold'em AI Debug Log
+==========================
+
+(Complete hand protocols appended below.)
+
+=== Hand #1 ===
+Players:
+  Ace Maverick | pos=BigBlind | hole=10♦ 5♣ | startStack=1000 | tier=Weak
+  Lady Luck | pos=Early | hole=7♦ J♠ | startStack=1000 | tier=Weak
+  Prince Beaumont | pos=Middle | hole=6♠ 4♣ | startStack=1000 | tier=Weak
+  Victor Shark | pos=Cutoff | hole=A♥ 9♦ | startStack=1000 | tier=Playable
+  Jasmine Vale | pos=Button | hole=3♦ 9♣ | startStack=1000 | tier=Weak
+  Alex Hunter | pos=SmallBlind | hole=K♣ 2♥ | startStack=1000 | tier=Weak
+Board by street:
+  Flop:  (none)
+  Turn:  (none)
+  River: (none)
+Betting sequence:
+  PreFlop | Alex Hunter | Call | amount=1 | pot=1 | tableBet=0 | playerStreetBet=1 | streetRaiseCount=0 | tier=Weak
+  PreFlop | Ace Maverick | Call | amount=2 | pot=3 | tableBet=2 | playerStreetBet=2 | streetRaiseCount=0 | tier=Weak
+  PreFlop | Lady Luck | Fold | amount=0 | pot=3 | tableBet=2 | playerStreetBet=0 | streetRaiseCount=0 | tier=Weak
+  PreFlop | Prince Beaumont | Fold | amount=0 | pot=3 | tableBet=2 | playerStreetBet=0 | streetRaiseCount=0 | tier=Weak
+  PreFlop | Victor Shark | Raise | amount=3 | pot=8 | tableBet=5 | playerStreetBet=5 | streetRaiseCount=1 | tier=Playable
+  PreFlop | Jasmine Vale | Fold | amount=0 | pot=8 | tableBet=5 | playerStreetBet=0 | streetRaiseCount=1 | tier=Weak
+  PreFlop | Alex Hunter | Fold | amount=0 | pot=8 | tableBet=5 | playerStreetBet=1 | streetRaiseCount=1 | tier=Weak
+  PreFlop | Ace Maverick | Fold | amount=0 | pot=8 | tableBet=5 | playerStreetBet=2 | streetRaiseCount=1 | tier=Weak
+Postflop AI decisions:
+  (none)
+Final board: (none)
+Showdown hands:
+  (none — folded out / no showdown)
+Winner: Victor Shark
+Pot: gross=3 awarded=3
