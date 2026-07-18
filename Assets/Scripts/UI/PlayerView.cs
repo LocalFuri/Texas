@@ -303,6 +303,23 @@ namespace TexasHoldem
             }
         }
 
+        private void AlignHudPanelTextsCenter()
+        {
+            AlignHudTextCenter(_nameText);
+            AlignHudTextCenter(_netProfitText);
+            AlignHudTextCenter(_chipsText);
+        }
+
+        private static void AlignHudTextCenter(TMP_Text text)
+        {
+            if (text == null)
+                return;
+            text.margin               = Vector4.zero;
+            text.horizontalAlignment  = HorizontalAlignmentOptions.Center;
+            text.verticalAlignment    = VerticalAlignmentOptions.Middle;
+            text.alignment            = PlayerHudLayout.HudPanelTextAlign;
+        }
+
         /// <summary>Signed, one-decimal net profit, e.g. "+127.0", "-53.5", "0.0".</summary>
         private static string FormatNetProfit(int netProfit)
         {
@@ -911,6 +928,8 @@ namespace TexasHoldem
             if (_nameText  != null) _nameText.text  = player.Name;
             if (_chipsText != null) _chipsText.text = FormatChipsHud(player.Chips, bigBlind);
             UpdateNetProfitDisplay(player.SessionNetProfit);
+            // Keep the three HUD rows center-aligned after text updates.
+            AlignHudPanelTextsCenter();
 
             string status = player.Chips == 0 ? "Eliminated"
                                 : player.HasFolded  ? "Folded"

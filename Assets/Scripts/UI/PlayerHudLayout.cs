@@ -180,6 +180,7 @@ namespace TexasHoldem
         public static TextAlignmentOptions TextAlign(bool mirrored)
             => mirrored ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
 
+        /// <summary>HUD name / net / chips — center-aligned in a shared rect so lines share one vertical axis.</summary>
         public static TextAlignmentOptions HudPanelTextAlign => TextAlignmentOptions.Midline;
 
         /// <summary>Reads HudPanel center and width after layout.</summary>
@@ -197,8 +198,8 @@ namespace TexasHoldem
         }
 
         /// <summary>
-        /// Name / NetProfit / Chips share one horizontal geometry in the uncovered HudPanel band
-        /// (same parent, width, anchors, pivot, X, TMP center alignment, zero margins).
+        /// Name / NetProfit / Chips share one rect in the uncovered HudPanel band and are
+        /// center-aligned so their glyphs share the same vertical center axis.
         /// </summary>
         public static void ApplyHudPanelTextBlock(Transform root, float panelCenterX, float panelCenterY, float panelWidth)
         {
@@ -224,8 +225,6 @@ namespace TexasHoldem
                 uncoveredWidth = panelRight - avatarRight;
             }
 
-            // Width is exactly the uncovered band (not a wider TextW floor), so every row
-            // centers in the same visible HUD text area.
             float textWidth   = Mathf.Max(uncoveredWidth - HudTextPadPx * 2f, 1f);
             float nameY       = GetCenteredNameY(panelCenterY);
             float netProfitY  = GetNetProfitY(panelCenterY);
@@ -287,7 +286,6 @@ namespace TexasHoldem
 
             tmp.margin              = Vector4.zero;
             tmp.enableWordWrapping  = false;
-            // Explicit horizontal center — Midline alone can leave stale left-align on some TMP versions.
             tmp.horizontalAlignment = HorizontalAlignmentOptions.Center;
             tmp.verticalAlignment   = VerticalAlignmentOptions.Middle;
             tmp.alignment           = HudPanelTextAlign;
