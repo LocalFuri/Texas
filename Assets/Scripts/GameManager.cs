@@ -322,6 +322,7 @@ namespace TexasHoldem
         /// <summary>Called by the UI Start button to begin the game loop.</summary>
         public void StartGame()
         {
+            AssignRandomDealer();
             StartCoroutine(GameLoop());
         }
 
@@ -335,14 +336,26 @@ namespace TexasHoldem
             HideWinnerDismissControls();
             _humanAction        = default;
             _humanRaiseAmount   = 0;
-            DealerIndex         = 0;
             InitializePlayers();
+            AssignRandomDealer();
             _bettingManager.ResetRound();
             _boardManager.NewDeck();
             SetPhase(GamePhase.WaitingToStart);
             OnCommunityCardsUpdated?.Invoke(_boardManager.CommunityCards);
             NotifyPlayersUpdated();
             OnGameMessage?.Invoke(string.Empty);
+        }
+
+        /// <summary>Picks a random seat as dealer for the upcoming session / first hand.</summary>
+        private void AssignRandomDealer()
+        {
+            if (Players == null || Players.Count == 0)
+            {
+                DealerIndex = 0;
+                return;
+            }
+
+            DealerIndex = Random.Range(0, Players.Count);
         }
 
         private void InitializePlayers()
