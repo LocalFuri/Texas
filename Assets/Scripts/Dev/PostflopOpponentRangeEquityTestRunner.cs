@@ -3,12 +3,13 @@ using UnityEngine;
 namespace TexasHoldem.Dev
 {
     /// <summary>
-    /// Regression: same hand/board — equity vs turn shove range is lower than vs passive check/call.
+    /// Regression: opponent-range mapping and equity vs Wide / Strong / Strongest.
     /// </summary>
     public sealed class PostflopOpponentRangeEquityTestRunner : MonoBehaviour
     {
         private const int SimulationCount = 10_000;
         private const float MinEquityGapPercent = 3f;
+        private const float MinAqStrongVsWideGapPercent = 3f;
 
         [ContextMenu("Run Postflop Opponent-Range Equity Tests")]
         private void RunFromContextMenu() => RunAllTests();
@@ -16,7 +17,7 @@ namespace TexasHoldem.Dev
         public static (int passed, int total) RunAllTests()
         {
             int passed = 0;
-            const int total = 4;
+            const int total = 5;
 
             Debug.Log("[PostflopOppRange] Running opponent-range equity regression(s)...");
 
@@ -27,6 +28,8 @@ namespace TexasHoldem.Dev
             if (RunCheckedToSingleRaisedKeepsWide())
                 passed++;
             if (RunShoveVsPassiveEquityCase())
+                passed++;
+            if (RunAqPairedConnectedStrongTighterThanWide())
                 passed++;
 
             Debug.Log($"[PostflopOppRange] Complete: {passed}/{total} passed.");
@@ -145,6 +148,55 @@ namespace TexasHoldem.Dev
                 $"  Passive(Wide) equity={passive.EquityPercent:F2}%\n" +
                 $"  Shove(Strongest) equity={shove.EquityPercent:F2}%\n" +
                 $"  Gap={gap:F2}% (need ≥ {MinEquityGapPercent:F1}%)\n" +
+                $"  Result: {(ok ? "PASS" : "FAIL")}");
+
+            return ok;
+        }
+
+        /// <summary>
+        /// Paired+connected turn: tightened Strong must be materially worse for AQ than Wide.
+        /// </summary>
+        private static bool RunAqPairedConnectedStrongTighterThanWide()
+        {
+            var hole = new[]
+            {
+                new Card(Suit.Hearts, Rank.Ace),
+                new Card(Suit.Hearts, Rank.Queen),
+            };
+            var board = new[]
+            {
+                new Card(Suit.Clubs, Rank.Nine),
+                new Card(Suit.Hearts, Rank.Seven),
+                new Card(Suit.Diamonds, Rank.Eight),
+                new Card(Suit.Clubs, Rank.Eight),
+            };
+
+            MonteCarloSimulator.MeasureStrongAcceptanceBeforeAfter(
+                hole, board,
+                out float legacyAcceptPercent,
+                out float currentAcceptPercent);
+
+            UnityEngine.Random.InitState(20260718);
+            MonteCarloResult wide = MonteCarloSimulator.Simulate(
+                hole, board, activeOpponentCount: 1, SimulationCount, OpponentRangeStrength.Wide);
+
+            UnityEngine.Random.InitState(20260718);
+            MonteCarloResult strong = MonteCarloSimulator.Simulate(
+                hole, board, activeOpponentCount: 1, SimulationCount, OpponentRangeStrength.Strong);
+
+            float equityGap = wide.EquityPercent - strong.EquityPercent;
+            bool equityOk = equityGap >= MinAqStrongVsWideGapPercent;
+            bool acceptOk = currentAcceptPercent + 5f < legacyAcceptPercent;
+            bool ok = equityOk && acceptOk;
+
+            Debug.Log(
+                $"[PostflopOppRange] AQ on 9c7h8d8c — Strong tighter than Wide\n" +
+                $"  Hole: {hole[0]} {hole[1]} Board: {board[0]} {board[1]} {board[2]} {board[3]}\n" +
+                $"  Wide equity={wide.EquityPercent:F2}%\n" +
+                $"  Strong equity={strong.EquityPercent:F2}%\n" +
+                $"  Equity gap={equityGap:F2}% (need ≥ {MinAqStrongVsWideGapPercent:F1}%)\n" +
+                $"  Strong accept% before (legacy)={legacyAcceptPercent:F2}%\n" +
+                $"  Strong accept% after (tightened)={currentAcceptPercent:F2}%\n" +
                 $"  Result: {(ok ? "PASS" : "FAIL")}");
 
             return ok;

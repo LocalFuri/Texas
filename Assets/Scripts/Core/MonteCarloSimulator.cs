@@ -289,6 +289,25 @@ namespace TexasHoldem
                 simulationCount);
         }
 
+        /// <summary>
+        /// Dev/test: % of unknown hole combos that pass Strong before vs after wet turn/river tightening.
+        /// Legacy = OnePair+ or any FD/OESD on hole+board ranks (pre-tightening Strong).
+        /// </summary>
+        public static void MeasureStrongAcceptanceBeforeAfter(
+            IReadOnlyList<Card> heroHoleCards,
+            IReadOnlyList<Card> communityCards,
+            out float legacyStrongPercent,
+            out float currentStrongPercent)
+        {
+            ValidateInputs(heroHoleCards, communityCards, activeOpponentCount: 1, simulationCount: 1);
+            var workspace = new SimulationWorkspace();
+            workspace.Initialize(heroHoleCards, communityCards);
+            legacyStrongPercent  = workspace.MeasureAcceptancePercent(
+                OpponentRangeStrength.Strong, legacyStrong: true);
+            currentStrongPercent = workspace.MeasureAcceptancePercent(
+                OpponentRangeStrength.Strong, legacyStrong: false);
+        }
+
         private static void ValidateInputs(
             IReadOnlyList<Card> heroHoleCards,
             IReadOnlyList<Card> communityCards,
@@ -340,6 +359,8 @@ namespace TexasHoldem
             private Card _hero1;
             private int  _deckCount;
             private int  _boardKnown;
+            /// <summary>Turn/river paired or connected: use tightened Strong filter.</summary>
+            private bool _tightenStrongOnPairedOrConnected;
 
             public void Initialize(IReadOnlyList<Card> heroHoleCards, IReadOnlyList<Card> communityCards)
             {
@@ -349,6 +370,8 @@ namespace TexasHoldem
                 _boardKnown = communityCards.Count;
                 for (int i = 0; i < _boardKnown; i++)
                     _board[i] = communityCards[i];
+
+                _tightenStrongOnPairedOrConnected = ShouldTightenStrongRange(communityCards);
 
                 var known = new HashSet<(Suit, Rank)>();
                 known.Add((_hero0.Suit, _hero0.Rank));
@@ -367,6 +390,45 @@ namespace TexasHoldem
                         _deck[_deckCount++] = new Card(suit, rank);
                     }
                 }
+            }
+
+            private static bool ShouldTightenStrongRange(IReadOnlyList<Card> communityCards)
+            {
+                if (communityCards == null || communityCards.Count < 4)
+                    return false;
+
+                BoardTextureFlags flags = BoardTextureAnalyzer.Analyze(communityCards);
+                bool paired = (flags & (BoardTextureFlags.Paired
+                    | BoardTextureFlags.TwoPair
+                    | BoardTextureFlags.Trips)) != 0;
+                bool connected = (flags & (BoardTextureFlags.Connected
+                    | BoardTextureFlags.FourStraight)) != 0;
+                return paired || connected;
+            }
+
+            /// <summary>
+            /// Fraction of unknown hole combos (deck after hero+board removed) that pass the filter.
+            /// </summary>
+            public float MeasureAcceptancePercent(OpponentRangeStrength range, bool legacyStrong)
+            {
+                int total = 0;
+                int fit   = 0;
+
+                for (int i = 0; i < _deckCount; i++)
+                {
+                    for (int j = i + 1; j < _deckCount; j++)
+                    {
+                        total++;
+                        bool accepts = legacyStrong
+                            ? FitsLegacyStrong(_deck[i], _deck[j])
+                            : FitsRange(_deck[i], _deck[j], range);
+
+                        if (accepts)
+                            fit++;
+                    }
+                }
+
+                return total == 0 ? 0f : 100f * fit / total;
             }
 
             public void RunOneSimulation(
@@ -504,7 +566,9 @@ namespace TexasHoldem
 
             /// <summary>
             /// Wide: any hand.
-            /// Strong: OnePair+ / made flush-straight / FD / OESD.
+            /// Strong (flop / dry): OnePair+ / FD / OESD.
+            /// Strong (turn/river paired or connected): TwoPair+, hole-contributed OnePair,
+            ///   credible FD (hole suit), or FD+OESD combo — not pure board-pair or bare OESD.
             /// Strongest: TwoPair+, top pair / overpair, made flush-straight, or FD/OESD.
             /// </summary>
             private bool FitsRange(Card h0, Card h1, OpponentRangeStrength range)
@@ -512,7 +576,9 @@ namespace TexasHoldem
                 ClassifyHoleOnBoard(h0, h1,
                     out HandRank made,
                     out bool topPairOrOverpair,
-                    out bool strongDraw);
+                    out bool strongDraw,
+                    out _,
+                    out bool madeFlush);
 
                 if (range == OpponentRangeStrength.Strongest)
                 {
@@ -521,7 +587,79 @@ namespace TexasHoldem
                         || strongDraw;
                 }
 
+                if (range == OpponentRangeStrength.Wide)
+                    return true;
+
+                // Strong
+                if (!_tightenStrongOnPairedOrConnected)
+                    return made >= HandRank.OnePair || strongDraw;
+
+                if (made >= HandRank.TwoPair)
+                    return true;
+
+                if (made == HandRank.OnePair && HoleContributesPair(h0, h1))
+                    return true;
+
+                // Draws only before river; bare OESDs never qualify on these boards.
+                if (_boardKnown < 5 && HasCredibleFlushDraw(h0, h1, madeFlush))
+                    return true;
+
+                return false;
+            }
+
+            /// <summary>Pre-tightening Strong: OnePair+ or any hole+board FD/OESD.</summary>
+            private bool FitsLegacyStrong(Card h0, Card h1)
+            {
+                ClassifyHoleOnBoard(h0, h1,
+                    out HandRank made,
+                    out _,
+                    out bool strongDraw,
+                    out _,
+                    out _);
                 return made >= HandRank.OnePair || strongDraw;
+            }
+
+            private bool HoleContributesPair(Card h0, Card h1)
+            {
+                if (h0.Rank == h1.Rank)
+                    return true;
+
+                for (int i = 0; i < _boardKnown; i++)
+                {
+                    Rank boardRank = _board[i].Rank;
+                    if (h0.Rank == boardRank || h1.Rank == boardRank)
+                        return true;
+                }
+
+                return false;
+            }
+
+            /// <summary>Exactly 4 to a suit with ≥1 hole card of that suit (not a made flush).</summary>
+            private bool HasCredibleFlushDraw(Card h0, Card h1, bool madeFlush)
+            {
+                if (madeFlush)
+                    return false;
+
+                Array.Clear(_suitCounts, 0, _suitCounts.Length);
+                for (int i = 0; i < _boardKnown; i++)
+                    _suitCounts[(int)_board[i].Suit]++;
+
+                int s0 = (int)h0.Suit;
+                int s1 = (int)h1.Suit;
+                _suitCounts[s0]++;
+                _suitCounts[s1]++;
+
+                for (int s = 0; s < 4; s++)
+                {
+                    if (_suitCounts[s] != 4)
+                        continue;
+
+                    int holeOfSuit = (s0 == s ? 1 : 0) + (s1 == s ? 1 : 0);
+                    if (holeOfSuit >= 1)
+                        return true;
+                }
+
+                return false;
             }
 
             private void ClassifyHoleOnBoard(
@@ -529,7 +667,9 @@ namespace TexasHoldem
                 Card h1,
                 out HandRank made,
                 out bool topPairOrOverpair,
-                out bool strongDraw)
+                out bool strongDraw,
+                out bool openEnded,
+                out bool madeFlush)
             {
                 Array.Clear(_rankCounts, 0, _rankCounts.Length);
                 Array.Clear(_suitCounts, 0, _suitCounts.Length);
@@ -557,7 +697,7 @@ namespace TexasHoldem
                     else if (c == 2) pairs++;
                 }
 
-                bool madeFlush = false;
+                madeFlush = false;
                 bool flushDraw = false;
                 for (int s = 0; s < 4; s++)
                 {
@@ -568,7 +708,7 @@ namespace TexasHoldem
                 }
 
                 bool madeStraight = HasStraight(_rankPresent);
-                bool openEnded = !madeStraight && HasOpenEndedStraightDraw(_rankPresent);
+                openEnded = !madeStraight && HasOpenEndedStraightDraw(_rankPresent);
 
                 if (quads > 0)
                     made = HandRank.FourOfAKind;
@@ -589,6 +729,7 @@ namespace TexasHoldem
                 else
                     made = HandRank.HighCard;
 
+                // Legacy / Strongest draw signal (may include bare OESD / board-only FD).
                 strongDraw = (!madeFlush && flushDraw) || openEnded;
 
                 topPairOrOverpair = false;

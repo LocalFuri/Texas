@@ -7,8 +7,9 @@ using UnityEngine;
 namespace TexasHoldem
 {
     /// <summary>
-    /// Appends a complete betting protocol for every hand to TexasHoldem_AI_Debug.txt
-    /// next to the game executable. Observes only — does not affect AI decisions.
+    /// Writes a complete betting protocol for each hand to TexasHoldem_AI_Debug.txt
+    /// next to the game executable. The file is reset at the start of every new round.
+    /// Observes only — does not affect AI decisions.
     /// </summary>
     public sealed class SuspiciousPreflopDebugLog
     {
@@ -67,19 +68,27 @@ namespace TexasHoldem
             if (!ClearDebugLogOnStartup)
                 return;
 
+            ResetDebugFile("startup");
+        }
+
+        /// <summary>Overwrite the debug log with the header only (drops prior hands).</summary>
+        private void ResetDebugFile(string reason)
+        {
             try
             {
-                File.WriteAllText(path, FileHeader, Encoding.UTF8);
-                Debug.Log("[AIDebugLog] Cleared log file (header only).");
+                File.WriteAllText(ResolveLogPath(), FileHeader, Encoding.UTF8);
+                Debug.Log($"[AIDebugLog] Cleared log file ({reason}).");
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[AIDebugLog] Clear on startup failed: {ex.Message}");
+                Debug.LogWarning($"[AIDebugLog] Clear failed ({reason}): {ex.Message}");
             }
         }
 
         public void BeginHand(IReadOnlyList<PlayerState> players, Func<PlayerState, PreflopSeatBucket> seatOf)
         {
+            ResetDebugFile("new round");
+
             _handNumber++;
             _handActive = true;
             _players.Clear();
