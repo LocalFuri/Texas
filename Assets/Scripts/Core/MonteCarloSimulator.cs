@@ -51,6 +51,14 @@ namespace TexasHoldem
         private const int PerformanceBenchmarkOpponentCount = 2;
 
         /// <summary>
+        /// Same near-stack gate used by <see cref="ResolveOpponentRange"/> (≥50% of defender stack).
+        /// </summary>
+        public static bool IsNearStackCall(int callAmount, int defenderChips) =>
+            defenderChips > 0
+            && callAmount > 0
+            && callAmount >= Mathf.CeilToInt(defenderChips * NearStackCallFraction);
+
+        /// <summary>
         /// Maps facing-bet context to an opponent range tier, floored by preflop aggression.
         /// Street: check → Wide; bet/raise → Strong; re-raise or ≥50% stack call → Strongest.
         /// Preflop floor: 3-bet pot → Strong; 4-bet+ pot → Strongest. Never widens below that floor.
@@ -90,8 +98,7 @@ namespace TexasHoldem
             if (!facingBet || callAmount <= 0)
                 return OpponentRangeStrength.Wide;
 
-            bool nearStack = defenderChips > 0
-                && callAmount >= Mathf.CeilToInt(defenderChips * NearStackCallFraction);
+            bool nearStack = IsNearStackCall(callAmount, defenderChips);
 
             if (streetRaiseCount >= 2 || nearStack)
                 return OpponentRangeStrength.Strongest;
@@ -118,13 +125,14 @@ namespace TexasHoldem
                 streetWhy = "check/call (no bet faced)";
             else if (streetRaiseCount >= 2)
                 streetWhy = $"re-raise (streetRaiseCount={streetRaiseCount})";
+            else if (IsNearStackCall(callAmount, defenderChips))
+            {
+                streetWhy =
+                    $"near-stack shove/call call={callAmount} ≥50% stack chips={defenderChips}";
+            }
             else
             {
-                bool nearStack = defenderChips > 0
-                    && callAmount >= Mathf.CeilToInt(defenderChips * NearStackCallFraction);
-                streetWhy = nearStack
-                    ? $"near-stack shove/call call={callAmount} ≥50% stack chips={defenderChips}"
-                    : $"bet/raise (streetRaiseCount={streetRaiseCount})";
+                streetWhy = $"bet/raise (streetRaiseCount={streetRaiseCount})";
             }
 
             if (floor > street)

@@ -160,12 +160,14 @@ namespace TexasHoldem
                     player,
                     phase,
                     communityCards,
+                    allPlayers,
                     equityPercent,
                     opponentRange,
                     opponentRangeWhy,
                     potAmount,
                     callAmount,
                     tableCurrentBet,
+                    streetRaiseCount,
                     opponentCount,
                     canCheck,
                     resolved.action,
@@ -455,16 +457,39 @@ namespace TexasHoldem
         private const float AdvisorRiverRaiseEdge  = 25f;
         private const float AdvisorRiverThinValue  = 55f;
 
+        /// <summary>Logging-only: |axis| at/above this contributes ±1 to the preview score.</summary>
+        private const float TendencyAxisPreviewThreshold = 0.3f;
+
+        private enum RangePreviewAdjustment
+        {
+            Upgrade,
+            None,
+            Downgrade,
+        }
+
+        private enum ObservedRangeAction
+        {
+            Check,
+            Call,
+            Bet,
+            Raise,
+            ReRaise,
+            NearStack,
+            AllIn,
+        }
+
         private void LogPostflopDecision(
             PlayerState player,
             GamePhase street,
             IReadOnlyList<Card> communityCards,
+            IReadOnlyList<PlayerState> allPlayers,
             float equityPercent,
             OpponentRangeStrength opponentRange,
             string opponentRangeWhy,
             int potAmount,
             int callAmount,
             int tableCurrentBet,
+            int streetRaiseCount,
             int opponentCount,
             bool canCheck,
             BettingAction action,
@@ -529,6 +554,24 @@ namespace TexasHoldem
             string category = FormatDetailedHandDescription(player, communityCards);
             string textureLabel = FormatBoardTextureLabel(texture);
 
+            PlayerState tendencyOpponent = ResolveFirstActiveOpponent(allPlayers, player);
+            PlayerTendencyProfile tendency = PlayerTendencyProfiles.GetProfile(tendencyOpponent);
+            string tendencyOpponentName = tendencyOpponent != null ? tendencyOpponent.Name : "(none)";
+
+            int heroChips = player != null ? player.Chips : 0;
+            ObservedRangeAction observed = ResolveObservedRangeAction(
+                street,
+                callAmount,
+                heroChips,
+                streetRaiseCount,
+                tendencyOpponent);
+            ResolveTendencyRangePreview(
+                tendency,
+                observed,
+                opponentRange,
+                out RangePreviewAdjustment previewAdj,
+                out OpponentRangeStrength previewRange);
+
             string block =
                 "[PostflopAI]\n" +
                 $"Player: {player?.Name ?? "(null)"}\n" +
@@ -538,6 +581,11 @@ namespace TexasHoldem
                 $"Category: {category}\n" +
                 $"Opponent Range: {opponentRange}\n" +
                 $"Opponent Range Why: {opponentRangeWhy ?? "(none)"}\n" +
+                $"Base Range: {opponentRange}\n" +
+                $"Player Tendency ({tendencyOpponentName}): {tendency}\n" +
+                $"Observed Action: {observed}\n" +
+                $"Preview Adjustment: {previewAdj}\n" +
+                $"Preview Range: {previewRange}\n" +
                 $"Equity (MC, {opponentRange}): {equityPercent:F1}%\n" +
                 $"Pot Odds: {FormatOptionalPercent(potOddsPercent)}\n" +
                 $"Call Amount: {callAmount}\n" +
@@ -560,6 +608,153 @@ namespace TexasHoldem
 
             Debug.Log(block);
             SuspiciousPreflopDebugLog.RecordPostflopDecision(block);
+        }
+
+        private static PlayerState ResolveFirstActiveOpponent(
+            IReadOnlyList<PlayerState> allPlayers,
+            PlayerState hero)
+        {
+            if (allPlayers == null || hero == null)
+                return null;
+
+            for (int i = 0; i < allPlayers.Count; i++)
+            {
+                PlayerState p = allPlayers[i];
+                if (p == null || p == hero || p.HasFolded)
+                    continue;
+                return p;
+            }
+
+            return null;
+        }
+
+        private ObservedRangeAction ResolveObservedRangeAction(
+            GamePhase street,
+            int callAmount,
+            int heroChips,
+            int streetRaiseCount,
+            PlayerState tendencyOpponent)
+        {
+            if (callAmount <= 0)
+                return ObservedRangeAction.Check;
+
+            if (MonteCarloSimulator.IsNearStackCall(callAmount, heroChips))
+                return ObservedRangeAction.NearStack;
+
+            if (TryGetLastOpponentStreetAction(street, tendencyOpponent, out BettingAction lastAction)
+                && lastAction == BettingAction.AllIn)
+            {
+                return ObservedRangeAction.AllIn;
+            }
+
+            if (TryGetLastOpponentStreetAction(street, tendencyOpponent, out lastAction)
+                && lastAction == BettingAction.Call)
+            {
+                return ObservedRangeAction.Call;
+            }
+
+            if (streetRaiseCount >= 3)
+                return ObservedRangeAction.ReRaise;
+            if (streetRaiseCount == 2)
+                return ObservedRangeAction.Raise;
+            if (streetRaiseCount >= 1)
+                return ObservedRangeAction.Bet;
+
+            return ObservedRangeAction.Call;
+        }
+
+        private bool TryGetLastOpponentStreetAction(
+            GamePhase street,
+            PlayerState tendencyOpponent,
+            out BettingAction action)
+        {
+            action = BettingAction.Check;
+            if (tendencyOpponent == null)
+                return false;
+
+            string name = tendencyOpponent.Name;
+            IReadOnlyList<HandActionEntry> entries = _handActionLog.Entries;
+            for (int i = entries.Count - 1; i >= 0; i--)
+            {
+                HandActionEntry e = entries[i];
+                if (e.Street != street)
+                    continue;
+                if (!string.Equals(e.PlayerName, name, System.StringComparison.Ordinal))
+                    continue;
+
+                action = e.Action;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void ResolveTendencyRangePreview(
+            PlayerTendencyProfile tendency,
+            ObservedRangeAction observed,
+            OpponentRangeStrength baseRange,
+            out RangePreviewAdjustment adjustment,
+            out OpponentRangeStrength previewRange)
+        {
+            if (observed == ObservedRangeAction.NearStack || observed == ObservedRangeAction.AllIn)
+            {
+                adjustment = RangePreviewAdjustment.None;
+                previewRange = OpponentRangeStrength.Strongest;
+                return;
+            }
+
+            if (observed == ObservedRangeAction.Check)
+            {
+                adjustment = RangePreviewAdjustment.None;
+                previewRange = baseRange;
+                return;
+            }
+
+            int score = 0;
+
+            bool isCall = observed == ObservedRangeAction.Call;
+            bool isAggression = observed == ObservedRangeAction.Bet
+                || observed == ObservedRangeAction.Raise
+                || observed == ObservedRangeAction.ReRaise;
+
+            // Tight strengthens / loose weakens calls and aggression (bets/raises).
+            if (isCall || isAggression)
+            {
+                if (tendency.Tightness >= TendencyAxisPreviewThreshold)
+                    score++;
+                else if (tendency.Tightness <= -TendencyAxisPreviewThreshold)
+                    score--;
+            }
+
+            // Aggressive weakens / passive strengthens bets and raises only.
+            if (isAggression)
+            {
+                if (tendency.Aggression >= TendencyAxisPreviewThreshold)
+                    score--;
+                else if (tendency.Aggression <= -TendencyAxisPreviewThreshold)
+                    score++;
+            }
+
+            if (score > 0)
+                adjustment = RangePreviewAdjustment.Upgrade;
+            else if (score < 0)
+                adjustment = RangePreviewAdjustment.Downgrade;
+            else
+                adjustment = RangePreviewAdjustment.None;
+
+            previewRange = ApplyRangePreviewAdjustment(baseRange, adjustment);
+        }
+
+        private static OpponentRangeStrength ApplyRangePreviewAdjustment(
+            OpponentRangeStrength baseRange,
+            RangePreviewAdjustment adjustment)
+        {
+            int tier = (int)baseRange;
+            if (adjustment == RangePreviewAdjustment.Upgrade)
+                tier = Mathf.Min((int)OpponentRangeStrength.Strongest, tier + 1);
+            else if (adjustment == RangePreviewAdjustment.Downgrade)
+                tier = Mathf.Max((int)OpponentRangeStrength.Wide, tier - 1);
+            return (OpponentRangeStrength)tier;
         }
 
         private static float? ResolveFacingDecisionThreshold(
