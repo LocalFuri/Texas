@@ -261,9 +261,46 @@ namespace TexasHoldem
         /// <summary>Last HUD equity percent for the human seat, or -1 when none is cached.</summary>
         public int CachedHumanEquityPercent => _cachedHumanEquityPercent;
 
+        /// <summary>Shared per-turn trainer snapshot (HUD / Coach / Review). Null when none.</summary>
+        public HumanTrainerAdvice CurrentHumanTrainerAdvice => _currentHumanTrainerAdvice;
+
+        /// <summary>Raised when a new <see cref="HumanTrainerAdvice"/> is built for the current human turn.</summary>
+        public event System.Action<HumanTrainerAdvice> OnHumanTrainerAdviceUpdated;
+
+        private int _humanTrainerAdviceTurnId;
+        private HumanTrainerAdvice _currentHumanTrainerAdvice;
+
         /// <summary>
-        /// Same trainer recommendation path as the human HUD, plus legal action/size mapping.
-        /// Does not change gameplay. Used by AI Review Mode via <see cref="GameManager"/>.
+        /// Returns the cached advice for this human turn, or builds it once.
+        /// Never runs a second Recommend/Resolve for the same turn.
+        /// </summary>
+        public bool TryGetOrCreateHumanTrainerAdvice(
+            PlayerState human,
+            float equityPercent,
+            out HumanTrainerAdvice advice)
+        {
+            advice = null;
+            if (_gameManager == null || human == null)
+                return false;
+
+            if (_currentHumanTrainerAdvice != null
+                && _currentHumanTrainerAdvice.TurnId == _humanTrainerAdviceTurnId)
+            {
+                advice = _currentHumanTrainerAdvice;
+                return true;
+            }
+
+            advice = BuildHumanTrainerAdvice(human, equityPercent, _humanTrainerAdviceTurnId);
+            if (advice == null)
+                return false;
+
+            _currentHumanTrainerAdvice = advice;
+            OnHumanTrainerAdviceUpdated?.Invoke(advice);
+            return true;
+        }
+
+        /// <summary>
+        /// Compatibility wrapper: uses the shared per-turn advice (get-or-create once).
         /// </summary>
         public bool TryResolveHumanTrainerAdvice(
             PlayerState human,
@@ -278,19 +315,19 @@ namespace TexasHoldem
             recommendedAction = BettingAction.Fold;
             recommendedRaiseAmount = 0;
 
-            if (_gameManager == null || human == null)
+            if (!TryGetOrCreateHumanTrainerAdvice(human, equityPercent, out HumanTrainerAdvice snapshot)
+                || snapshot == null)
+            {
                 return false;
+            }
 
-            if (!TryRecommendHumanBettingAdvice(human, equityPercent, out advice, out adviceLabel))
-                return false;
-
-            return _gameManager.TryMapTrainerAdviceToAction(
-                human,
-                advice,
-                equityPercent,
-                out recommendedAction,
-                out recommendedRaiseAmount);
+            advice = snapshot.Advice;
+            adviceLabel = snapshot.AdviceLabel ?? string.Empty;
+            recommendedAction = snapshot.RecommendedAction;
+            recommendedRaiseAmount = snapshot.RecommendedRaiseIncrement;
+            return true;
         }
+
         private Coroutine            _timerCoroutine;
         private PlayerView           _activeTimerView;
         private PlayerView           _humanSeatView;
@@ -1420,7 +1457,10 @@ namespace TexasHoldem
             }
 
             if (isHumanTurn)
+            {
+                BeginHumanTrainerAdviceTurn();
                 RefreshHumanEquity();
+            }
 
             if (isHumanTurn && CanHumanRaise())
                 yield return RaiseInputBuilder.FocusAndSelectAllWhenReady(_raiseInput);
@@ -1787,6 +1827,7 @@ namespace TexasHoldem
             }
 
             _cachedHumanEquityPercent = -1;
+            ClearHumanTrainerAdvice();
             ResolveHumanSeatView()?.ClearEquityDisplay();
         }
 
@@ -1799,6 +1840,17 @@ namespace TexasHoldem
                 && _humanPlayer != null
                 && !_humanPlayer.HasFolded
                 && !_humanPlayer.IsAllIn;
+        }
+
+        private void BeginHumanTrainerAdviceTurn()
+        {
+            _humanTrainerAdviceTurnId++;
+            ClearHumanTrainerAdvice();
+        }
+
+        private void ClearHumanTrainerAdvice()
+        {
+            _currentHumanTrainerAdvice = null;
         }
 
         private string ResolveHumanBettingAdvice(int equityPercent)
@@ -1815,25 +1867,21 @@ namespace TexasHoldem
                     _gameManager.BigBlindAmount);
             }
 
-            if (!TryRecommendHumanBettingAdvice(
-                    _humanPlayer, equityPercent, out BettingAdvice advice, out string label))
+            if (!TryGetOrCreateHumanTrainerAdvice(_humanPlayer, equityPercent, out HumanTrainerAdvice snapshot)
+                || snapshot == null)
                 return null;
 
-            return label ?? BettingAdvisor.LabelFor(advice);
+            return snapshot.AdviceLabel;
         }
 
-        /// <summary>Core HUD trainer <see cref="BettingAdvisor.Recommend"/> path (no side-effect logging).</summary>
-        private bool TryRecommendHumanBettingAdvice(
+        /// <summary>Builds the one shared trainer snapshot for this human turn.</summary>
+        private HumanTrainerAdvice BuildHumanTrainerAdvice(
             PlayerState human,
             float equityPercent,
-            out BettingAdvice advice,
-            out string adviceLabel)
+            int turnId)
         {
-            advice = BettingAdvice.None;
-            adviceLabel = string.Empty;
-
             if (_gameManager == null || human == null)
-                return false;
+                return null;
 
             int callAmount = _gameManager.GetCallAmountFor(human);
             bool canCheck  = callAmount <= 0;
@@ -1842,23 +1890,30 @@ namespace TexasHoldem
 
             bool isPreflop = _gameManager.CurrentPhase == GamePhase.PreFlop;
             PreflopHandGroup preflopGroup = PreflopHandGroup.Weak;
-            PreflopSeatBucket preflopSeat = PreflopSeatBucket.Early;
+            PreflopSeatBucket preflopSeat = _gameManager.GetPreflopSeatBucket(human);
             bool facingRaise = false;
-            int streetRaiseCount = 0;
+            int streetRaiseCount = _gameManager.StreetRaiseCount;
 
             if (isPreflop
                 && human.HoleCards != null
                 && human.HoleCards.Count >= 2)
             {
-                preflopGroup     = PreflopStrategy.ClassifyHand(human.HoleCards);
-                preflopSeat      = _gameManager.GetPreflopSeatBucket(human);
-                facingRaise      = _gameManager.CurrentBet > _gameManager.BigBlindAmount;
-                streetRaiseCount = _gameManager.StreetRaiseCount;
+                preflopGroup = PreflopStrategy.ClassifyHand(human.HoleCards);
+                facingRaise  = _gameManager.CurrentBet > _gameManager.BigBlindAmount;
             }
 
-            advice = BettingAdvisor.Recommend(
+            int pot = _gameManager.PotAmount;
+            int currentBet = _gameManager.CurrentBet;
+            float potOdds = callAmount <= 0 || pot + callAmount <= 0
+                ? 0f
+                : 100f * callAmount / (pot + callAmount);
+
+            string boardTexture = FormatTrainerBoardTexture(_gameManager.CommunityCards);
+            string position = FormatTrainerSeat(preflopSeat);
+
+            BettingAdvice advice = BettingAdvisor.Recommend(
                 equityPercent,
-                _gameManager.PotAmount,
+                pot,
                 callAmount,
                 canCheck,
                 canRaise,
@@ -1877,9 +1932,124 @@ namespace TexasHoldem
                 _gameManager.CommunityCards,
                 CountActiveOpponentsFor(human));
 
-            adviceLabel = BettingAdvisor.LabelFor(advice);
-            return true;
+            string adviceLabel = BettingAdvisor.LabelFor(advice);
+
+            if (!_gameManager.TryMapTrainerAdviceToAction(
+                    human,
+                    advice,
+                    equityPercent,
+                    out BettingAction recommendedAction,
+                    out int raiseIncrement))
+            {
+                recommendedAction = BettingAction.Fold;
+                raiseIncrement = 0;
+            }
+
+            int recommendedTotal = recommendedAction == BettingAction.Raise
+                ? currentBet + raiseIncrement
+                : recommendedAction == BettingAction.AllIn
+                    ? human.CurrentBet + human.Chips
+                    : 0;
+
+            string decisionLabel = ResolveTrainerDecisionLabel(recommendedAction, callAmount);
+
+            var snapshot = new HumanTrainerAdvice
+            {
+                TurnId = turnId,
+                EquityPercent = Mathf.RoundToInt(equityPercent),
+                PotOddsPercent = potOdds,
+                Position = position,
+                BoardTexture = boardTexture,
+                Street = _gameManager.CurrentPhase.ToString(),
+                PreflopHandGroup = preflopGroup,
+                Advice = advice,
+                AdviceLabel = adviceLabel,
+                RecommendedAction = recommendedAction,
+                RecommendedRaiseIncrement = raiseIncrement,
+                RecommendedTotalBet = recommendedTotal,
+                AmountToCall = callAmount,
+                CurrentBet = currentBet,
+                PotBeforeAction = pot,
+                DecisionLabel = decisionLabel,
+                Explanation = BuildTrainerExplanation(
+                    isPreflop, preflopGroup, potOdds, equityPercent, position, boardTexture),
+            };
+
+            return snapshot;
         }
+
+        private static string ResolveTrainerDecisionLabel(BettingAction action, int amountToCall)
+        {
+            switch (action)
+            {
+                case BettingAction.Fold:  return "Fold";
+                case BettingAction.Check: return "Check";
+                case BettingAction.Call:  return "Call";
+                case BettingAction.AllIn: return "All-In";
+                case BettingAction.Raise:
+                    return amountToCall <= 0 ? "Bet" : "Raise";
+                default:
+                    return action.ToString();
+            }
+        }
+
+        /// <summary>Formats existing trainer evaluation inputs — no new decision logic.</summary>
+        private static string BuildTrainerExplanation(
+            bool isPreflop,
+            PreflopHandGroup group,
+            float potOdds,
+            float equityPercent,
+            string position,
+            string boardTexture)
+        {
+            var parts = new System.Collections.Generic.List<string>(4);
+
+            if (isPreflop)
+            {
+                parts.Add(group switch
+                {
+                    PreflopHandGroup.Premium  => "Premium hand",
+                    PreflopHandGroup.Strong   => "Strong hand",
+                    PreflopHandGroup.Playable => "Playable hand",
+                    _                         => "Weak hand",
+                });
+            }
+            else
+            {
+                parts.Add($"Equity {equityPercent:0}%");
+                if (potOdds > 0f)
+                    parts.Add($"Pot odds {potOdds:0.0}%");
+            }
+
+            if (!string.IsNullOrEmpty(position))
+                parts.Add(position);
+
+            if (!string.IsNullOrEmpty(boardTexture))
+                parts.Add(boardTexture);
+
+            return string.Join(" · ", parts);
+        }
+
+        private static string FormatTrainerBoardTexture(System.Collections.Generic.IReadOnlyList<Card> communityCards)
+        {
+            if (communityCards == null || communityCards.Count < 3)
+                return string.Empty;
+
+            BoardTextureFlags flags = BoardTextureAnalyzer.Analyze(communityCards);
+            return flags == BoardTextureFlags.None ? "Dry" : flags.ToString();
+        }
+
+        private static string FormatTrainerSeat(PreflopSeatBucket seat) =>
+            seat switch
+            {
+                PreflopSeatBucket.Button     => "BTN",
+                PreflopSeatBucket.SmallBlind => "SB",
+                PreflopSeatBucket.BigBlind   => "BB",
+                PreflopSeatBucket.Early      => "EP",
+                PreflopSeatBucket.Middle     => "MP",
+                PreflopSeatBucket.Cutoff     => "CO",
+                _                            => seat.ToString(),
+            };
 
         private void ApplyHumanEquityDisplay(int equityPercent)
         {

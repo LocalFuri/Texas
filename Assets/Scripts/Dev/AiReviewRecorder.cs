@@ -232,28 +232,7 @@ namespace TexasHoldem.Dev
 
         private TurnSnapshot CaptureTurnSnapshot(PlayerState human)
         {
-            int equity = _ui != null ? _ui.CachedHumanEquityPercent : -1;
-            float equityForAdvice = equity >= 0 ? equity : 0f;
-
-            string adviceLabel = string.Empty;
-            string recommendedAction = string.Empty;
-            int recommendedRaiseAmount = 0;
-            string trainerRecommendation = string.Empty;
-
-            if (_game.TryResolveHumanTrainerAdvice(
-                    human,
-                    equityForAdvice,
-                    out BettingAdvice advice,
-                    out string label,
-                    out BettingAction recAction,
-                    out int raiseAmount))
-            {
-                adviceLabel = label ?? string.Empty;
-                trainerRecommendation = advice.ToString();
-                recommendedAction = recAction.ToString();
-                recommendedRaiseAmount = raiseAmount;
-            }
-
+            // Table state only — do not evaluate trainer here (HUD builds the shared advice once).
             bool facingRaise = _game.CurrentPhase == GamePhase.PreFlop
                 ? (_game.CurrentBet > _game.BigBlindAmount || _game.StreetRaiseCount >= 1)
                 : (_game.CurrentBet > 0 && _game.GetCallAmountFor(human) > 0);
@@ -282,20 +261,57 @@ namespace TexasHoldem.Dev
                 AmountToCall = amountToCall,
                 StreetRaiseCount = _game.StreetRaiseCount,
                 FacingRaise = facingRaise,
-                TrainerRecommendation = trainerRecommendation,
-                RecommendedAction = recommendedAction,
-                RecommendedAdviceLabel = adviceLabel,
-                RecommendedRaiseAmount = recommendedRaiseAmount,
-                CachedEquityPercent = equity,
+                TrainerRecommendation = string.Empty,
+                RecommendedAction = string.Empty,
+                RecommendedAdviceLabel = string.Empty,
+                RecommendedRaiseAmount = 0,
+                DecisionLabel = string.Empty,
+                Explanation = string.Empty,
+                CachedEquityPercent = _ui != null ? _ui.CachedHumanEquityPercent : -1,
                 HeroStreetBetBefore = human.CurrentBet,
                 TrainerInputs = new AiReviewTrainerInputsDto
                 {
-                    equity = equity,
+                    equity = _ui != null ? _ui.CachedHumanEquityPercent : -1,
                     potOdds = ComputePotOddsPercent(pot, amountToCall),
                     boardTexture = FormatBoardTexture(_game.CommunityCards),
                     street = street,
                     position = position,
                 },
+            };
+        }
+
+        /// <summary>
+        /// Attaches the shared <see cref="HumanTrainerAdvice"/> (already built by the HUD).
+        /// Does not re-run Recommend; only get-or-create if the player acted before equity finished.
+        /// </summary>
+        private void ApplySharedTrainerAdvice(TurnSnapshot snap, PlayerState human)
+        {
+            HumanTrainerAdvice advice = _game != null ? _game.CurrentHumanTrainerAdvice : null;
+
+            if (advice == null && _ui != null && human != null)
+            {
+                float equity = _ui.CachedHumanEquityPercent >= 0 ? _ui.CachedHumanEquityPercent : 0f;
+                _ui.TryGetOrCreateHumanTrainerAdvice(human, equity, out advice);
+            }
+
+            if (advice == null)
+                return;
+
+            snap.TrainerRecommendation = advice.Advice.ToString();
+            snap.RecommendedAdviceLabel = advice.AdviceLabel ?? string.Empty;
+            snap.RecommendedAction = advice.DecisionLabel ?? advice.RecommendedAction.ToString();
+            snap.RecommendedRaiseAmount = advice.RecommendedRaiseIncrement;
+            snap.RecommendedTotalBet = advice.RecommendedTotalBet;
+            snap.DecisionLabel = advice.DecisionLabel ?? string.Empty;
+            snap.Explanation = advice.Explanation ?? string.Empty;
+            snap.CachedEquityPercent = advice.EquityPercent;
+            snap.TrainerInputs = new AiReviewTrainerInputsDto
+            {
+                equity = advice.EquityPercent,
+                potOdds = advice.PotOddsPercent,
+                boardTexture = advice.BoardTexture ?? string.Empty,
+                street = advice.Street ?? snap.Street ?? string.Empty,
+                position = advice.Position ?? snap.Position ?? string.Empty,
             };
         }
 
@@ -305,6 +321,8 @@ namespace TexasHoldem.Dev
             BettingAction action,
             int amountReported)
         {
+            ApplySharedTrainerAdvice(snap, human);
+
             return new AiReviewDecisionDto
             {
                 schemaVersion = 1,
@@ -325,7 +343,10 @@ namespace TexasHoldem.Dev
                 trainerRecommendation = snap.TrainerRecommendation ?? string.Empty,
                 recommendedAdviceLabel = snap.RecommendedAdviceLabel ?? string.Empty,
                 recommendedAction = snap.RecommendedAction ?? string.Empty,
+                recommendedDecisionLabel = snap.DecisionLabel ?? string.Empty,
                 recommendedBetOrRaiseAmount = snap.RecommendedRaiseAmount,
+                recommendedTotalBet = snap.RecommendedTotalBet,
+                explanation = snap.Explanation ?? string.Empty,
                 trainerInputs = snap.TrainerInputs ?? new AiReviewTrainerInputsDto(),
                 cachedHumanEquityPercent = snap.CachedEquityPercent,
                 actualAction = action.ToString(),
@@ -686,7 +707,10 @@ namespace TexasHoldem.Dev
             public string TrainerRecommendation;
             public string RecommendedAction;
             public string RecommendedAdviceLabel;
+            public string DecisionLabel;
+            public string Explanation;
             public int RecommendedRaiseAmount;
+            public int RecommendedTotalBet;
             public int CachedEquityPercent;
             public int HeroStreetBetBefore;
             public AiReviewTrainerInputsDto TrainerInputs;
@@ -713,7 +737,10 @@ namespace TexasHoldem.Dev
             public string trainerRecommendation;
             public string recommendedAdviceLabel;
             public string recommendedAction;
+            public string recommendedDecisionLabel;
             public int recommendedBetOrRaiseAmount;
+            public int recommendedTotalBet;
+            public string explanation;
             public AiReviewTrainerInputsDto trainerInputs;
             public int cachedHumanEquityPercent;
             public string actualAction;

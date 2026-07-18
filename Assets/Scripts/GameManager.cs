@@ -99,9 +99,12 @@ namespace TexasHoldem
         public IReadOnlyList<HandActionEntry> HandActions =>
             _aiController != null ? _aiController.HandActions : System.Array.Empty<HandActionEntry>();
 
+        /// <summary>Shared per-turn trainer advice from the HUD (null if not yet built).</summary>
+        public HumanTrainerAdvice CurrentHumanTrainerAdvice =>
+            ResolveUiManager()?.CurrentHumanTrainerAdvice;
+
         /// <summary>
-        /// Thin wrapper: delegates to the HUD trainer path on <see cref="UIManager"/>.
-        /// Does not duplicate <see cref="BettingAdvisor.Recommend"/> logic.
+        /// Thin wrapper: get-or-create once via <see cref="UIManager"/> (same object as HUD/Coach).
         /// </summary>
         public bool TryResolveHumanTrainerAdvice(
             PlayerState human,
@@ -127,6 +130,13 @@ namespace TexasHoldem
                 out adviceLabel,
                 out recommendedAction,
                 out recommendedRaiseAmount);
+        }
+
+        /// <summary>Returns the cached shared advice only (does not build).</summary>
+        public bool TryGetCurrentHumanTrainerAdvice(out HumanTrainerAdvice advice)
+        {
+            advice = CurrentHumanTrainerAdvice;
+            return advice != null;
         }
 
         /// <summary>
