@@ -160,6 +160,7 @@ namespace TexasHoldem.Dev
             sb.Append("  Players seeing river: ").Append(Avg(stats.SumPlayersSeeingRiver, n).ToString("F2")).AppendLine();
             sb.Append("  Players at showdown: ").Append(Avg(stats.SumPlayersAtShowdown, n).ToString("F2")).AppendLine();
             sb.AppendLine();
+            AppendPlayerSurvival(sb, stats, n);
             sb.AppendLine("Fold analysis:");
             sb.AppendLine("  Street:");
             sb.Append("    Fold on flop: ").Append(stats.FoldsOnFlop).AppendLine();
@@ -190,6 +191,35 @@ namespace TexasHoldem.Dev
         private static double Avg(int sum, int handsCompleted) =>
             handsCompleted > 0 ? (double)sum / handsCompleted : 0d;
 
+        private static void AppendPlayerSurvival(System.Text.StringBuilder sb, Stats stats, int handsCompleted)
+        {
+            double startAvg = Avg(stats.SumPlayersAtHandStart, handsCompleted);
+            // Percent of original seats (PlayerCount), not of average start — start is always 6.
+            double denom = PlayerCount;
+
+            sb.AppendLine("=== Player Survival ===");
+            sb.AppendLine();
+            AppendSurvivalLine(sb, "Hand start:", startAvg, denom);
+            AppendSurvivalLine(sb, "After preflop:", Avg(stats.SumPlayersAfterPreflop, handsCompleted), denom);
+            AppendSurvivalLine(sb, "Flop:", Avg(stats.SumPlayersSeeingFlop, handsCompleted), denom);
+            AppendSurvivalLine(sb, "Turn:", Avg(stats.SumPlayersSeeingTurn, handsCompleted), denom);
+            AppendSurvivalLine(sb, "River:", Avg(stats.SumPlayersSeeingRiver, handsCompleted), denom);
+            AppendSurvivalLine(sb, "Showdown:", Avg(stats.SumPlayersAtShowdown, handsCompleted), denom);
+            sb.AppendLine();
+        }
+
+        private static void AppendSurvivalLine(
+            System.Text.StringBuilder sb, string label, double average, double originalPlayers)
+        {
+            double pct = originalPlayers > 0 ? 100.0 * average / originalPlayers : 0d;
+            sb.Append("  ").Append(label.PadRight(16)).Append(' ')
+                .Append(average.ToString("F2"))
+                .Append(" (")
+                .Append(pct.ToString("F1"))
+                .Append("%)")
+                .AppendLine();
+        }
+
         /// <summary>Null on success; failure message otherwise.</summary>
         private static string RunOneHand(int handIndex, Stats stats)
         {
@@ -216,6 +246,8 @@ namespace TexasHoldem.Dev
 
             // Local until hand completes successfully (illegal mid-hand must not skew averages).
             int bettingRoundsReached = 1;
+            int playersAtHandStart = players.Count;
+            int playersAfterPreflop = 0;
             int playersSeeingFlop = 0;
             int playersSeeingTurn = 0;
             int playersSeeingRiver = 0;
@@ -226,11 +258,14 @@ namespace TexasHoldem.Dev
             if (err != null)
                 return err;
 
-            if (CountNonFolded(players) <= 1)
+            playersAfterPreflop = CountNonFolded(players);
+
+            if (playersAfterPreflop <= 1)
             {
                 RecordFoldOut(stats);
-                CommitHandDepth(stats, bettingRoundsReached, playersSeeingFlop, playersSeeingTurn,
-                    playersSeeingRiver, playersAtShowdown);
+                CommitHandDepth(
+                    stats, bettingRoundsReached, playersAtHandStart, playersAfterPreflop,
+                    playersSeeingFlop, playersSeeingTurn, playersSeeingRiver, playersAtShowdown);
                 return null;
             }
 
@@ -246,8 +281,9 @@ namespace TexasHoldem.Dev
             if (CountNonFolded(players) <= 1)
             {
                 RecordFoldOut(stats);
-                CommitHandDepth(stats, bettingRoundsReached, playersSeeingFlop, playersSeeingTurn,
-                    playersSeeingRiver, playersAtShowdown);
+                CommitHandDepth(
+                    stats, bettingRoundsReached, playersAtHandStart, playersAfterPreflop,
+                    playersSeeingFlop, playersSeeingTurn, playersSeeingRiver, playersAtShowdown);
                 return null;
             }
 
@@ -263,8 +299,9 @@ namespace TexasHoldem.Dev
             if (CountNonFolded(players) <= 1)
             {
                 RecordFoldOut(stats);
-                CommitHandDepth(stats, bettingRoundsReached, playersSeeingFlop, playersSeeingTurn,
-                    playersSeeingRiver, playersAtShowdown);
+                CommitHandDepth(
+                    stats, bettingRoundsReached, playersAtHandStart, playersAfterPreflop,
+                    playersSeeingFlop, playersSeeingTurn, playersSeeingRiver, playersAtShowdown);
                 return null;
             }
 
@@ -280,27 +317,33 @@ namespace TexasHoldem.Dev
             if (CountNonFolded(players) <= 1)
             {
                 RecordFoldOut(stats);
-                CommitHandDepth(stats, bettingRoundsReached, playersSeeingFlop, playersSeeingTurn,
-                    playersSeeingRiver, playersAtShowdown);
+                CommitHandDepth(
+                    stats, bettingRoundsReached, playersAtHandStart, playersAfterPreflop,
+                    playersSeeingFlop, playersSeeingTurn, playersSeeingRiver, playersAtShowdown);
                 return null;
             }
 
             playersAtShowdown = CountNonFolded(players);
             RecordShowdown(players, board, stats);
-            CommitHandDepth(stats, bettingRoundsReached, playersSeeingFlop, playersSeeingTurn,
-                playersSeeingRiver, playersAtShowdown);
+            CommitHandDepth(
+                stats, bettingRoundsReached, playersAtHandStart, playersAfterPreflop,
+                playersSeeingFlop, playersSeeingTurn, playersSeeingRiver, playersAtShowdown);
             return null;
         }
 
         private static void CommitHandDepth(
             Stats stats,
             int bettingRoundsReached,
+            int playersAtHandStart,
+            int playersAfterPreflop,
             int playersSeeingFlop,
             int playersSeeingTurn,
             int playersSeeingRiver,
             int playersAtShowdown)
         {
             stats.SumBettingRoundsReached += bettingRoundsReached;
+            stats.SumPlayersAtHandStart += playersAtHandStart;
+            stats.SumPlayersAfterPreflop += playersAfterPreflop;
             stats.SumPlayersSeeingFlop += playersSeeingFlop;
             stats.SumPlayersSeeingTurn += playersSeeingTurn;
             stats.SumPlayersSeeingRiver += playersSeeingRiver;
@@ -814,6 +857,8 @@ namespace TexasHoldem.Dev
 
             /// <summary>Sum of betting rounds reached per hand (1=preflop … 4=river).</summary>
             public int SumBettingRoundsReached;
+            public int SumPlayersAtHandStart;
+            public int SumPlayersAfterPreflop;
             /// <summary>Sum of non-folded players when each street is dealt (0 if street not reached).</summary>
             public int SumPlayersSeeingFlop;
             public int SumPlayersSeeingTurn;
