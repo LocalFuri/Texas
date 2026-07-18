@@ -94,6 +94,74 @@ namespace TexasHoldem
             player != null && _bettingManager != null
                 ? _bettingManager.GetMaxRaiseIncrement(player)
                 : 0;
+
+        /// <summary>Current-hand action log entries (bot analysis / review observers). Cleared each hand.</summary>
+        public IReadOnlyList<HandActionEntry> HandActions =>
+            _aiController != null ? _aiController.HandActions : System.Array.Empty<HandActionEntry>();
+
+        /// <summary>
+        /// Thin wrapper: delegates to the HUD trainer path on <see cref="UIManager"/>.
+        /// Does not duplicate <see cref="BettingAdvisor.Recommend"/> logic.
+        /// </summary>
+        public bool TryResolveHumanTrainerAdvice(
+            PlayerState human,
+            float equityPercent,
+            out BettingAdvice advice,
+            out string adviceLabel,
+            out BettingAction recommendedAction,
+            out int recommendedRaiseAmount)
+        {
+            advice = BettingAdvice.None;
+            adviceLabel = string.Empty;
+            recommendedAction = BettingAction.Fold;
+            recommendedRaiseAmount = 0;
+
+            UIManager ui = ResolveUiManager();
+            if (ui == null)
+                return false;
+
+            return ui.TryResolveHumanTrainerAdvice(
+                human,
+                equityPercent,
+                out advice,
+                out adviceLabel,
+                out recommendedAction,
+                out recommendedRaiseAmount);
+        }
+
+        /// <summary>
+        /// Maps a trainer <see cref="BettingAdvice"/> to a legal table action/size
+        /// (same <see cref="BettingAdvisor.ResolveAction"/> rules the HUD sizing uses).
+        /// </summary>
+        public bool TryMapTrainerAdviceToAction(
+            PlayerState human,
+            BettingAdvice advice,
+            float equityPercent,
+            out BettingAction recommendedAction,
+            out int recommendedRaiseAmount)
+        {
+            recommendedAction = BettingAction.Fold;
+            recommendedRaiseAmount = 0;
+
+            if (human == null || _bettingManager == null)
+                return false;
+
+            bool isPreflop = CurrentPhase == GamePhase.PreFlop;
+            (BettingAction action, int raiseAmount) resolved = BettingAdvisor.ResolveAction(
+                advice,
+                _bettingManager,
+                human,
+                isPreflop,
+                StreetRaiseCount,
+                PotAmount,
+                equityPercent,
+                CurrentPhase);
+
+            recommendedAction = resolved.action;
+            recommendedRaiseAmount = resolved.raiseAmount;
+            return true;
+        }
+
         public float             ButtonWidth    => _buttonWidth;
         public float             ButtonHeight   => _buttonHeight;
         public float             ButtonFontSize => _buttonFontSize;

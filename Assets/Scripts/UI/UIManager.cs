@@ -257,6 +257,40 @@ namespace TexasHoldem
         private Coroutine            _equityRefreshCoroutine;
         private int                    _equityRefreshGeneration;
         private int                    _cachedHumanEquityPercent = -1;
+
+        /// <summary>Last HUD equity percent for the human seat, or -1 when none is cached.</summary>
+        public int CachedHumanEquityPercent => _cachedHumanEquityPercent;
+
+        /// <summary>
+        /// Same trainer recommendation path as the human HUD, plus legal action/size mapping.
+        /// Does not change gameplay. Used by AI Review Mode via <see cref="GameManager"/>.
+        /// </summary>
+        public bool TryResolveHumanTrainerAdvice(
+            PlayerState human,
+            float equityPercent,
+            out BettingAdvice advice,
+            out string adviceLabel,
+            out BettingAction recommendedAction,
+            out int recommendedRaiseAmount)
+        {
+            advice = BettingAdvice.None;
+            adviceLabel = string.Empty;
+            recommendedAction = BettingAction.Fold;
+            recommendedRaiseAmount = 0;
+
+            if (_gameManager == null || human == null)
+                return false;
+
+            if (!TryRecommendHumanBettingAdvice(human, equityPercent, out advice, out adviceLabel))
+                return false;
+
+            return _gameManager.TryMapTrainerAdviceToAction(
+                human,
+                advice,
+                equityPercent,
+                out recommendedAction,
+                out recommendedRaiseAmount);
+        }
         private Coroutine            _timerCoroutine;
         private PlayerView           _activeTimerView;
         private PlayerView           _humanSeatView;
@@ -1769,31 +1803,10 @@ namespace TexasHoldem
 
         private string ResolveHumanBettingAdvice(int equityPercent)
         {
-            if (!IsHumanActionPending() || _gameManager == null || _humanPlayer == null)
+            if (!IsHumanActionPending() || _humanPlayer == null)
                 return null;
 
-            int callAmount = GetCallAmount();
-            bool canCheck  = callAmount <= 0;
-            bool canCall   = callAmount > 0 && _humanPlayer.Chips > 0;
-            bool canRaise  = CanHumanRaise();
-
-            bool isPreflop = _gameManager.CurrentPhase == GamePhase.PreFlop;
-            PreflopHandGroup preflopGroup = PreflopHandGroup.Weak;
-            PreflopSeatBucket preflopSeat = PreflopSeatBucket.Early;
-            bool facingRaise = false;
-            int streetRaiseCount = 0;
-
-            if (isPreflop
-                && _humanPlayer.HoleCards != null
-                && _humanPlayer.HoleCards.Count >= 2)
-            {
-                preflopGroup     = PreflopStrategy.ClassifyHand(_humanPlayer.HoleCards);
-                preflopSeat      = _gameManager.GetPreflopSeatBucket(_humanPlayer);
-                facingRaise      = _gameManager.CurrentBet > _gameManager.BigBlindAmount;
-                streetRaiseCount = _gameManager.StreetRaiseCount;
-            }
-
-            if (isPreflop)
+            if (_gameManager != null && _gameManager.CurrentPhase == GamePhase.PreFlop)
             {
                 PreflopStrategy.LogEffectiveStack(
                     _humanPlayer,
@@ -1802,7 +1815,48 @@ namespace TexasHoldem
                     _gameManager.BigBlindAmount);
             }
 
-            BettingAdvice advice = BettingAdvisor.Recommend(
+            if (!TryRecommendHumanBettingAdvice(
+                    _humanPlayer, equityPercent, out BettingAdvice advice, out string label))
+                return null;
+
+            return label ?? BettingAdvisor.LabelFor(advice);
+        }
+
+        /// <summary>Core HUD trainer <see cref="BettingAdvisor.Recommend"/> path (no side-effect logging).</summary>
+        private bool TryRecommendHumanBettingAdvice(
+            PlayerState human,
+            float equityPercent,
+            out BettingAdvice advice,
+            out string adviceLabel)
+        {
+            advice = BettingAdvice.None;
+            adviceLabel = string.Empty;
+
+            if (_gameManager == null || human == null)
+                return false;
+
+            int callAmount = _gameManager.GetCallAmountFor(human);
+            bool canCheck  = callAmount <= 0;
+            bool canCall   = callAmount > 0 && human.Chips > 0;
+            bool canRaise  = _gameManager.CanPlayerRaise(human);
+
+            bool isPreflop = _gameManager.CurrentPhase == GamePhase.PreFlop;
+            PreflopHandGroup preflopGroup = PreflopHandGroup.Weak;
+            PreflopSeatBucket preflopSeat = PreflopSeatBucket.Early;
+            bool facingRaise = false;
+            int streetRaiseCount = 0;
+
+            if (isPreflop
+                && human.HoleCards != null
+                && human.HoleCards.Count >= 2)
+            {
+                preflopGroup     = PreflopStrategy.ClassifyHand(human.HoleCards);
+                preflopSeat      = _gameManager.GetPreflopSeatBucket(human);
+                facingRaise      = _gameManager.CurrentBet > _gameManager.BigBlindAmount;
+                streetRaiseCount = _gameManager.StreetRaiseCount;
+            }
+
+            advice = BettingAdvisor.Recommend(
                 equityPercent,
                 _gameManager.PotAmount,
                 callAmount,
@@ -1814,16 +1868,17 @@ namespace TexasHoldem
                 preflopSeat,
                 facingRaise,
                 streetRaiseCount,
-                _humanPlayer.Chips,
-                _humanPlayer.HoleCards,
+                human.Chips,
+                human.HoleCards,
                 _gameManager.CurrentPhase,
                 _gameManager.PlayersBehind,
                 _gameManager.ShovePosition,
                 _gameManager.CallersBefore,
                 _gameManager.CommunityCards,
-                CountActiveOpponents());
+                CountActiveOpponentsFor(human));
 
-            return BettingAdvisor.LabelFor(advice);
+            adviceLabel = BettingAdvisor.LabelFor(advice);
+            return true;
         }
 
         private void ApplyHumanEquityDisplay(int equityPercent)
@@ -1915,15 +1970,17 @@ namespace TexasHoldem
             _equityRefreshCoroutine = null;
         }
 
-        private int CountActiveOpponents()
+        private int CountActiveOpponents() => CountActiveOpponentsFor(_humanPlayer);
+
+        private int CountActiveOpponentsFor(PlayerState human)
         {
-            if (_gameManager?.Players == null || _humanPlayer == null)
+            if (_gameManager?.Players == null || human == null)
                 return 0;
 
             int count = 0;
             foreach (PlayerState player in _gameManager.Players)
             {
-                if (player == null || player == _humanPlayer || player.HasFolded)
+                if (player == null || player == human || player.HasFolded)
                     continue;
 
                 count++;
