@@ -17,10 +17,6 @@ namespace TexasHoldem.Dev
         private const int StartingChips    = 1000;
         private const int SmallBlind       = 10;
         private const int BigBlind         = 20;
-        /// <summary>Hard cap on DecideAction calls per betting round (abort + dump if exceeded).</summary>
-        private const int MaxActionsPerBettingRound = 100;
-        /// <summary>Temporary: verbose hand/betting progress via LogWarning.</summary>
-        private const bool EnableBettingDiagnostics = true;
 
         [SerializeField] private int _handCount = DefaultHandCount;
 
@@ -55,7 +51,6 @@ namespace TexasHoldem.Dev
                 for (int hand = 0; hand < handCount; hand++)
                 {
                     stats.HandsAttempted++;
-                    Diag($"Hand {hand + 1}/{handCount} START");
 
                     try
                     {
@@ -69,7 +64,7 @@ namespace TexasHoldem.Dev
                         else
                         {
                             stats.HandsCompleted++;
-                            if (stats.HandsCompleted % 100 == 0 || handCount <= 100)
+                            if (stats.HandsCompleted % 100 == 0)
                             {
                                 Debug.LogWarning(
                                     $"[PostflopStats] Progress: {stats.HandsCompleted}/{handCount} hands completed");
@@ -83,7 +78,6 @@ namespace TexasHoldem.Dev
                         Debug.LogError($"[PostflopStats] Exception — {stats.LastError}");
                     }
 
-                    Diag($"Hand {hand + 1}/{handCount} END completed={stats.HandsCompleted} illegal={stats.IllegalActions}");
                     onHandFinished?.Invoke(hand + 1, handCount);
                 }
             }
@@ -95,8 +89,6 @@ namespace TexasHoldem.Dev
 
             sw.Stop();
             stats.ElapsedSeconds = sw.Elapsed.TotalSeconds;
-
-            // Always emit after log filter is restored; Warning stays visible if Log is filtered.
             PrintSummary(stats);
             return new StatsResult(stats);
         }
@@ -104,14 +96,9 @@ namespace TexasHoldem.Dev
         public static void PrintSummary(Stats stats)
         {
             string summary = BuildSummaryText(stats);
-
-            // One Warning with the full report. NoStacktrace keeps the body visible in the
-            // Console detail pane (stack traces otherwise push multi-line text out of view).
-            // filterLogType is already restored by RunAll before this runs.
             Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", summary);
         }
 
-        /// <summary>Builds the complete statistics report (never empty beyond the header).</summary>
         public static string BuildSummaryText(Stats stats)
         {
             if (stats == null)
@@ -166,8 +153,6 @@ namespace TexasHoldem.Dev
             sb.Append("  Players seeing river: ").Append(Avg(stats.SumPlayersSeeingRiver, n).ToString("F2")).AppendLine();
             sb.Append("  Players at showdown: ").Append(Avg(stats.SumPlayersAtShowdown, n).ToString("F2")).AppendLine();
             sb.AppendLine();
-            AppendPlayerSurvival(sb, stats, n);
-            AppendPreflopStatistics(sb, stats, n);
             sb.AppendLine("Fold analysis:");
             sb.AppendLine("  Street:");
             sb.Append("    Fold on flop: ").Append(stats.FoldsOnFlop).AppendLine();
@@ -198,62 +183,6 @@ namespace TexasHoldem.Dev
         private static double Avg(int sum, int handsCompleted) =>
             handsCompleted > 0 ? (double)sum / handsCompleted : 0d;
 
-        private static void AppendPlayerSurvival(System.Text.StringBuilder sb, Stats stats, int handsCompleted)
-        {
-            double startAvg = Avg(stats.SumPlayersAtHandStart, handsCompleted);
-            // Percent of original seats (PlayerCount), not of average start — start is always 6.
-            double denom = PlayerCount;
-
-            sb.AppendLine("=== Player Survival ===");
-            sb.AppendLine();
-            AppendSurvivalLine(sb, "Hand start:", startAvg, denom);
-            AppendSurvivalLine(sb, "After preflop:", Avg(stats.SumPlayersAfterPreflop, handsCompleted), denom);
-            AppendSurvivalLine(sb, "Flop:", Avg(stats.SumPlayersSeeingFlop, handsCompleted), denom);
-            AppendSurvivalLine(sb, "Turn:", Avg(stats.SumPlayersSeeingTurn, handsCompleted), denom);
-            AppendSurvivalLine(sb, "River:", Avg(stats.SumPlayersSeeingRiver, handsCompleted), denom);
-            AppendSurvivalLine(sb, "Showdown:", Avg(stats.SumPlayersAtShowdown, handsCompleted), denom);
-            sb.AppendLine();
-        }
-
-        private static void AppendSurvivalLine(
-            System.Text.StringBuilder sb, string label, double average, double originalPlayers)
-        {
-            double pct = originalPlayers > 0 ? 100.0 * average / originalPlayers : 0d;
-            sb.Append("  ").Append(label.PadRight(16)).Append(' ')
-                .Append(average.ToString("F2"))
-                .Append(" (")
-                .Append(pct.ToString("F1"))
-                .Append("%)")
-                .AppendLine();
-        }
-
-        private static void AppendPreflopStatistics(System.Text.StringBuilder sb, Stats stats, int handsCompleted)
-        {
-            double avgVpip = Avg(stats.SumVpipPlayers, handsCompleted);
-
-            sb.AppendLine("=== Preflop Statistics ===");
-            sb.AppendLine();
-            sb.Append("  Hands ending preflop: ").Append(stats.HandsEndingPreflop).AppendLine();
-            sb.Append("  Flops dealt: ").Append(stats.FlopsDealt).AppendLine();
-            sb.Append("  Avg players VPIP: ").Append(avgVpip.ToString("F2"))
-                .Append(" (")
-                .Append((100.0 * avgVpip / PlayerCount).ToString("F1"))
-                .Append("% of 6)")
-                .AppendLine();
-            sb.AppendLine("  Players seeing the flop:");
-            sb.Append("    Heads-up: ").Append(stats.FlopHeadsUp).AppendLine();
-            sb.Append("    3-way: ").Append(stats.FlopThreeWay).AppendLine();
-            sb.Append("    4-way: ").Append(stats.FlopFourWay).AppendLine();
-            sb.Append("    5-way: ").Append(stats.FlopFiveWay).AppendLine();
-            sb.Append("    6-way: ").Append(stats.FlopSixWay).AppendLine();
-            sb.Append("  Preflop raises (opens): ").Append(stats.PreflopOpenRaises).AppendLine();
-            sb.Append("  3-bets: ").Append(stats.PreflopThreeBets).AppendLine();
-            sb.Append("  4-bets+: ").Append(stats.PreflopFourBetsPlus).AppendLine();
-            sb.Append("  Blind walks: ").Append(stats.BlindWalks).AppendLine();
-            sb.Append("  Uncontested pots won preflop: ").Append(stats.UncontestedPotsPreflop).AppendLine();
-            sb.AppendLine();
-        }
-
         /// <summary>Null on success; failure message otherwise.</summary>
         private static string RunOneHand(int handIndex, Stats stats)
         {
@@ -261,9 +190,9 @@ namespace TexasHoldem.Dev
             for (int i = 0; i < PlayerCount; i++)
                 players.Add(new PlayerState($"StatsBot{i}", PlayerType.AI, StartingChips));
 
-            int dealer  = handIndex % PlayerCount;
-            int sbIndex = (dealer + 1) % PlayerCount;
-            int bbIndex = (dealer + 2) % PlayerCount;
+            int dealer   = handIndex % PlayerCount;
+            int sbIndex  = (dealer + 1) % PlayerCount;
+            int bbIndex  = (dealer + 2) % PlayerCount;
             int utgIndex = (bbIndex + 1) % PlayerCount;
 
             var betting = new BettingManager(SmallBlind, BigBlind);
@@ -278,41 +207,23 @@ namespace TexasHoldem.Dev
             betting.PostSmallBlind(players[sbIndex]);
             betting.PostBigBlind(players[bbIndex]);
 
-            // Local until hand completes successfully (illegal mid-hand must not skew averages).
             int bettingRoundsReached = 1;
-            int playersAtHandStart = players.Count;
-            int playersAfterPreflop = 0;
             int playersSeeingFlop = 0;
             int playersSeeingTurn = 0;
             int playersSeeingRiver = 0;
             int playersAtShowdown = 0;
 
-            var preflop = new PreflopHandTracker(players.Count);
-
-            Diag($"Hand {handIndex} preflop betting START utg={utgIndex} sb={sbIndex} bb={bbIndex}");
             string err = RunBettingRound(
-                players, utgIndex, dealer, GamePhase.PreFlop, betting, board, ai, stats, preflop, handIndex);
+                players, utgIndex, dealer, GamePhase.PreFlop, betting, board, ai, stats);
             if (err != null)
                 return err;
-            Diag($"Hand {handIndex} preflop betting END nonFolded={CountNonFolded(players)} raises={betting.StreetRaiseCount} pot={betting.Pot}");
 
-            playersAfterPreflop = CountNonFolded(players);
-            bool endedPreflop = playersAfterPreflop <= 1;
-            bool blindWalk = endedPreflop
-                && betting.StreetRaiseCount == 0
-                && bbIndex >= 0
-                && bbIndex < players.Count
-                && !players[bbIndex].HasFolded
-                && betting.Pot == SmallBlind + BigBlind;
-
-            if (endedPreflop)
+            if (CountNonFolded(players) <= 1)
             {
-                Diag($"Hand {handIndex} fold-out preflop (blindWalk={blindWalk})");
                 RecordFoldOut(stats);
                 CommitHandDepth(
-                    stats, bettingRoundsReached, playersAtHandStart, playersAfterPreflop,
-                    playersSeeingFlop, playersSeeingTurn, playersSeeingRiver, playersAtShowdown,
-                    preflop, endedPreflop: true, blindWalk);
+                    stats, bettingRoundsReached, playersSeeingFlop, playersSeeingTurn,
+                    playersSeeingRiver, playersAtShowdown);
                 return null;
             }
 
@@ -320,20 +231,17 @@ namespace TexasHoldem.Dev
             board.DealFlop();
             bettingRoundsReached = 2;
             playersSeeingFlop = CountNonFolded(players);
-            Diag($"Hand {handIndex} flop betting START players={playersSeeingFlop}");
             err = RunBettingRound(
-                players, sbIndex, dealer, GamePhase.Flop, betting, board, ai, stats, preflop: null, handIndex);
+                players, sbIndex, dealer, GamePhase.Flop, betting, board, ai, stats);
             if (err != null)
                 return err;
-            Diag($"Hand {handIndex} flop betting END nonFolded={CountNonFolded(players)}");
 
             if (CountNonFolded(players) <= 1)
             {
                 RecordFoldOut(stats);
                 CommitHandDepth(
-                    stats, bettingRoundsReached, playersAtHandStart, playersAfterPreflop,
-                    playersSeeingFlop, playersSeeingTurn, playersSeeingRiver, playersAtShowdown,
-                    preflop, endedPreflop: false, blindWalk: false);
+                    stats, bettingRoundsReached, playersSeeingFlop, playersSeeingTurn,
+                    playersSeeingRiver, playersAtShowdown);
                 return null;
             }
 
@@ -341,20 +249,17 @@ namespace TexasHoldem.Dev
             board.DealTurn();
             bettingRoundsReached = 3;
             playersSeeingTurn = CountNonFolded(players);
-            Diag($"Hand {handIndex} turn betting START players={playersSeeingTurn}");
             err = RunBettingRound(
-                players, sbIndex, dealer, GamePhase.Turn, betting, board, ai, stats, preflop: null, handIndex);
+                players, sbIndex, dealer, GamePhase.Turn, betting, board, ai, stats);
             if (err != null)
                 return err;
-            Diag($"Hand {handIndex} turn betting END nonFolded={CountNonFolded(players)}");
 
             if (CountNonFolded(players) <= 1)
             {
                 RecordFoldOut(stats);
                 CommitHandDepth(
-                    stats, bettingRoundsReached, playersAtHandStart, playersAfterPreflop,
-                    playersSeeingFlop, playersSeeingTurn, playersSeeingRiver, playersAtShowdown,
-                    preflop, endedPreflop: false, blindWalk: false);
+                    stats, bettingRoundsReached, playersSeeingFlop, playersSeeingTurn,
+                    playersSeeingRiver, playersAtShowdown);
                 return null;
             }
 
@@ -362,73 +267,41 @@ namespace TexasHoldem.Dev
             board.DealRiver();
             bettingRoundsReached = 4;
             playersSeeingRiver = CountNonFolded(players);
-            Diag($"Hand {handIndex} river betting START players={playersSeeingRiver}");
             err = RunBettingRound(
-                players, sbIndex, dealer, GamePhase.River, betting, board, ai, stats, preflop: null, handIndex);
+                players, sbIndex, dealer, GamePhase.River, betting, board, ai, stats);
             if (err != null)
                 return err;
-            Diag($"Hand {handIndex} river betting END nonFolded={CountNonFolded(players)}");
 
             if (CountNonFolded(players) <= 1)
             {
                 RecordFoldOut(stats);
                 CommitHandDepth(
-                    stats, bettingRoundsReached, playersAtHandStart, playersAfterPreflop,
-                    playersSeeingFlop, playersSeeingTurn, playersSeeingRiver, playersAtShowdown,
-                    preflop, endedPreflop: false, blindWalk: false);
+                    stats, bettingRoundsReached, playersSeeingFlop, playersSeeingTurn,
+                    playersSeeingRiver, playersAtShowdown);
                 return null;
             }
 
             playersAtShowdown = CountNonFolded(players);
             RecordShowdown(players, board, stats);
             CommitHandDepth(
-                stats, bettingRoundsReached, playersAtHandStart, playersAfterPreflop,
-                playersSeeingFlop, playersSeeingTurn, playersSeeingRiver, playersAtShowdown,
-                preflop, endedPreflop: false, blindWalk: false);
+                stats, bettingRoundsReached, playersSeeingFlop, playersSeeingTurn,
+                playersSeeingRiver, playersAtShowdown);
             return null;
         }
 
         private static void CommitHandDepth(
             Stats stats,
             int bettingRoundsReached,
-            int playersAtHandStart,
-            int playersAfterPreflop,
             int playersSeeingFlop,
             int playersSeeingTurn,
             int playersSeeingRiver,
-            int playersAtShowdown,
-            PreflopHandTracker preflop,
-            bool endedPreflop,
-            bool blindWalk)
+            int playersAtShowdown)
         {
             stats.SumBettingRoundsReached += bettingRoundsReached;
-            stats.SumPlayersAtHandStart += playersAtHandStart;
-            stats.SumPlayersAfterPreflop += playersAfterPreflop;
             stats.SumPlayersSeeingFlop += playersSeeingFlop;
             stats.SumPlayersSeeingTurn += playersSeeingTurn;
             stats.SumPlayersSeeingRiver += playersSeeingRiver;
             stats.SumPlayersAtShowdown += playersAtShowdown;
-
-            if (preflop != null)
-            {
-                stats.SumVpipPlayers += preflop.CountVpip();
-                stats.PreflopOpenRaises += preflop.OpenRaises;
-                stats.PreflopThreeBets += preflop.ThreeBets;
-                stats.PreflopFourBetsPlus += preflop.FourBetsPlus;
-            }
-
-            if (endedPreflop)
-            {
-                stats.HandsEndingPreflop++;
-                stats.UncontestedPotsPreflop++;
-                if (blindWalk)
-                    stats.BlindWalks++;
-            }
-            else
-            {
-                stats.FlopsDealt++;
-                RecordFlopMultiway(stats, playersAfterPreflop);
-            }
         }
 
         private static void ResetBetsForNewPhase(List<PlayerState> players, BettingManager betting)
@@ -446,9 +319,7 @@ namespace TexasHoldem.Dev
             BettingManager betting,
             BoardManager board,
             AIController ai,
-            Stats stats,
-            PreflopHandTracker preflop,
-            int handIndex)
+            Stats stats)
         {
             int n = players.Count;
             var hasActed = new bool[n];
@@ -456,17 +327,13 @@ namespace TexasHoldem.Dev
                 hasActed[i] = players[i].HasFolded || players[i].IsAllIn;
 
             if (!AnyPlayerMustAct(players, hasActed))
-            {
-                Diag($"Hand {handIndex} {phase} betting skipped (no one must act)");
                 return null;
-            }
 
             int seatIndex = startIndex % n;
-            int loopIterations = 0;
-            int actionsTaken = 0;
-            const int maxLoopIterations = 500;
+            int safetyLimit = n * n * 4;
+            int iterations = 0;
 
-            while (loopIterations++ < maxLoopIterations)
+            while (iterations++ < safetyLimit)
             {
                 if (CountNonFolded(players) <= 1)
                     return null;
@@ -487,14 +354,6 @@ namespace TexasHoldem.Dev
                 {
                     seatIndex++;
                     continue;
-                }
-
-                if (actionsTaken >= MaxActionsPerBettingRound)
-                {
-                    string dump = FormatBettingRoundDump(
-                        handIndex, phase, players, currentIndex, betting, actionsTaken, loopIterations);
-                    Debug.LogError($"[PostflopStats] Betting round action limit exceeded\n{dump}");
-                    return $"{phase} exceeded {MaxActionsPerBettingRound} actions — aborting hand\n{dump}";
                 }
 
                 int playersBehind = 0;
@@ -549,12 +408,6 @@ namespace TexasHoldem.Dev
                 if (isPostflop)
                     opponentRange = CountOpponentRange(ai, callAmount, streetRaiseCount, player.Chips, stats);
 
-                actionsTaken++;
-                Diag(
-                    $"Hand {handIndex} {phase} action#{actionsTaken} loop#{loopIterations} " +
-                    $"seat={currentIndex} {player.Name} call={callAmount} table={betBefore} " +
-                    $"raises={streetRaiseCount} → DecideAction...");
-
                 var (action, raise) = ai.DecideAction(
                     player,
                     board.CommunityCards,
@@ -571,9 +424,6 @@ namespace TexasHoldem.Dev
                     shovePosition,
                     callersBefore);
 
-                Diag(
-                    $"Hand {handIndex} {phase} action#{actionsTaken} DecideAction done → {action} raise={raise}");
-
                 if (action == BettingAction.Call && callAmount > player.Chips)
                 {
                     return $"{player.Name} Call callAmount={callAmount} > chips={player.Chips}";
@@ -585,9 +435,6 @@ namespace TexasHoldem.Dev
                     return $"{player.Name} illegal action rejected: {action} raise={raise} " +
                            $"call={callAmount} chips={player.Chips} table={betting.CurrentBet}";
                 }
-
-                if (phase == GamePhase.PreFlop && preflop != null)
-                    preflop.NoteAction(currentIndex, action, streetRaiseCount, betting.StreetRaiseCount);
 
                 int displayAmount = GetActionDisplayAmount(player, action, raise, playerBetBefore);
                 ai.RecordHandAction(
@@ -615,124 +462,7 @@ namespace TexasHoldem.Dev
                     return null;
             }
 
-            string loopDump = FormatBettingRoundDump(
-                handIndex, phase, players, seatIndex % n, betting, actionsTaken, loopIterations);
-            Debug.LogError($"[PostflopStats] Betting loop iteration limit exceeded\n{loopDump}");
-            return $"{phase} exceeded {maxLoopIterations} loop iterations — aborting hand\n{loopDump}";
-        }
-
-        private static void Diag(string message)
-        {
-            if (!EnableBettingDiagnostics)
-                return;
-            Debug.LogWarning($"[PostflopStats] {message}");
-        }
-
-        private static string FormatBettingRoundDump(
-            int handIndex,
-            GamePhase phase,
-            IReadOnlyList<PlayerState> players,
-            int currentIndex,
-            BettingManager betting,
-            int actionsTaken,
-            int loopIterations)
-        {
-            var sb = new System.Text.StringBuilder(512);
-            sb.Append("hand=").Append(handIndex)
-                .Append(" street=").Append(phase)
-                .Append(" actions=").Append(actionsTaken)
-                .Append(" loops=").Append(loopIterations)
-                .Append(" tableBet=").Append(betting.CurrentBet)
-                .Append(" streetRaiseCount=").Append(betting.StreetRaiseCount)
-                .Append(" pot=").Append(betting.Pot)
-                .Append(" currentSeat=").Append(currentIndex)
-                .AppendLine();
-
-            for (int i = 0; i < players.Count; i++)
-            {
-                PlayerState p = players[i];
-                if (p == null)
-                {
-                    sb.Append("  [").Append(i).Append("] (null)").AppendLine();
-                    continue;
-                }
-
-                sb.Append("  [").Append(i).Append("] ").Append(p.Name)
-                    .Append(" chips=").Append(p.Chips)
-                    .Append(" streetBet=").Append(p.CurrentBet)
-                    .Append(" folded=").Append(p.HasFolded)
-                    .Append(" allIn=").Append(p.IsAllIn);
-                if (i == currentIndex)
-                    sb.Append(" ← CURRENT");
-                sb.AppendLine();
-            }
-
-            return sb.ToString();
-        }
-
-        private static void RecordFlopMultiway(Stats stats, int playersOnFlop)
-        {
-            switch (playersOnFlop)
-            {
-                case 2: stats.FlopHeadsUp++; break;
-                case 3: stats.FlopThreeWay++; break;
-                case 4: stats.FlopFourWay++; break;
-                case 5: stats.FlopFiveWay++; break;
-                case 6: stats.FlopSixWay++; break;
-            }
-        }
-
-        /// <summary>Per-hand preflop action tallies (committed only when the hand completes).</summary>
-        private sealed class PreflopHandTracker
-        {
-            private readonly bool[] _vpip;
-
-            public int OpenRaises;
-            public int ThreeBets;
-            public int FourBetsPlus;
-
-            public PreflopHandTracker(int playerCount)
-            {
-                _vpip = new bool[playerCount];
-            }
-
-            public void NoteAction(
-                int seatIndex,
-                BettingAction action,
-                int streetRaiseCountBefore,
-                int streetRaiseCountAfter)
-            {
-                if (action == BettingAction.Call
-                    || action == BettingAction.Raise
-                    || action == BettingAction.AllIn)
-                {
-                    if (seatIndex >= 0 && seatIndex < _vpip.Length)
-                        _vpip[seatIndex] = true;
-                }
-
-                if (streetRaiseCountAfter <= streetRaiseCountBefore)
-                    return;
-
-                int level = streetRaiseCountAfter;
-                if (level == 1)
-                    OpenRaises++;
-                else if (level == 2)
-                    ThreeBets++;
-                else if (level >= 3)
-                    FourBetsPlus++;
-            }
-
-            public int CountVpip()
-            {
-                int n = 0;
-                for (int i = 0; i < _vpip.Length; i++)
-                {
-                    if (_vpip[i])
-                        n++;
-                }
-
-                return n;
-            }
+            return $"{phase} betting round failed to complete (safety limit)";
         }
 
         private static OpponentRangeStrength CountOpponentRange(
@@ -767,7 +497,6 @@ namespace TexasHoldem.Dev
             return range;
         }
 
-        /// <summary>Same scan as <see cref="HandActionLog.ResolvePreflopRaiseCount"/> via public HandActions.</summary>
         private static int ResolvePreflopRaiseCount(AIController ai)
         {
             int max = 0;
@@ -784,10 +513,6 @@ namespace TexasHoldem.Dev
             return max;
         }
 
-        /// <summary>
-        /// True when folding/calling would be against an all-in opponent who put money in this street.
-        /// Uses table state before the current action is applied.
-        /// </summary>
         private static bool IsFacingAllIn(
             IReadOnlyList<PlayerState> players,
             PlayerState hero,
@@ -883,7 +608,6 @@ namespace TexasHoldem.Dev
                 case GamePhase.River: stats.FoldsOnRiver++; break;
             }
 
-            // Situation buckets (independent — a fold can count in more than one).
             if (callAmountBefore > 0)
             {
                 if (streetRaiseCount >= 2)
@@ -1079,15 +803,10 @@ namespace TexasHoldem.Dev
             public int WinsByFold;
             public int SplitPots;
 
-            /// <summary>Sum of betting rounds reached per hand (1=preflop … 4=river).</summary>
             public int SumBettingRoundsReached;
-            public int SumPlayersAtHandStart;
-            public int SumPlayersAfterPreflop;
-            /// <summary>Sum of non-folded players when each street is dealt (0 if street not reached).</summary>
             public int SumPlayersSeeingFlop;
             public int SumPlayersSeeingTurn;
             public int SumPlayersSeeingRiver;
-            /// <summary>Sum of contenders at showdown (0 on fold-outs).</summary>
             public int SumPlayersAtShowdown;
 
             public int FoldsOnFlop;
@@ -1100,20 +819,6 @@ namespace TexasHoldem.Dev
             public int FoldsVersusStrong;
             public int FoldsVersusStrongest;
             public long SumPotAtFold;
-
-            public int HandsEndingPreflop;
-            public int FlopsDealt;
-            public int SumVpipPlayers;
-            public int FlopHeadsUp;
-            public int FlopThreeWay;
-            public int FlopFourWay;
-            public int FlopFiveWay;
-            public int FlopSixWay;
-            public int PreflopOpenRaises;
-            public int PreflopThreeBets;
-            public int PreflopFourBetsPlus;
-            public int BlindWalks;
-            public int UncontestedPotsPreflop;
 
             public int Exceptions;
             public int IllegalActions;
