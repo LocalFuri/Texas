@@ -7,19 +7,18 @@ using UnityEngine;
 namespace TexasHoldem
 {
     /// <summary>
-    /// Appends all-in hands (any street) and selected preflop spots to TexasHoldem_AI_Debug.txt
+    /// Appends a complete betting protocol for every hand to TexasHoldem_AI_Debug.txt
     /// next to the game executable. Observes only — does not affect AI decisions.
     /// </summary>
     public sealed class SuspiciousPreflopDebugLog
     {
         private const string FileName = "TexasHoldem_AI_Debug.txt";
-        private const float CommitFractionThreshold = 0.5f;
 
         private const string FileHeader =
             "Texas Hold'em AI Debug Log\n" +
             "==========================\n" +
             "\n" +
-            "(Append AI decision / debug lines below.)\n";
+            "(Complete hand protocols appended below.)\n";
 
         /// <summary>
         /// When true, overwrite <c>TexasHoldem_AI_Debug.txt</c> with the header at startup.
@@ -31,17 +30,20 @@ namespace TexasHoldem
 
         private int  _handNumber;
         private bool _handActive;
-        private bool _suspicious;
 
         private readonly List<PlayerSnapshot> _players = new List<PlayerSnapshot>(8);
         private readonly List<ActionLine>     _actions = new List<ActionLine>(64);
         private readonly List<string>         _postflopDecisions = new List<string>(32);
         private readonly Dictionary<string, int> _startStacks = new Dictionary<string, int>();
 
+        private string _flopBoard  = string.Empty;
+        private string _turnBoard  = string.Empty;
+        private string _riverBoard = string.Empty;
+
         private static SuspiciousPreflopDebugLog _activeHand;
 
         /// <summary>
-        /// Records a postflop AI decision block for the active hand (file flush only if hand is logged).
+        /// Records a postflop AI decision block for the active hand.
         /// Observes only — safe to call from <see cref="AIController"/>.
         /// </summary>
         public static void RecordPostflopDecision(string decisionBlock)
@@ -79,12 +81,14 @@ namespace TexasHoldem
         public void BeginHand(IReadOnlyList<PlayerState> players, Func<PlayerState, PreflopSeatBucket> seatOf)
         {
             _handNumber++;
-            _handActive  = true;
-            _suspicious  = false;
+            _handActive = true;
             _players.Clear();
             _actions.Clear();
             _postflopDecisions.Clear();
             _startStacks.Clear();
+            _flopBoard  = string.Empty;
+            _turnBoard  = string.Empty;
+            _riverBoard = string.Empty;
             _activeHand = this;
 
             if (players == null)
@@ -132,12 +136,35 @@ namespace TexasHoldem
             }
         }
 
+        /// <summary>Records community cards revealed for a street (Flop / Turn / River).</summary>
+        public void RecordBoard(GamePhase street, IReadOnlyList<Card> communityCards)
+        {
+            if (!_handActive)
+                return;
+
+            string formatted = FormatBoard(communityCards);
+            switch (street)
+            {
+                case GamePhase.Flop:
+                    _flopBoard = formatted;
+                    break;
+                case GamePhase.Turn:
+                    _turnBoard = formatted;
+                    break;
+                case GamePhase.River:
+                    _riverBoard = formatted;
+                    break;
+            }
+        }
+
         public void RecordAction(
             GamePhase street,
             PlayerState player,
             BettingAction action,
-            int raiseAmount,
+            int amount,
             int potAfter,
+            int tableBet,
+            int playerStreetBet,
             int streetRaiseCount)
         {
             if (!_handActive || player == null)
@@ -147,46 +174,38 @@ namespace TexasHoldem
                 street,
                 player.Name,
                 action,
-                raiseAmount,
+                amount,
                 potAfter,
+                tableBet,
+                playerStreetBet,
                 streetRaiseCount,
                 ClassifyTier(player.HoleCards)));
-
-            // Any street: log when the player is all-in after the action (Raise/Call that empties stack).
-            if (player.IsAllIn)
-                _suspicious = true;
-
-            if (street != GamePhase.PreFlop)
-                return;
-
-            if (streetRaiseCount >= 3)
-                _suspicious = true;
-
-            if (_startStacks.TryGetValue(player.Name, out int start)
-                && start > 0
-                && (start - player.Chips) > start * CommitFractionThreshold)
-            {
-                _suspicious = true;
-            }
         }
 
-        public void FlushIfSuspicious(IReadOnlyList<PlayerState> winners)
+        /// <summary>
+        /// Writes the complete hand protocol to disk (every hand, including normal showdowns).
+        /// </summary>
+        public void FlushIfSuspicious(
+            IReadOnlyList<PlayerState> winners,
+            IReadOnlyList<Card> finalBoard = null,
+            IReadOnlyList<(PlayerState Player, HandResult Result)> showdownHands = null,
+            int potAwarded = 0,
+            int grossPot = 0)
         {
             if (!_handActive)
                 return;
 
-            bool shouldWrite = _suspicious;
             _handActive = false;
             if (_activeHand == this)
                 _activeHand = null;
 
-            if (!shouldWrite)
-                return;
-
             try
             {
                 string path = ResolveLogPath();
-                File.AppendAllText(path, FormatHandBlock(winners), Encoding.UTF8);
+                File.AppendAllText(
+                    path,
+                    FormatHandBlock(winners, finalBoard, showdownHands, potAwarded, grossPot),
+                    Encoding.UTF8);
             }
             catch (Exception ex)
             {
@@ -194,42 +213,98 @@ namespace TexasHoldem
             }
         }
 
-        private string FormatHandBlock(IReadOnlyList<PlayerState> winners)
+        private string FormatHandBlock(
+            IReadOnlyList<PlayerState> winners,
+            IReadOnlyList<Card> finalBoard,
+            IReadOnlyList<(PlayerState Player, HandResult Result)> showdownHands,
+            int potAwarded,
+            int grossPot)
         {
-            var sb = new StringBuilder(512);
+            var sb = new StringBuilder(1024);
             sb.AppendLine();
-            sb.AppendLine($"=== Hand #{_handNumber} (all-in / suspicious) ===");
+            sb.AppendLine($"=== Hand #{_handNumber} ===");
 
-            sb.Append("Players: ");
+            sb.AppendLine("Players:");
             for (int i = 0; i < _players.Count; i++)
             {
-                if (i > 0)
-                    sb.Append(" | ");
-
                 PlayerSnapshot p = _players[i];
-                sb.Append(
-                    $"{p.Name} ({p.Position}, {p.HoleCards}, stack={p.StartingStack}, {p.Tier})");
-            }
-
-            sb.AppendLine();
-            sb.AppendLine("Betting sequence:");
-
-            for (int i = 0; i < _actions.Count; i++)
-            {
-                ActionLine a = _actions[i];
                 sb.AppendLine(
-                    $"  {a.Street} | {a.PlayerName} | {a.Action} | raise={a.RaiseAmount} | " +
-                    $"pot={a.PotAfter} | streetRaiseCount={a.StreetRaiseCount} | tier={a.Tier}");
+                    $"  {p.Name} | pos={p.Position} | hole={p.HoleCards} | " +
+                    $"startStack={p.StartingStack} | tier={p.Tier}");
             }
 
-            if (_postflopDecisions.Count > 0)
+            sb.AppendLine("Board by street:");
+            sb.AppendLine($"  Flop:  {(string.IsNullOrEmpty(_flopBoard) ? "(none)" : _flopBoard)}");
+            sb.AppendLine($"  Turn:  {(string.IsNullOrEmpty(_turnBoard) ? "(none)" : _turnBoard)}");
+            sb.AppendLine($"  River: {(string.IsNullOrEmpty(_riverBoard) ? "(none)" : _riverBoard)}");
+
+            sb.AppendLine("Betting sequence:");
+            if (_actions.Count == 0)
             {
-                sb.AppendLine();
-                sb.AppendLine("Postflop decisions:");
+                sb.AppendLine("  (none)");
+            }
+            else
+            {
+                for (int i = 0; i < _actions.Count; i++)
+                {
+                    ActionLine a = _actions[i];
+                    sb.AppendLine(
+                        $"  {a.Street} | {a.PlayerName} | {a.Action} | amount={a.Amount} | " +
+                        $"pot={a.PotAfter} | tableBet={a.TableBet} | " +
+                        $"playerStreetBet={a.PlayerStreetBet} | streetRaiseCount={a.StreetRaiseCount} | " +
+                        $"tier={a.Tier}");
+                }
+            }
+
+            sb.AppendLine("Postflop AI decisions:");
+            if (_postflopDecisions.Count == 0)
+            {
+                sb.AppendLine("  (none)");
+            }
+            else
+            {
                 for (int i = 0; i < _postflopDecisions.Count; i++)
                 {
                     sb.AppendLine(_postflopDecisions[i]);
                     sb.AppendLine("---");
+                }
+            }
+
+            string finalBoardText = FormatBoard(finalBoard);
+            if (string.IsNullOrEmpty(finalBoardText))
+            {
+                if (!string.IsNullOrEmpty(_riverBoard))
+                    finalBoardText = _riverBoard;
+                else if (!string.IsNullOrEmpty(_turnBoard))
+                    finalBoardText = _turnBoard;
+                else if (!string.IsNullOrEmpty(_flopBoard))
+                    finalBoardText = _flopBoard;
+                else
+                    finalBoardText = "(none)";
+            }
+
+            sb.AppendLine($"Final board: {finalBoardText}");
+
+            sb.AppendLine("Showdown hands:");
+            if (showdownHands == null || showdownHands.Count == 0)
+            {
+                sb.AppendLine("  (none — folded out / no showdown)");
+            }
+            else
+            {
+                for (int i = 0; i < showdownHands.Count; i++)
+                {
+                    (PlayerState player, HandResult result) = showdownHands[i];
+                    string name = player != null ? player.Name : "?";
+                    string hole = player != null ? FormatHoleCards(player.HoleCards) : "??";
+                    if (result == null)
+                    {
+                        sb.AppendLine($"  {name} | hole={hole} | result=(null)");
+                        continue;
+                    }
+
+                    sb.AppendLine(
+                        $"  {name} | hole={hole} | {result.Rank} [{string.Join(",", result.Tiebreakers)}]");
                 }
             }
 
@@ -250,6 +325,11 @@ namespace TexasHoldem
                 sb.AppendLine();
             }
 
+            if (grossPot > 0 || potAwarded > 0)
+                sb.AppendLine($"Pot: gross={grossPot} awarded={potAwarded}");
+            else
+                sb.AppendLine("Pot: (n/a)");
+
             return sb.ToString();
         }
 
@@ -269,7 +349,18 @@ namespace TexasHoldem
         {
             if (cards == null || cards.Count < 2)
                 return "??";
-            return $"{cards[0]}{cards[1]}";
+            return $"{cards[0]} {cards[1]}";
+        }
+
+        private static string FormatBoard(IReadOnlyList<Card> cards)
+        {
+            if (cards == null || cards.Count == 0)
+                return string.Empty;
+
+            var parts = new string[cards.Count];
+            for (int i = 0; i < cards.Count; i++)
+                parts[i] = cards[i] != null ? cards[i].ToString() : "?";
+            return string.Join(" ", parts);
         }
 
         private static PreflopHandGroup ClassifyTier(IReadOnlyList<Card> cards) =>
@@ -303,8 +394,10 @@ namespace TexasHoldem
             public GamePhase        Street           { get; }
             public string           PlayerName       { get; }
             public BettingAction    Action           { get; }
-            public int              RaiseAmount      { get; }
+            public int              Amount           { get; }
             public int              PotAfter         { get; }
+            public int              TableBet         { get; }
+            public int              PlayerStreetBet  { get; }
             public int              StreetRaiseCount { get; }
             public PreflopHandGroup Tier             { get; }
 
@@ -312,16 +405,20 @@ namespace TexasHoldem
                 GamePhase street,
                 string playerName,
                 BettingAction action,
-                int raiseAmount,
+                int amount,
                 int potAfter,
+                int tableBet,
+                int playerStreetBet,
                 int streetRaiseCount,
                 PreflopHandGroup tier)
             {
                 Street           = street;
                 PlayerName       = playerName ?? string.Empty;
                 Action           = action;
-                RaiseAmount      = raiseAmount;
+                Amount           = amount;
                 PotAfter         = potAfter;
+                TableBet         = tableBet;
+                PlayerStreetBet  = playerStreetBet;
                 StreetRaiseCount = streetRaiseCount;
                 Tier             = tier;
             }
