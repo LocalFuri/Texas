@@ -37,6 +37,11 @@ namespace TexasHoldem
         public const float NameChipsGap = 8f; // vertical space between name and chips rows
         public const float HudTextPadPx = 12f; // inset when centering text inside HudPanel
         public const float ChipsTextH   = 26f;
+        public const float NetProfitTextH = 22f;
+        /// <summary>Net-profit font as a fraction of the player-name font size.</summary>
+        public const float NetProfitFontScale = 0.85f;
+        /// <summary>Extra upward shift of the name row to make room for the middle net-profit row.</summary>
+        public const float NameRowLift = 10f;
         /// <summary>Default for editor seat rebuild / Set Text Sizes menu — not applied at runtime.</summary>
         public const float StackAmountFontSize = 14f;
 
@@ -58,9 +63,15 @@ namespace TexasHoldem
                 text.font = _stackAmountFont;
         }
 
-        /// <summary>Name/chips block centered vertically on HudPanel center.</summary>
+        /// <summary>
+        /// Three stacked rows: name (top, lifted), net profit (middle), chips (bottom, unchanged band).
+        /// </summary>
         public static float GetCenteredNameY(float panelCenterY)
-            => panelCenterY + (NameChipsGap + ChipsTextH) * 0.5f;
+            => panelCenterY + (NameChipsGap + ChipsTextH) * 0.5f + NameRowLift;
+
+        /// <summary>Net-profit row sits just above HudPanel center, between name and chips.</summary>
+        public static float GetNetProfitY(float panelCenterY)
+            => panelCenterY + 2f;
 
         public static float GetCenteredChipsY(float panelCenterY)
             => panelCenterY - (NameChipsGap + NameTextH) * 0.5f;
@@ -213,11 +224,13 @@ namespace TexasHoldem
 
             float textWidth   = Mathf.Max(uncoveredWidth - HudTextPadPx * 2f, TextW);
             float nameY       = GetCenteredNameY(panelCenterY);
+            float netProfitY  = GetNetProfitY(panelCenterY);
             float chipsY      = GetCenteredChipsY(panelCenterY);
 
-            ApplyText(FindChild(root, "NameText"),   textCenterX, nameY, textWidth, NameTextH, HudPanelTextAlign);
-            ApplyText(FindChild(root, "ChipsText"),  textCenterX, chipsY, textWidth, ChipsTextH, HudPanelTextAlign);
-            ApplyText(FindChild(root, "StatusText"), textCenterX, chipsY, textWidth, 22f, HudPanelTextAlign);
+            ApplyText(FindChild(root, "NameText"),      textCenterX, nameY, textWidth, NameTextH, HudPanelTextAlign);
+            ApplyText(FindChild(root, "NetProfitText"), textCenterX, netProfitY, textWidth, NetProfitTextH, HudPanelTextAlign);
+            ApplyText(FindChild(root, "ChipsText"),     textCenterX, chipsY, textWidth, ChipsTextH, HudPanelTextAlign);
+            ApplyText(FindChild(root, "StatusText"),    textCenterX, chipsY, textWidth, 22f, HudPanelTextAlign);
         }
 
         /// <summary>Fixed left edge of the HUD content band (avatar overlap side).</summary>
@@ -489,12 +502,12 @@ namespace TexasHoldem
                 ? new[]
                 {
                     "EquityText", "EquityAdviceText", "ActionBadge",
-                    "NameText", "ChipsText", "StatusText", "SeatActionMenu",
+                    "NameText", "NetProfitText", "ChipsText", "StatusText", "SeatActionMenu",
                 }
                 : new[]
                 {
                     "EquityText", "EquityAdviceText",
-                    "NameText", "ChipsText", "StatusText",
+                    "NameText", "NetProfitText", "ChipsText", "StatusText",
                     "SeatActionMenu", "ActionBadge",
                 };
 

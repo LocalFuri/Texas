@@ -14,6 +14,12 @@ namespace TexasHoldem
         public bool       HasFolded  { get; set; }
         public bool       IsAllIn    { get; set; }
 
+        /// <summary>Cumulative chips won/lost across the whole session. Reset only on a new game.</summary>
+        public int SessionNetProfit { get; set; }
+
+        /// <summary>Chip count captured at the start of the current hand (before blinds).</summary>
+        public int HandStartStack { get; set; }
+
         public bool IsActive => !HasFolded && !IsAllIn && Chips > 0;
 
         public PlayerState(string name, PlayerType type, int startingChips)

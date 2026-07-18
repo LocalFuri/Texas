@@ -19,6 +19,7 @@ namespace TexasHoldem
     ///   ├── HudGlow           — turn pulse rim over panel edge, under avatar
     ///   ├── AvatarFrame       — Avatar → AvatarRingChrome → AvatarRingGold
     ///   ├── NameText
+    ///   ├── NetProfitText
     ///   ├── ChipsText
         ///   ├── StatusText        — overlays ChipsText when Folded / All In / Eliminated
         ///   ├── SeatActionMenu    — tappable Check / Fold / Raise / All-In above the name (human turn)
@@ -656,6 +657,28 @@ namespace TexasHoldem
                     view.SetDisplayName(txt.text);
             }
 
+            // 7b. NetProfitText — centered middle row between name and chips.
+            GameObject netProfitGo = GetOrCreate(root, "NetProfitText");
+            var        netProfitTmp = GetOrAdd<TextMeshProUGUI>(netProfitGo);
+            Transform  netProfitT = netProfitGo.transform;
+            RecordObj(netProfitGo);
+            RecordObj(netProfitTmp);
+            {
+                netProfitTmp.alignment          = PlayerHudLayout.HudPanelTextAlign;
+                netProfitTmp.fontStyle          = FontStyles.Bold;
+                PlayerHudLayout.ApplyStackAmountFontIfMissing(netProfitTmp);
+                if (!_useUndo)
+                {
+                    netProfitTmp.enableAutoSizing = false;
+                    netProfitTmp.fontSize         = NameFontSize * PlayerHudLayout.NetProfitFontScale;
+                }
+                netProfitTmp.text              = "0.0";
+                netProfitTmp.color             = Color.white;
+                netProfitTmp.overflowMode      = TextOverflowModes.Overflow;
+                netProfitTmp.enableWordWrapping = false;
+                netProfitTmp.raycastTarget     = false;
+            }
+
             // 8. ChipsText — centered in HudPanel, below name.
             Transform chipsT = FindDeep(root, "ChipsText");
             if (chipsT != null)
@@ -1003,7 +1026,7 @@ namespace TexasHoldem
 
             // 13. Sibling render order (back → front):
             //     Card slots → HudPanel → HudGlow → AvatarFrame (Avatar → Chrome → Gold)
-            //     → NameText → ChipsText → StatusText → SeatActionMenu → ActionBadge
+            //     → NameText → NetProfitText → ChipsText → StatusText → SeatActionMenu → ActionBadge
             //     → BetAnchor → DealerButtonAnchor
             int idx = 0;
             foreach (CardView card in cards)
@@ -1014,9 +1037,10 @@ namespace TexasHoldem
             hudGo.transform.SetSiblingIndex(idx++);
             hudGlowGo.transform.SetSiblingIndex(idx++);
             avatarFrameGo.transform.SetSiblingIndex(idx++);
-            if (nameT   != null) nameT.SetSiblingIndex(idx++);
-            if (chipsT  != null) chipsT.SetSiblingIndex(idx++);
-            if (statusT != null) statusT.SetSiblingIndex(idx++);
+            if (nameT      != null) nameT.SetSiblingIndex(idx++);
+            if (netProfitT != null) netProfitT.SetSiblingIndex(idx++);
+            if (chipsT     != null) chipsT.SetSiblingIndex(idx++);
+            if (statusT    != null) statusT.SetSiblingIndex(idx++);
             seatMenuGo.transform.SetSiblingIndex(idx++);
             actionBadgeGo.transform.SetSiblingIndex(idx++);
             betAnchorGo.transform.SetSiblingIndex(idx++);
@@ -1026,6 +1050,7 @@ namespace TexasHoldem
             var so = new SerializedObject(view);
             so.Update();
             SetRef(so, "_nameText",    nameT   != null ? nameT.GetComponent<TMP_Text>()   : null);
+            SetRef(so, "_netProfitText", netProfitT != null ? netProfitT.GetComponent<TMP_Text>() : null);
             SetRef(so, "_chipsText",   chipsT  != null ? chipsT.GetComponent<TMP_Text>()  : null);
             SetRef(so, "_statusText",  statusT != null ? statusT.GetComponent<TMP_Text>() : null);
             ClearRef(so, "_activeGlow");

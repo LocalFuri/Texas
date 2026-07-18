@@ -34,6 +34,7 @@ namespace TexasHoldem
 
         [Header("HUD Text")]
         [SerializeField] private TMP_Text _nameText;
+        [SerializeField] private TMP_Text _netProfitText;
         [SerializeField] private TMP_Text _chipsText;
         [SerializeField] private TMP_Text _statusText;
         [SerializeField] private TMP_Text _equityText;
@@ -88,8 +89,17 @@ namespace TexasHoldem
         [SerializeField] private bool _showChromeRing   = true; // disable to hide the chrome base ring during testing
 
 
+        private static readonly Color NetProfitPositiveColor = new Color32(60, 210, 100, 255);
+        private static readonly Color NetProfitNegativeColor = new Color32(230, 70, 70, 255);
+        private static readonly Color NetProfitZeroColor     = new Color32(205, 205, 205, 255);
+        private static readonly Color NetProfitFlashGain     = new Color32(90, 255, 130, 255);
+        private static readonly Color NetProfitFlashLoss     = new Color32(255, 80, 80, 255);
+        private const float NetProfitFlashSeconds = 1f;
+
         private bool      _isHuman;
         private int       _revealedHoleCount;
+        private Coroutine _netProfitFlash;
+        private int?      _lastNetProfitShown;
         private Coroutine _ringCountdown;
         private Coroutine _winnerAvatarScaleCoroutine;
         private bool      _winnerAvatarScaleActive;
@@ -147,6 +157,7 @@ namespace TexasHoldem
         /// <summary>Repositions avatar and name/chips for default or mirrored HUD band.</summary>
         public void ApplyHudLayout()
         {
+            EnsureNetProfitText();
             EnsureHudGlowRef();
             ApplyHudGlowSettings();
             PlayerHudLayout.Apply(transform, _hudMirrored);
@@ -159,6 +170,7 @@ namespace TexasHoldem
             EnsureDisplayNameFromLabel();
             ApplyDisplayNameToHud();
             ApplyNameFontSize();
+            EnsureNetProfitText();
             ApplyFontSize(_statusText, _statusFontSize);
             EnsureRingRefs();
             EnsureHudGlowRef();
@@ -184,6 +196,7 @@ namespace TexasHoldem
             EnsureDisplayNameFromLabel();
             ApplyDisplayNameToHud();
             ApplyNameFontSize();
+            ApplyNetProfitTextStyle();
             ApplyFontSize(_statusText, _statusFontSize);
             EnsureRingRefs();
             EnsureHudGlowRef();
@@ -235,8 +248,115 @@ namespace TexasHoldem
             _equityText.overflowMode       = TextOverflowModes.Overflow;
         }
 
+        private void EnsureNetProfitText()
+        {
+            if (_netProfitText != null)
+                return;
+
+            Transform existing = transform.Find("NetProfitText");
+            if (existing != null)
+            {
+                _netProfitText = existing.GetComponent<TMP_Text>();
+                ApplyNetProfitTextStyle();
+                return;
+            }
+
+            var go = new GameObject("NetProfitText", typeof(RectTransform));
+            go.transform.SetParent(transform, false);
+            _netProfitText = go.AddComponent<TextMeshProUGUI>();
+            _netProfitText.raycastTarget = false;
+            ApplyNetProfitTextStyle();
+            ApplyHudLayout();
+        }
+
+        private void ApplyNetProfitTextStyle()
+        {
+            if (_netProfitText == null)
+                return;
+
+            PlayerHudLayout.ApplyStackAmountFontIfMissing(_netProfitText);
+            if (_nameText != null && _nameText.font != null)
+                _netProfitText.font = _nameText.font;
+
+            _netProfitText.enableAutoSizing   = false;
+            _netProfitText.fontSize           = _nameFontSize * PlayerHudLayout.NetProfitFontScale;
+            _netProfitText.alignment          = PlayerHudLayout.HudPanelTextAlign;
+            _netProfitText.enableWordWrapping = false;
+            _netProfitText.overflowMode       = TextOverflowModes.Overflow;
+        }
+
+        /// <summary>Signed, one-decimal net profit, e.g. "+127.0", "-53.5", "0.0".</summary>
+        private static string FormatNetProfit(int netProfit)
+        {
+            if (netProfit > 0)
+                return "+" + netProfit.ToString("0.0", CultureInfo.InvariantCulture);
+            if (netProfit < 0)
+                return netProfit.ToString("0.0", CultureInfo.InvariantCulture);
+            return "0.0";
+        }
+
+        private static Color NetProfitColor(int netProfit)
+        {
+            if (netProfit > 0) return NetProfitPositiveColor;
+            if (netProfit < 0) return NetProfitNegativeColor;
+            return NetProfitZeroColor;
+        }
+
+        /// <summary>
+        /// Shows cumulative <see cref="PlayerState.SessionNetProfit"/>. When the value changes at the
+        /// end of a hand, briefly flashes green (gain) or red (loss) before restoring the signed color.
+        /// </summary>
+        private void UpdateNetProfitDisplay(int netProfit)
+        {
+            EnsureNetProfitText();
+            if (_netProfitText == null)
+                return;
+
+            _netProfitText.text = FormatNetProfit(netProfit);
+            Color normalColor = NetProfitColor(netProfit);
+
+            bool hadValue = _lastNetProfitShown.HasValue;
+            int  delta    = hadValue ? netProfit - _lastNetProfitShown.Value : 0;
+            _lastNetProfitShown = netProfit;
+
+            if (hadValue && delta != 0)
+                FlashNetProfit(delta > 0, normalColor);
+            else if (_netProfitFlash == null)
+                _netProfitText.color = normalColor;
+        }
+
+        private void FlashNetProfit(bool gain, Color restoreColor)
+        {
+            if (_netProfitFlash != null)
+                StopCoroutine(_netProfitFlash);
+
+            if (!isActiveAndEnabled)
+            {
+                if (_netProfitText != null)
+                    _netProfitText.color = restoreColor;
+                return;
+            }
+
+            _netProfitFlash = StartCoroutine(
+                RunNetProfitFlash(gain ? NetProfitFlashGain : NetProfitFlashLoss, restoreColor));
+        }
+
+        private IEnumerator RunNetProfitFlash(Color flashColor, Color restoreColor)
+        {
+            if (_netProfitText != null)
+                _netProfitText.color = flashColor;
+
+            yield return new WaitForSeconds(NetProfitFlashSeconds);
+
+            if (_netProfitText != null)
+                _netProfitText.color = restoreColor;
+
+            _netProfitFlash = null;
+        }
+
         private void ApplyNameFontSize()
         {
+            ApplyNetProfitTextStyle();
             if (_nameText == null) return;
             float min = Mathf.Clamp(_nameFontSizeMin, 8f, _nameFontSize);
             _nameText.enableAutoSizing   = true;
@@ -751,6 +871,14 @@ namespace TexasHoldem
                 _canvasGroup.alpha = 1f;
             if (_statusText != null)
                 _statusText.text = string.Empty;
+
+            // New session baseline: clear the flash reference so a genuine reset does not flash.
+            if (_netProfitFlash != null)
+            {
+                StopCoroutine(_netProfitFlash);
+                _netProfitFlash = null;
+            }
+            _lastNetProfitShown = null;
         }
 
         /// <summary>Updates name, chips, status text, and canvas fade. Bet is handled separately via ShowBetDisplay.</summary>
@@ -758,6 +886,7 @@ namespace TexasHoldem
         {
             if (_nameText  != null) _nameText.text  = player.Name;
             if (_chipsText != null) _chipsText.text = FormatChipsHud(player.Chips, bigBlind);
+            UpdateNetProfitDisplay(player.SessionNetProfit);
 
             string status = player.Chips == 0 ? "Eliminated"
                                 : player.HasFolded  ? "Folded"
@@ -842,8 +971,9 @@ namespace TexasHoldem
         /// <summary>Hides name/chips while the seat action menu replaces that HUD band.</summary>
         public void SetSeatMenuHudMode(bool menuOpen)
         {
-            if (_nameText  != null) _nameText.gameObject.SetActive(!menuOpen);
-            if (_chipsText != null) _chipsText.gameObject.SetActive(!menuOpen);
+            if (_nameText      != null) _nameText.gameObject.SetActive(!menuOpen);
+            if (_netProfitText != null) _netProfitText.gameObject.SetActive(!menuOpen);
+            if (_chipsText     != null) _chipsText.gameObject.SetActive(!menuOpen);
         }
 
         /// <summary>Seat menu for human betting choices above the player name.</summary>

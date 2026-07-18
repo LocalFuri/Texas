@@ -541,7 +541,13 @@ namespace TexasHoldem
 
         private IEnumerator PlayRound()
         {
-            foreach (var p in Players) p.ResetForNewRound();
+            foreach (var p in Players)
+            {
+                // Capture the pre-blind stack so net profit reflects the whole hand,
+                // not the post-hand auto-refill.
+                p.HandStartStack = p.Chips;
+                p.ResetForNewRound();
+            }
             _bettingManager.ResetRound();
             _boardManager.NewDeck();
             _aiController.ClearHandState();
@@ -1003,6 +1009,7 @@ namespace TexasHoldem
             yield return new WaitUntil(() => !_awaitingWinnerDismiss);
 
             ApplyPendingPotAward();
+            UpdateSessionNetProfit();
             ApplyRebuysToMaxBuyIn();
 
             OnRoundEnded?.Invoke();
@@ -1229,6 +1236,20 @@ namespace TexasHoldem
                 if (player.Type == PlayerType.Human && player.Chips < 100_000)
                     player.Chips = 100_000;
             }
+        }
+
+        /// <summary>
+        /// Accumulates each player's whole-hand result into <see cref="PlayerState.SessionNetProfit"/>.
+        /// Must run after all pots/side pots are awarded but before the auto-refill, because the
+        /// final stack already reflects blinds, bets, calls, folds, all-ins, splits, side pots, and rake.
+        /// </summary>
+        private void UpdateSessionNetProfit()
+        {
+            if (Players == null)
+                return;
+
+            foreach (PlayerState player in Players)
+                player.SessionNetProfit += player.Chips - player.HandStartStack;
         }
 
         /// <summary>Tops up every seated player to <see cref="MaxBuyIn"/> after a hand.</summary>
