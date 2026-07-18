@@ -21,6 +21,8 @@ namespace TexasHoldem
             NumberGroupSizes       = new[] { 3 }
         };
 
+        private static readonly CultureInfo GermanNetProfitCulture = CultureInfo.GetCultureInfo("de-DE");
+
         /// <summary>Formats seat chips for the HUD, e.g. 4002 chips at BB 20 → "4.002,0 (200 BB)".</summary>
         public static string FormatChipsHud(int chips, int bigBlind)
         {
@@ -320,15 +322,9 @@ namespace TexasHoldem
             text.alignment            = PlayerHudLayout.HudPanelTextAlign;
         }
 
-        /// <summary>Signed, one-decimal net profit, e.g. "+127.0", "-53.5", "0.0".</summary>
-        private static string FormatNetProfit(int netProfit)
-        {
-            if (netProfit > 0)
-                return "+" + netProfit.ToString("0.0", CultureInfo.InvariantCulture);
-            if (netProfit < 0)
-                return netProfit.ToString("0.0", CultureInfo.InvariantCulture);
-            return "0.0";
-        }
+        /// <summary>One-decimal net profit in German format, e.g. "1.041,0", "-1.041,0", "46,0".</summary>
+        private static string FormatNetProfit(int netProfit) =>
+            netProfit.ToString("N1", GermanNetProfitCulture);
 
         private static Color NetProfitColor(int netProfit)
         {
