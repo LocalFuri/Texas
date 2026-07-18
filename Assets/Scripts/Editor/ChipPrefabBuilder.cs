@@ -18,7 +18,7 @@ namespace TexasHoldem
             (500, "Assets/Graphic/Chips/chip500.png"),
         };
 
-        [MenuItem("Texas Holdem/Build Chip Prefabs")]
+        [MenuItem("Texas Hold'em/Assets/Build Chip Prefabs")]
         public static void BuildChipPrefabsMenu()
         {
             BuildChipPrefabs();

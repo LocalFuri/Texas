@@ -28,14 +28,14 @@ namespace TexasHoldem
             };
         }
 
-        [MenuItem("Texas Holdem/Generate Casino3D SDF Font")]
+        [MenuItem("Texas Hold'em/Assets/Generate Casino3D SDF Font")]
         public static void EnsureExistsMenu()
         {
             EnsureExists(SdfAssetPath, SourceFontPath, "Casino3D SDF", force: false);
             EnsureExists(FilledSdfAssetPath, FilledSourceFontPath, "Casino3DFilled SDF", force: false);
         }
 
-        [MenuItem("Texas Holdem/Regenerate Casino3D SDF Font (Force)")]
+        [MenuItem("Texas Hold'em/Assets/Regenerate Casino3D SDF Font (Force)")]
         public static void ForceRegenerateMenu()
         {
             EnsureExists(SdfAssetPath, SourceFontPath, "Casino3D SDF", force: true);

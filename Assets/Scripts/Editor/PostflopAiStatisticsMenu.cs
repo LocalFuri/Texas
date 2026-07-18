@@ -13,13 +13,13 @@ namespace TexasHoldem
         private const int Hands1000  = 1_000;
         private const int Hands10000 = 10_000;
 
-        [MenuItem("Texas Hold'em/Postflop AI Statistics/Run 100 Hands")]
+        [MenuItem("Texas Hold'em/Statistics/Postflop AI/Run 100 Hands")]
         public static void Run100() => RunWithProgress(Hands100);
 
-        [MenuItem("Texas Hold'em/Postflop AI Statistics/Run 1,000 Hands")]
+        [MenuItem("Texas Hold'em/Statistics/Postflop AI/Run 1,000 Hands")]
         public static void Run1000() => RunWithProgress(Hands1000);
 
-        [MenuItem("Texas Hold'em/Postflop AI Statistics/Run 10,000 Hands")]
+        [MenuItem("Texas Hold'em/Statistics/Postflop AI/Run 10,000 Hands")]
         public static void Run10000() => RunWithProgress(Hands10000);
 
         public static void RunFromBatch() => RunBatchAndExit(Hands10000);

@@ -12,7 +12,7 @@ namespace TexasHoldem
         private const string Casino3DSdfResourcesPath  = "Fonts/Casino3D SDF";
         private const float  FallbackButtonFontSize    = 40f;
 
-        [MenuItem("Texas Holdem/Apply Action Button Label Styling")]
+        [MenuItem("Texas Hold'em/Layout/Apply Action Button Label Styling")]
         public static void ApplyMenu()
         {
             ApplyToScene();

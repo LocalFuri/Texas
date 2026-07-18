@@ -9,7 +9,7 @@ namespace TexasHoldem
     {
         private const string ResultsPath = "Temp/PreflopMultiwayFacingRaiseTestResults.txt";
 
-        [MenuItem("Texas Hold'em/Run Preflop Multiway Facing-Raise Tests")]
+        [MenuItem("Texas Hold'em/Tests/Preflop/Multiway Facing-Raise")]
         public static void RunFromMenu()
         {
             (int passed, int total) = PreflopMultiwayFacingRaiseTestRunner.RunAllTests();

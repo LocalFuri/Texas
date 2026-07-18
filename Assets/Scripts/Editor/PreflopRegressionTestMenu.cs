@@ -9,7 +9,7 @@ namespace TexasHoldem
     {
         private const string ResultsPath = "Temp/PreflopRegressionTestResults.txt";
 
-        [MenuItem("Texas Hold'em/Run All Preflop Dev Tests")]
+        [MenuItem("Texas Hold'em/Tests/Run All Preflop Tests")]
         public static void RunFromMenu()
         {
             (int passed, int total) = PreflopRegressionTestRunner.RunAllSuites();

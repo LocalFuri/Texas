@@ -9,7 +9,7 @@ namespace TexasHoldem
     {
         private const string ResultsPath = "Temp/NetProfitRegressionTestResults.txt";
 
-        [MenuItem("Texas Hold'em/Run Net Profit Regression")]
+        [MenuItem("Texas Hold'em/Tests/Run Net Profit Regression")]
         public static void RunFromMenu()
         {
             (int passed, int total) = NetProfitRegressionTestRunner.RunAllTests();

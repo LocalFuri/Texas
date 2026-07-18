@@ -103,7 +103,7 @@ namespace TexasHoldem
         /// Removes fontSize prefab overrides so seats inherit prefab values.
         /// Includes ChipsText and bet AmountText (Inspector-tuned sizes).
         /// </summary>
-        [MenuItem("Texas Holdem/Clear Text Size Overrides")]
+        [MenuItem("Texas Hold'em/Layout/Clear Text Size Overrides")]
         public static void ClearTextSizeOverrides()
         {
             string[] textNames = { "NameText", "ChipsText", "StatusText" };
@@ -151,7 +151,7 @@ namespace TexasHoldem
         }
 
         /// <summary>Sets NameText / StatusText sizes on scene seats. Does not touch ChipsText or bet AmountText.</summary>
-        [MenuItem("Texas Holdem/Apply Text Sizes")]
+        [MenuItem("Texas Hold'em/Layout/Apply Text Sizes")]
         public static void ApplyTextSizes()
         {
             PlayerView[] views = Object.FindObjectsOfType<PlayerView>(true);
@@ -181,7 +181,7 @@ namespace TexasHoldem
         /// Sets ChipsText on every seat to the starting-chip count and BB count,
         /// matching runtime formatting in PlayerView.FormatChipsHud.
         /// </summary>
-        [MenuItem("Texas Holdem/Apply Chips Format")]
+        [MenuItem("Texas Hold'em/Layout/Apply Chips Format")]
         public static void ApplyChipsFormat()
         {
             // Read _startingChips from GameManager via SerializedObject.
@@ -216,7 +216,7 @@ namespace TexasHoldem
             Debug.Log($"[PlayerSeatLayout] ChipsText set to \"{formatted}\" on {count} seat(s).");
         }
 
-        [MenuItem("Texas Holdem/Repair Action Badges In Scene")]
+        [MenuItem("Texas Hold'em/Layout/Repair Action Badges In Scene")]
         public static void RepairActionBadgesInScene()
         {
             ActionBadgeSprites.LoadOrCreateResourcesAsset();
@@ -229,14 +229,14 @@ namespace TexasHoldem
             Debug.Log($"[PlayerSeatLayout] Repaired {badges.Length} ActionBadge(s) in the active scene.");
         }
 
-        [MenuItem("Texas Holdem/Create Action Badge Sprite Set")]
+        [MenuItem("Texas Hold'em/Assets/Create Action Badge Sprite Set")]
         public static void CreateActionBadgeSpriteSetMenu()
         {
             ActionBadgeSprites.LoadOrCreateResourcesAsset();
             Debug.Log("[PlayerSeatLayout] ActionBadgeSpriteSet saved to Assets/Resources/ActionBadgeSpriteSet.asset");
         }
 
-        [MenuItem("Texas Holdem/Apply Player Seat Layout")]
+        [MenuItem("Texas Hold'em/Layout/Apply Player Seat Layout")]
         public static void ApplyLayout()
         {
             Sprite circle      = EnsureCircleSprite();

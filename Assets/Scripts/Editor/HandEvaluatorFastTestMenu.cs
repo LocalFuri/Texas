@@ -10,14 +10,14 @@ namespace TexasHoldem
         private const string CorrectnessResults = "Temp/HandEvaluatorFastCorrectnessResults.txt";
         private const string BenchmarkResults   = "Temp/HandEvaluatorFastBenchmarkResults.txt";
 
-        [MenuItem("Texas Hold'em/Run HandEvaluatorFast Correctness Tests")]
+        [MenuItem("Texas Hold'em/Tests/Evaluator/Fast Correctness")]
         public static void RunCorrectnessFromMenu()
         {
             bool ok = HandEvaluatorFastCorrectnessTestRunner.RunAllTests();
             Debug.Log($"[HandEvalFast] Menu correctness: {(ok ? "PASS" : "FAIL")}");
         }
 
-        [MenuItem("Texas Hold'em/Run HandEvaluatorFast Benchmark")]
+        [MenuItem("Texas Hold'em/Benchmarks/HandEvaluatorFast")]
         public static void RunBenchmarkFromMenu()
         {
             HandEvaluatorFastBenchmarkRunner.RunBenchmark();

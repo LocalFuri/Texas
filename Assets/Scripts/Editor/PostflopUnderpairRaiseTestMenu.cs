@@ -9,7 +9,7 @@ namespace TexasHoldem
     {
         private const string ResultsPath = "Temp/PostflopUnderpairRaiseTestResults.txt";
 
-        [MenuItem("Texas Hold'em/Run Postflop Underpair Raise Tests")]
+        [MenuItem("Texas Hold'em/Tests/Postflop/Underpair Raise")]
         public static void RunFromMenu()
         {
             (int passed, int total) = PostflopUnderpairRaiseTestRunner.RunAllTests();

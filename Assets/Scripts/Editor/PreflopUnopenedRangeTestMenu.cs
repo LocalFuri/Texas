@@ -9,7 +9,7 @@ namespace TexasHoldem
     {
         private const string ResultsPath = "Temp/PreflopUnopenedRangeTestResults.txt";
 
-        [MenuItem("Texas Hold'em/Run Preflop Unopened Range Tests")]
+        [MenuItem("Texas Hold'em/Tests/Preflop/Unopened Ranges")]
         public static void RunFromMenu()
         {
             (int passed, int total) = PreflopUnopenedRangeTestRunner.RunAllTests();

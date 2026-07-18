@@ -39,8 +39,7 @@ public static class OptionsMenuBuilder
         + OptionLabels.Length * RowHeight
         + (OptionLabels.Length - 1) * rowSpacing;
 
-    [MenuItem("Texas Holdem/Apply Options Menu Layout")]
-    [MenuItem("Tools/Texas Hold'em/Build Options Menu")]
+    [MenuItem("Texas Hold'em/Layout/Apply Options Menu Layout")]
     public static void Build()
     {
         var canvas = Object.FindObjectOfType<Canvas>();

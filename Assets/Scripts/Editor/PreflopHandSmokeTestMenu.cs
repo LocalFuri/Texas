@@ -10,7 +10,7 @@ namespace TexasHoldem
         private const string ResultsPath = "Temp/PreflopHandSmokeTestResults.txt";
         private const int DefaultHands = 10_000;
 
-        [MenuItem("Texas Hold'em/Run Preflop Hand Smoke Test")]
+        [MenuItem("Texas Hold'em/Tests/Preflop/Hand Smoke")]
         public static void RunFromMenu()
         {
             (bool ok, PreflopHandSmokeTestRunner.SmokeStats stats) =

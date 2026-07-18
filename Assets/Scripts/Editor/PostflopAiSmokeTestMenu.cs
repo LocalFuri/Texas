@@ -10,7 +10,7 @@ namespace TexasHoldem
         private const string ResultsPath = "Temp/PostflopAiSmokeTestResults.txt";
         private const int DefaultDecisions = 10_000;
 
-        [MenuItem("Texas Hold'em/Run Postflop AI Smoke Test")]
+        [MenuItem("Texas Hold'em/Tests/Postflop/AI Smoke")]
         public static void RunFromMenu()
         {
             (bool ok, PostflopAiSmokeTestRunner.SmokeStats stats) =

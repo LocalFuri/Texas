@@ -6,7 +6,7 @@ namespace TexasHoldem
 {
     public static class HeroPreflopOpenStatsMenu
     {
-        [MenuItem("Texas Hold'em/Hero Preflop Open Stats/Print Totals")]
+        [MenuItem("Texas Hold'em/Statistics/Hero Preflop Opens/Print Totals")]
         public static void PrintTotals()
         {
             HeroPreflopOpenStats stats = FindOrCreate();
@@ -19,7 +19,7 @@ namespace TexasHoldem
             stats.PrintTotals();
         }
 
-        [MenuItem("Texas Hold'em/Hero Preflop Open Stats/Reset Totals")]
+        [MenuItem("Texas Hold'em/Statistics/Hero Preflop Opens/Reset Totals")]
         public static void ResetTotals()
         {
             HeroPreflopOpenStats stats = FindOrCreate();

@@ -9,7 +9,8 @@ namespace TexasHoldem.Dev
         [ContextMenu("Run BoardTextureAnalyzer Tests")]
         private void RunTestsFromContextMenu() => RunAllTests();
 
-        public void RunAllTests()
+        /// <summary>Returns (passed, total). Also logs each case.</summary>
+        public static (int passed, int total) RunAllTests()
         {
             var cases = BuildTestCases();
             int passed = 0;
@@ -31,6 +32,7 @@ namespace TexasHoldem.Dev
             }
 
             Debug.Log($"[BoardTextureTest] Complete: {passed}/{cases.Count} passed.");
+            return (passed, cases.Count);
         }
 
         private static List<TextureTestCase> BuildTestCases()

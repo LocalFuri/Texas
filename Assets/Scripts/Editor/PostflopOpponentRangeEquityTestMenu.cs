@@ -9,7 +9,7 @@ namespace TexasHoldem
     {
         private const string ResultsPath = "Temp/PostflopOpponentRangeEquityTestResults.txt";
 
-        [MenuItem("Texas Hold'em/Run Postflop Opponent-Range Equity Tests")]
+        [MenuItem("Texas Hold'em/Tests/Postflop/Opponent-Range Equity")]
         public static void RunFromMenu()
         {
             (int passed, int total) = PostflopOpponentRangeEquityTestRunner.RunAllTests();

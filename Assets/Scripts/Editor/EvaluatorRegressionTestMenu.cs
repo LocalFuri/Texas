@@ -5,24 +5,24 @@ using TexasHoldem.Dev;
 
 namespace TexasHoldem
 {
-    public static class HandEvaluatorShowdownTestMenu
+    public static class EvaluatorRegressionTestMenu
     {
-        private const string ResultsPath = "Temp/HandEvaluatorShowdownTestResults.txt";
+        private const string ResultsPath = "Temp/EvaluatorRegressionTestResults.txt";
 
-        [MenuItem("Texas Hold'em/Tests/Evaluator/Showdown")]
+        [MenuItem("Texas Hold'em/Tests/Run All Evaluator Tests")]
         public static void RunFromMenu()
         {
-            (int passed, int total) = HandEvaluatorShowdownTestRunner.RunAllTests();
-            Debug.Log($"[HandEvalShowdown] Menu complete: {passed}/{total}");
+            (int passed, int total) = EvaluatorRegressionTestRunner.RunAllSuites();
+            Debug.Log($"[EvaluatorRegression] Menu complete: {passed}/{total}");
         }
 
         public static void RunFromBatch()
         {
-            (int passed, int total) = HandEvaluatorShowdownTestRunner.RunAllTests();
+            (int passed, int total) = EvaluatorRegressionTestRunner.RunAllSuites();
             string line = passed == total ? $"PASS {passed}/{total}" : $"FAIL {passed}/{total}";
             Directory.CreateDirectory(Path.GetDirectoryName(ResultsPath) ?? "Temp");
             File.WriteAllText(ResultsPath, line + "\n");
-            Debug.Log($"[HandEvalShowdown] {line} (wrote {ResultsPath})");
+            Debug.Log($"[EvaluatorRegression] {line} (wrote {ResultsPath})");
             EditorApplication.Exit(passed == total ? 0 : 1);
         }
     }

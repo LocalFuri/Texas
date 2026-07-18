@@ -7,12 +7,12 @@ namespace TexasHoldem
     {
         private static MonoBehaviour _runner;
 
-        [MenuItem("Texas Hold'em/Run Monte Carlo Performance Benchmark")]
+        [MenuItem("Texas Hold'em/Benchmarks/Monte Carlo")]
         private static void RunBenchmark()
         {
             if (!Application.isPlaying)
             {
-                Debug.LogWarning("[MonteCarlo] Enter Play Mode, then run Texas Hold'em/Run Monte Carlo Performance Benchmark.");
+                Debug.LogWarning("[MonteCarlo] Enter Play Mode, then run Texas Hold'em/Benchmarks/Monte Carlo.");
                 return;
             }
 

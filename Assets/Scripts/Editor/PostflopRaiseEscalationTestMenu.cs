@@ -9,7 +9,7 @@ namespace TexasHoldem
     {
         private const string ResultsPath = "Temp/PostflopRaiseEscalationTestResults.txt";
 
-        [MenuItem("Texas Hold'em/Run Postflop Raise Escalation Tests")]
+        [MenuItem("Texas Hold'em/Tests/Postflop/Raise Escalation")]
         public static void RunFromMenu()
         {
             (int passed, int total) = PostflopRaiseEscalationTestRunner.RunAllTests();

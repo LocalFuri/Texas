@@ -9,7 +9,7 @@ namespace TexasHoldem
     {
         private const string ResultsPath = "Temp/PostflopHugeCallGateTestResults.txt";
 
-        [MenuItem("Texas Hold'em/Run Postflop Huge-Call Gate Tests")]
+        [MenuItem("Texas Hold'em/Tests/Postflop/Huge-Call Gate")]
         public static void RunFromMenu()
         {
             (int passed, int total) = PostflopHugeCallGateTestRunner.RunAllTests();
