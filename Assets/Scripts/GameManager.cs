@@ -254,6 +254,7 @@ namespace TexasHoldem
             ResolveUiManagerReference();
             EnsureWinnerDismissControls();
             InitializePlayers();
+            AssignRandomDealer();
         }
 
         private void EnsureWinnerDismissControls()
@@ -467,6 +468,9 @@ namespace TexasHoldem
                 return;
             }
 
+            if (Players == null || Players.Count == 0)
+                InitializePlayers();
+
             AssignRandomDealer();
             StartCoroutine(GameLoop());
         }
@@ -491,7 +495,10 @@ namespace TexasHoldem
             OnGameMessage?.Invoke(string.Empty);
         }
 
-        /// <summary>Picks a random seat as dealer for the upcoming session / first hand.</summary>
+        /// <summary>
+        /// Picks a random big-blind seat for the first hand and sets the dealer so that
+        /// BB = (DealerIndex + 2) % n (standard seats; heads-up BB is the dealer).
+        /// </summary>
         private void AssignRandomDealer()
         {
             if (Players == null || Players.Count == 0)
@@ -500,7 +507,10 @@ namespace TexasHoldem
                 return;
             }
 
-            DealerIndex = Random.Range(0, Players.Count);
+            int n = Players.Count;
+            int bbIndex = Random.Range(0, n);
+            // Invert bbIndex = (DealerIndex + 2) % n
+            DealerIndex = (bbIndex - 2 + n) % n;
         }
 
         private void InitializePlayers()

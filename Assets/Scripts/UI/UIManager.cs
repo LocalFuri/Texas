@@ -2891,6 +2891,10 @@ namespace TexasHoldem
             if (_gameManager == null)
                 return;
 
+            // Close options menu so the game-loop wait on IsOptionsMenuOpen can proceed.
+            if (OptionsMenu.Instance != null && OptionsMenu.Instance.IsOpen)
+                OptionsMenu.Instance.Close();
+
             StopTurnTimer();
             HideBettingControls();
 
