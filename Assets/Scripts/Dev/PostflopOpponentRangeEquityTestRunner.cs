@@ -192,12 +192,12 @@ namespace TexasHoldem.Dev
             Debug.Log(
                 $"[PostflopOppRange] AQ on 9c7h8d8c — Strong tighter than Wide\n" +
                 $"  Hole: {hole[0]} {hole[1]} Board: {board[0]} {board[1]} {board[2]} {board[3]}\n" +
-                $"  Wide equity={wide.EquityPercent:F2}%\n" +
-                $"  Strong equity={strong.EquityPercent:F2}%\n" +
-                $"  Equity gap={equityGap:F2}% (need ≥ {MinAqStrongVsWideGapPercent:F1}%)\n" +
-                $"  Strong accept% before (legacy)={legacyAcceptPercent:F2}%\n" +
-                $"  Strong accept% after (tightened)={currentAcceptPercent:F2}%\n" +
-                $"  Result: {(ok ? "PASS" : "FAIL")}");
+                $"  Wide equity (%): {wide.EquityPercent:F2}\n" +
+                $"  Strong equity (%): {strong.EquityPercent:F2}\n" +
+                $"  Equity difference (%): {equityGap:F2}\n" +
+                $"  Strong accept % before tightening: {legacyAcceptPercent:F2}\n" +
+                $"  Strong accept % after tightening: {currentAcceptPercent:F2}\n" +
+                $"  PASS / FAIL: {(ok ? "PASS" : "FAIL")}");
 
             return ok;
         }
