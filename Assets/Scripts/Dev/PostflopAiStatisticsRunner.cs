@@ -160,6 +160,24 @@ namespace TexasHoldem.Dev
             sb.Append("  Players seeing river: ").Append(Avg(stats.SumPlayersSeeingRiver, n).ToString("F2")).AppendLine();
             sb.Append("  Players at showdown: ").Append(Avg(stats.SumPlayersAtShowdown, n).ToString("F2")).AppendLine();
             sb.AppendLine();
+            sb.AppendLine("Fold analysis:");
+            sb.AppendLine("  Street:");
+            sb.Append("    Fold on flop: ").Append(stats.FoldsOnFlop).AppendLine();
+            sb.Append("    Fold on turn: ").Append(stats.FoldsOnTurn).AppendLine();
+            sb.Append("    Fold on river: ").Append(stats.FoldsOnRiver).AppendLine();
+            sb.AppendLine("  Situation:");
+            sb.Append("    Fold after facing bet: ").Append(stats.FoldsFacingBet).AppendLine();
+            sb.Append("    Fold after facing raise: ").Append(stats.FoldsFacingRaise).AppendLine();
+            sb.Append("    Fold versus all-in: ").Append(stats.FoldsVersusAllIn).AppendLine();
+            sb.AppendLine("  Opponent range:");
+            sb.Append("    Fold versus Wide: ").Append(stats.FoldsVersusWide).AppendLine();
+            sb.Append("    Fold versus Strong: ").Append(stats.FoldsVersusStrong).AppendLine();
+            sb.Append("    Fold versus Strongest: ").Append(stats.FoldsVersusStrongest).AppendLine();
+            sb.Append("  Average pot size when folding: ").Append(
+                stats.Folds > 0
+                    ? (stats.SumPotAtFold / (double)stats.Folds).ToString("F1")
+                    : "0.0").AppendLine();
+            sb.AppendLine();
             sb.Append("Exceptions: ").Append(stats.Exceptions).AppendLine();
             sb.Append("Illegal actions: ").Append(stats.IllegalActions).AppendLine();
             sb.AppendLine();
@@ -385,10 +403,13 @@ namespace TexasHoldem.Dev
                 int minRaiseBefore = betting.GetMinRaiseIncrement();
                 int callAmount = betting.GetCallAmount(player);
                 int chipsBefore = player.Chips;
+                int streetRaiseCount = betting.StreetRaiseCount;
+                int potBefore = betting.Pot;
                 bool isPostflop = phase != GamePhase.PreFlop;
 
+                OpponentRangeStrength opponentRange = OpponentRangeStrength.Wide;
                 if (isPostflop)
-                    CountOpponentRange(ai, callAmount, betting.StreetRaiseCount, player.Chips, stats);
+                    opponentRange = CountOpponentRange(ai, callAmount, streetRaiseCount, player.Chips, stats);
 
                 var (action, raise) = ai.DecideAction(
                     player,
@@ -399,7 +420,7 @@ namespace TexasHoldem.Dev
                     betting.Pot,
                     betting.CurrentBet,
                     BigBlind,
-                    betting.StreetRaiseCount,
+                    streetRaiseCount,
                     seat,
                     testMode: false,
                     playersBehind,
@@ -426,7 +447,12 @@ namespace TexasHoldem.Dev
                     ai.NoteFlopAggression(player);
 
                 if (isPostflop)
-                    CountPostflopDecision(stats, phase, action, callAmount, chipsBefore, player);
+                {
+                    bool facingAllIn = IsFacingAllIn(players, player, betBefore);
+                    CountPostflopDecision(
+                        stats, phase, action, callAmount, chipsBefore, player,
+                        streetRaiseCount, opponentRange, potBefore, facingAllIn);
+                }
 
                 hasActed[currentIndex] = true;
 
@@ -442,7 +468,7 @@ namespace TexasHoldem.Dev
             return $"{phase} betting round failed to complete (safety limit)";
         }
 
-        private static void CountOpponentRange(
+        private static OpponentRangeStrength CountOpponentRange(
             AIController ai,
             int callAmount,
             int streetRaiseCount,
@@ -470,6 +496,8 @@ namespace TexasHoldem.Dev
                     stats.RangeStrongest++;
                     break;
             }
+
+            return range;
         }
 
         /// <summary>Same scan as <see cref="HandActionLog.ResolvePreflopRaiseCount"/> via public HandActions.</summary>
@@ -489,13 +517,41 @@ namespace TexasHoldem.Dev
             return max;
         }
 
+        /// <summary>
+        /// True when folding/calling would be against an all-in opponent who put money in this street.
+        /// Uses table state before the current action is applied.
+        /// </summary>
+        private static bool IsFacingAllIn(
+            IReadOnlyList<PlayerState> players,
+            PlayerState hero,
+            int tableBetBefore)
+        {
+            if (tableBetBefore <= 0 || players == null || hero == null)
+                return false;
+
+            for (int i = 0; i < players.Count; i++)
+            {
+                PlayerState p = players[i];
+                if (p == null || p == hero || p.HasFolded)
+                    continue;
+                if (p.IsAllIn && p.CurrentBet > 0)
+                    return true;
+            }
+
+            return false;
+        }
+
         private static void CountPostflopDecision(
             Stats stats,
             GamePhase phase,
             BettingAction action,
             int callAmountBefore,
             int chipsBefore,
-            PlayerState player)
+            PlayerState player,
+            int streetRaiseCount,
+            OpponentRangeStrength opponentRange,
+            int potBefore,
+            bool facingAllIn)
         {
             stats.PostflopDecisions++;
 
@@ -532,6 +588,8 @@ namespace TexasHoldem.Dev
                     break;
                 case BettingAction.Fold:
                     stats.Folds++;
+                    RecordFoldAnalysis(
+                        stats, phase, callAmountBefore, streetRaiseCount, opponentRange, potBefore, facingAllIn);
                     break;
                 case BettingAction.Raise:
                     if (callAmountBefore <= 0)
@@ -540,6 +598,50 @@ namespace TexasHoldem.Dev
                         stats.Raises++;
                     break;
             }
+        }
+
+        private static void RecordFoldAnalysis(
+            Stats stats,
+            GamePhase phase,
+            int callAmountBefore,
+            int streetRaiseCount,
+            OpponentRangeStrength opponentRange,
+            int potBefore,
+            bool facingAllIn)
+        {
+            switch (phase)
+            {
+                case GamePhase.Flop:  stats.FoldsOnFlop++; break;
+                case GamePhase.Turn:  stats.FoldsOnTurn++; break;
+                case GamePhase.River: stats.FoldsOnRiver++; break;
+            }
+
+            // Situation buckets (independent — a fold can count in more than one).
+            if (callAmountBefore > 0)
+            {
+                if (streetRaiseCount >= 2)
+                    stats.FoldsFacingRaise++;
+                else
+                    stats.FoldsFacingBet++;
+            }
+
+            if (facingAllIn)
+                stats.FoldsVersusAllIn++;
+
+            switch (opponentRange)
+            {
+                case OpponentRangeStrength.Wide:
+                    stats.FoldsVersusWide++;
+                    break;
+                case OpponentRangeStrength.Strong:
+                    stats.FoldsVersusStrong++;
+                    break;
+                case OpponentRangeStrength.Strongest:
+                    stats.FoldsVersusStrongest++;
+                    break;
+            }
+
+            stats.SumPotAtFold += potBefore;
         }
 
         private static void RecordFoldOut(Stats stats)
@@ -718,6 +820,17 @@ namespace TexasHoldem.Dev
             public int SumPlayersSeeingRiver;
             /// <summary>Sum of contenders at showdown (0 on fold-outs).</summary>
             public int SumPlayersAtShowdown;
+
+            public int FoldsOnFlop;
+            public int FoldsOnTurn;
+            public int FoldsOnRiver;
+            public int FoldsFacingBet;
+            public int FoldsFacingRaise;
+            public int FoldsVersusAllIn;
+            public int FoldsVersusWide;
+            public int FoldsVersusStrong;
+            public int FoldsVersusStrongest;
+            public long SumPotAtFold;
 
             public int Exceptions;
             public int IllegalActions;
