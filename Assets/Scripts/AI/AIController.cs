@@ -570,7 +570,8 @@ namespace TexasHoldem
                 observed,
                 opponentRange,
                 out RangePreviewAdjustment previewAdj,
-                out OpponentRangeStrength previewRange);
+                out OpponentRangeStrength previewRange,
+                out string previewWhy);
 
             string block =
                 "[PostflopAI]\n" +
@@ -586,6 +587,7 @@ namespace TexasHoldem
                 $"Observed Action: {observed}\n" +
                 $"Preview Adjustment: {previewAdj}\n" +
                 $"Preview Range: {previewRange}\n" +
+                $"Preview Why: {previewWhy}\n" +
                 $"Equity (MC, {opponentRange}): {equityPercent:F1}%\n" +
                 $"Pot Odds: {FormatOptionalPercent(potOddsPercent)}\n" +
                 $"Call Amount: {callAmount}\n" +
@@ -694,12 +696,14 @@ namespace TexasHoldem
             ObservedRangeAction observed,
             OpponentRangeStrength baseRange,
             out RangePreviewAdjustment adjustment,
-            out OpponentRangeStrength previewRange)
+            out OpponentRangeStrength previewRange,
+            out string previewWhy)
         {
             if (observed == ObservedRangeAction.NearStack || observed == ObservedRangeAction.AllIn)
             {
                 adjustment = RangePreviewAdjustment.None;
                 previewRange = OpponentRangeStrength.Strongest;
+                previewWhy = "NearStack/AllIn locked to Strongest";
                 return;
             }
 
@@ -707,10 +711,16 @@ namespace TexasHoldem
             {
                 adjustment = RangePreviewAdjustment.None;
                 previewRange = baseRange;
+                previewWhy = "Check leaves range unchanged";
                 return;
             }
 
             int score = 0;
+            int tightDelta = 0;
+            int aggressionDelta = 0;
+            string tightPhrase = null;
+            string aggressionPhrase = null;
+            string actionLabel = observed.ToString();
 
             bool isCall = observed == ObservedRangeAction.Call;
             bool isAggression = observed == ObservedRangeAction.Bet
@@ -721,19 +731,33 @@ namespace TexasHoldem
             if (isCall || isAggression)
             {
                 if (tendency.Tightness >= TendencyAxisPreviewThreshold)
-                    score++;
+                {
+                    tightDelta = 1;
+                    tightPhrase = $"Tight strengthens {actionLabel}";
+                }
                 else if (tendency.Tightness <= -TendencyAxisPreviewThreshold)
-                    score--;
+                {
+                    tightDelta = -1;
+                    tightPhrase = $"Loose weakens {actionLabel}";
+                }
             }
 
             // Aggressive weakens / passive strengthens bets and raises only.
             if (isAggression)
             {
                 if (tendency.Aggression >= TendencyAxisPreviewThreshold)
-                    score--;
+                {
+                    aggressionDelta = -1;
+                    aggressionPhrase = $"Aggressive weakens {actionLabel}";
+                }
                 else if (tendency.Aggression <= -TendencyAxisPreviewThreshold)
-                    score++;
+                {
+                    aggressionDelta = 1;
+                    aggressionPhrase = $"Passive strengthens {actionLabel}";
+                }
             }
+
+            score = tightDelta + aggressionDelta;
 
             if (score > 0)
                 adjustment = RangePreviewAdjustment.Upgrade;
@@ -743,6 +767,33 @@ namespace TexasHoldem
                 adjustment = RangePreviewAdjustment.None;
 
             previewRange = ApplyRangePreviewAdjustment(baseRange, adjustment);
+            previewWhy = BuildTendencyPreviewWhy(
+                tightDelta, aggressionDelta, tightPhrase, aggressionPhrase);
+        }
+
+        private static string BuildTendencyPreviewWhy(
+            int tightDelta,
+            int aggressionDelta,
+            string tightPhrase,
+            string aggressionPhrase)
+        {
+            bool hasTight = tightDelta != 0 && !string.IsNullOrEmpty(tightPhrase);
+            bool hasAgg = aggressionDelta != 0 && !string.IsNullOrEmpty(aggressionPhrase);
+
+            if (!hasTight && !hasAgg)
+                return "No tendency axes above threshold";
+
+            if (hasTight && hasAgg && tightDelta + aggressionDelta == 0)
+            {
+                string a = tightDelta > 0 ? "Tight" : "Loose";
+                string b = aggressionDelta > 0 ? "passive" : "aggressive";
+                return $"{a} and {b} effects cancel";
+            }
+
+            if (hasTight && hasAgg)
+                return $"{tightPhrase}; {aggressionPhrase}";
+
+            return hasTight ? tightPhrase : aggressionPhrase;
         }
 
         private static OpponentRangeStrength ApplyRangePreviewAdjustment(
