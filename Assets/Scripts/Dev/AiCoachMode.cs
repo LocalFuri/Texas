@@ -14,10 +14,24 @@ namespace TexasHoldem.Dev
         public const string PrefsKey = "TexasHoldem.AiCoachMode.Enabled";
         private const string LogPrefix = "[AiCoach]";
 
+        private const float FontSize = 19f;
+        private const float LineSpacing = 108f;
+        private const float PadX = 16f;
+        private const float PadY = 14f;
+        private const float PanelAlpha = 0.93f;
+
+        private const string ColorCyan = "#00E5FF";
+        private const string ColorRaise = "#3DDC64";
+        private const string ColorCall = "#F0D040";
+        private const string ColorFold = "#E84A4A";
+        private const string ColorMuted = "#D0D4DA";
+
         private UIManager _ui;
         private GameManager _game;
         private Canvas _canvas;
         private RectTransform _panel;
+        private Image _panelBg;
+        private RectTransform _textRt;
         private TMP_Text _text;
         private bool _loggedEnabled;
 
@@ -164,17 +178,24 @@ namespace TexasHoldem.Dev
             if (_text == null || _panel == null)
                 return;
 
-            var sb = new StringBuilder(256);
-            sb.Append("AI Coach");
+            ApplyOverlayStyle();
+
+            var sb = new StringBuilder(384);
+            sb.Append("<b>AI Coach</b>");
             if (advice.IsAceMaverick)
                 sb.Append(" — Ace Maverick");
             sb.AppendLine();
 
-            // Ace Maverick preflop: full checklist (display only; same shared TrainerAdvice).
+            // Ace Maverick preflop: same data, sectioned for readability.
             if (advice.IsAceMaverick && advice.IsPreflop)
             {
-                sb.Append("Position: ").Append(advice.Position ?? "?").AppendLine();
-                sb.Append("Hole cards: ").Append(advice.HoleCards ?? "?").AppendLine();
+                sb.AppendLine();
+                sb.Append("<b>Hand</b>").AppendLine();
+                sb.Append("Position: ").Append(Cyan(advice.Position ?? "?")).AppendLine();
+                sb.Append("Hole cards: ").Append(Cyan(advice.HoleCards ?? "?")).AppendLine();
+
+                sb.AppendLine();
+                sb.Append("<b>Situation</b>").AppendLine();
                 sb.Append("Players in pot: ").Append(advice.PlayersInPot);
                 sb.Append(" (callers before ").Append(advice.CallersBefore).Append(')').AppendLine();
                 sb.Append("Raise count: ").Append(advice.StreetRaiseCount).AppendLine();
@@ -184,24 +205,25 @@ namespace TexasHoldem.Dev
                 sb.Append("Call amount: ").Append(advice.AmountToCall).AppendLine();
                 if (advice.FacingAllIn || advice.AmountToCall > 0)
                     sb.Append("Pot odds: ").Append(advice.PotOddsPercent.ToString("0.0")).Append('%').AppendLine();
-                sb.Append("Recommended: ").Append(advice.DecisionLabel ?? advice.AdviceLabel ?? "?");
-                if (advice.RecommendedAction == BettingAction.Raise)
-                    sb.Append(" to ").Append(advice.RecommendedTotalBet);
-                else if (advice.RecommendedAction == BettingAction.AllIn)
-                    sb.Append(" (All-In)");
+
                 sb.AppendLine();
+                sb.Append("<b>Decision</b>").AppendLine();
+                sb.Append("Recommended: ").Append(ColoredRecommendation(advice)).AppendLine();
                 sb.Append("Sizing: ").Append(FormatSizing(advice)).AppendLine();
                 sb.Append("Confidence: ").Append(advice.ConfidencePercent).Append('%');
-                _panel.sizeDelta = new Vector2(300f, 240f);
+                _panel.sizeDelta = new Vector2(340f, 320f);
             }
             else
             {
-                sb.Append("Decision: ").Append(advice.DecisionLabel ?? advice.AdviceLabel ?? "?");
+                sb.AppendLine();
+                sb.Append("<b>Decision</b>").AppendLine();
+                sb.Append("Recommended: ").Append(ColoredRecommendation(advice));
 
                 if (advice.RecommendedAction == BettingAction.Raise
                     || (advice.RecommendedAction == BettingAction.AllIn && advice.RecommendedRaiseIncrement > 0))
                 {
-                    sb.Append("\nAmount: ").Append(advice.RecommendedTotalBet);
+                    sb.AppendLine();
+                    sb.Append("Amount: ").Append(advice.RecommendedTotalBet);
                     if (advice.RecommendedRaiseIncrement > 0
                         && advice.RecommendedTotalBet != advice.RecommendedRaiseIncrement)
                     {
@@ -210,17 +232,58 @@ namespace TexasHoldem.Dev
                 }
                 else if (advice.RecommendedAction == BettingAction.AllIn)
                 {
-                    sb.Append("\nAmount: All-In");
+                    sb.AppendLine();
+                    sb.Append("Amount: All-In");
                 }
 
                 if (!string.IsNullOrEmpty(advice.Explanation))
-                    sb.Append("\n").Append(advice.Explanation);
+                {
+                    sb.AppendLine();
+                    sb.Append("<color=").Append(ColorMuted).Append('>').Append(advice.Explanation).Append("</color>");
+                }
 
-                _panel.sizeDelta = new Vector2(280f, 110f);
+                _panel.sizeDelta = new Vector2(320f, 150f);
             }
 
             _text.text = sb.ToString();
             SetOverlayVisible(true);
+        }
+
+        private static string Cyan(string value) =>
+            $"<color={ColorCyan}>{value}</color>";
+
+        private static string ColoredRecommendation(HumanTrainerAdvice advice)
+        {
+            string label = advice.DecisionLabel ?? advice.AdviceLabel ?? "?";
+            if (advice.RecommendedAction == BettingAction.Raise && advice.RecommendedTotalBet > 0)
+                label = $"{label} to {advice.RecommendedTotalBet}";
+            else if (advice.RecommendedAction == BettingAction.AllIn
+                     && label.IndexOf("All-In", System.StringComparison.OrdinalIgnoreCase) < 0)
+                label = $"{label} (All-In)";
+
+            string hex = RecommendationColorHex(advice.RecommendedAction, advice.DecisionLabel);
+            return $"<b><color={hex}>{label}</color></b>";
+        }
+
+        private static string RecommendationColorHex(BettingAction action, string decisionLabel)
+        {
+            switch (action)
+            {
+                case BettingAction.Raise:
+                    return ColorRaise;
+                case BettingAction.Call:
+                    return ColorCall;
+                case BettingAction.Fold:
+                    return ColorFold;
+                case BettingAction.AllIn:
+                    return ColorRaise;
+                case BettingAction.Check:
+                    return ColorMuted;
+                default:
+                    if (decisionLabel == "Bet")
+                        return ColorRaise;
+                    return ColorMuted;
+            }
         }
 
         private static string FormatSizing(HumanTrainerAdvice advice)
@@ -247,10 +310,33 @@ namespace TexasHoldem.Dev
                 _panel.gameObject.SetActive(visible);
         }
 
+        private void ApplyOverlayStyle()
+        {
+            if (_panelBg != null)
+                _panelBg.color = new Color(0.04f, 0.06f, 0.10f, PanelAlpha);
+
+            if (_textRt != null)
+            {
+                _textRt.offsetMin = new Vector2(PadX, PadY);
+                _textRt.offsetMax = new Vector2(-PadX, -PadY);
+            }
+
+            if (_text != null)
+            {
+                _text.fontSize = FontSize;
+                _text.lineSpacing = LineSpacing;
+                _text.richText = true;
+                _text.color = Color.white;
+            }
+        }
+
         private void EnsureOverlay()
         {
             if (_panel != null)
+            {
+                ApplyOverlayStyle();
                 return;
+            }
 
             Canvas parent = FindOverlayCanvas();
             if (parent == null)
@@ -264,27 +350,24 @@ namespace TexasHoldem.Dev
             _panel.anchorMax = new Vector2(0f, 1f);
             _panel.pivot = new Vector2(0f, 1f);
             _panel.anchoredPosition = new Vector2(16f, -16f);
-            _panel.sizeDelta = new Vector2(280f, 110f);
+            _panel.sizeDelta = new Vector2(340f, 320f);
 
-            var bg = go.GetComponent<Image>();
-            bg.color = new Color(0.05f, 0.08f, 0.12f, 0.82f);
-            bg.raycastTarget = false;
+            _panelBg = go.GetComponent<Image>();
+            _panelBg.raycastTarget = false;
 
             var textGo = new GameObject("Text", typeof(RectTransform));
             textGo.transform.SetParent(go.transform, false);
-            var textRt = textGo.GetComponent<RectTransform>();
-            textRt.anchorMin = Vector2.zero;
-            textRt.anchorMax = Vector2.one;
-            textRt.offsetMin = new Vector2(10f, 8f);
-            textRt.offsetMax = new Vector2(-10f, -8f);
+            _textRt = textGo.GetComponent<RectTransform>();
+            _textRt.anchorMin = Vector2.zero;
+            _textRt.anchorMax = Vector2.one;
 
             _text = textGo.AddComponent<TextMeshProUGUI>();
-            _text.fontSize = 16f;
-            _text.color = Color.white;
             _text.alignment = TextAlignmentOptions.TopLeft;
             _text.enableWordWrapping = true;
             _text.raycastTarget = false;
+            _text.richText = true;
 
+            ApplyOverlayStyle();
             go.SetActive(false);
         }
 
