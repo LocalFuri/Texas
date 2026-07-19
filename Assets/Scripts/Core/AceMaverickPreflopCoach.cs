@@ -169,6 +169,7 @@ namespace TexasHoldem
 
         /// <summary>
         /// Teach why this hand folds unopened from this seat (display only).
+        /// Deterministic: same hand + seat always yields the same text.
         /// </summary>
         private static string FormatUnopenedFoldReason(
             HumanTrainerAdvice advice,
@@ -179,18 +180,24 @@ namespace TexasHoldem
             Rank lo)
         {
             string hand = FormatHandCode(isPair, pairRank, suited, hi, lo);
-            string seatLong = FormatSeatLong(advice.Position);
-            string why = DescribeUnopenedFoldWhy(isPair, pairRank, suited, hi, lo);
-
-            if (string.IsNullOrEmpty(hand))
-            {
-                return why + " Fold from " + seatLong + " and wait for a better spot.";
-            }
-
-            return hand + " " + why + " Fold from " + seatLong + " and wait for a better spot.";
+            string seat = FormatSeatShort(advice.Position);
+            FoldTheme theme = ClassifyUnopenedFoldTheme(isPair, pairRank, suited, hi, lo);
+            return FormatPositionFoldExplanation(seat, hand, theme, suited, hi);
         }
 
-        private static string DescribeUnopenedFoldWhy(
+        private enum FoldTheme
+        {
+            DominatedBroadway,
+            DominatedKing,
+            DominatedQueen,
+            DominatedAce,
+            SmallPair,
+            SpeculativeSuited,
+            WeakOffsuit,
+            TooWeakForRange,
+        }
+
+        private static FoldTheme ClassifyUnopenedFoldTheme(
             bool isPair,
             Rank pairRank,
             bool suited,
@@ -198,47 +205,300 @@ namespace TexasHoldem
             Rank lo)
         {
             if (isPair)
-            {
-                if (pairRank <= Rank.Seven)
-                    return "is usually too small to open profitably here.";
-                return "is outside this seat's opening range.";
-            }
+                return pairRank <= Rank.Eight ? FoldTheme.SmallPair : FoldTheme.TooWeakForRange;
 
-            // Offsuit Broadway / near-Broadway — dominated by better kickers and stronger Broadways.
-            if (!suited
-                && hi >= Rank.Ten
-                && lo >= Rank.Nine
-                && hi != lo)
-            {
-                return "is often dominated by stronger Broadway hands.";
-            }
+            if (hi == Rank.Ace)
+                return FoldTheme.DominatedAce;
 
-            // Weak/off-suit Ace — dominated by better Aces.
-            if (hi == Rank.Ace && (!suited || lo <= Rank.Four))
-            {
-                if (!suited)
-                    return "is often dominated by better Ace hands.";
-                return "is a weak suited Ace for this seat.";
-            }
+            if (hi == Rank.King)
+                return FoldTheme.DominatedKing;
 
-            // King/Queen high offsuit junk.
-            if (!suited && hi >= Rank.King && lo <= Rank.Nine)
-                return "is often dominated by stronger Broadway hands.";
+            if (hi == Rank.Queen)
+                return FoldTheme.DominatedQueen;
 
-            if (!suited && hi == Rank.Queen && lo <= Rank.Nine)
-                return "is often dominated by stronger Broadway hands.";
+            // Offsuit Broadway / near-Broadway (JT+, T9o-style covered via hi>=T).
+            if (!suited && hi >= Rank.Ten && lo >= Rank.Nine)
+                return FoldTheme.DominatedBroadway;
 
-            // Suited connectors / gappers below the open range.
-            if (suited && hi - lo <= 2 && hi <= Rank.Jack)
-                return "isn't strong enough to open from this seat.";
-
-            if (suited && hi >= Rank.King && lo <= Rank.Nine)
-                return "doesn't play well enough to open from this seat.";
+            if (suited && (hi - lo) <= 2 && hi <= Rank.Jack)
+                return FoldTheme.SpeculativeSuited;
 
             if (!suited)
-                return "plays poorly out of position and is often dominated.";
+                return FoldTheme.WeakOffsuit;
 
-            return "isn't strong enough to open from this seat.";
+            return FoldTheme.TooWeakForRange;
+        }
+
+        private static string FormatPositionFoldExplanation(
+            string seat,
+            string hand,
+            FoldTheme theme,
+            bool suited,
+            Rank hi)
+        {
+            string label = string.IsNullOrEmpty(hand) ? "This hand" : hand;
+            int pick = StablePick(label, seat, theme);
+
+            switch (seat)
+            {
+                case "EP":
+                    return FormatEarlyPositionFold(label, theme, pick);
+                case "MP":
+                    return FormatMiddlePositionFold(label, theme, pick, hi);
+                case "SB":
+                    return FormatSmallBlindFold(label, theme, pick, suited, hi);
+                case "CO":
+                    return FormatCutoffFold(label, theme, pick);
+                case "BTN":
+                    return FormatButtonFold(label, theme, pick);
+                case "BB":
+                    return FormatBigBlindFold(label, theme, pick);
+                default:
+                    return FormatMiddlePositionFold(label, theme, pick, hi);
+            }
+        }
+
+        private static string FormatEarlyPositionFold(string hand, FoldTheme theme, int pick)
+        {
+            switch (theme)
+            {
+                case FoldTheme.DominatedBroadway:
+                case FoldTheme.DominatedQueen:
+                    return Pick(pick,
+                        hand + " is often dominated by stronger Broadway hands. Early Position requires a tighter opening range.",
+                        hand + " performs much better from late position. Fold here.",
+                        "Open a stronger range from Early Position. " + hand + " is too weak here.");
+
+                case FoldTheme.DominatedKing:
+                    return Pick(pick,
+                        hand + " is often dominated by stronger kings. Early Position requires a tighter opening range.",
+                        hand + " performs much better from late position. Fold here.",
+                        "Open a stronger range from Early Position.");
+
+                case FoldTheme.DominatedAce:
+                    return Pick(pick,
+                        hand + " is often dominated by stronger aces. Early Position requires a tighter opening range.",
+                        hand + " has a weak kicker for Early Position. Fold here.",
+                        "Open a stronger range from Early Position.");
+
+                case FoldTheme.SmallPair:
+                    return Pick(pick,
+                        hand + " is too small to open from Early Position.",
+                        hand + " plays better as a late-position set-mine. Fold here.",
+                        "Early Position needs a tighter opening range than " + hand + ".");
+
+                case FoldTheme.SpeculativeSuited:
+                    return Pick(pick,
+                        hand + " is too speculative to open from Early Position.",
+                        hand + " has better implied odds from late position. Fold here.",
+                        "Open a stronger range from Early Position.");
+
+                case FoldTheme.WeakOffsuit:
+                    return Pick(pick,
+                        hand + " has poor postflop playability from Early Position.",
+                        hand + " is often dominated and plays poorly multiway. Fold here.",
+                        "Open a stronger range from Early Position.");
+
+                default:
+                    return Pick(pick,
+                        hand + " is too weak for the Early Position opening range.",
+                        "Open a stronger range from Early Position.",
+                        hand + " performs much better from late position. Fold here.");
+            }
+        }
+
+        private static string FormatMiddlePositionFold(string hand, FoldTheme theme, int pick, Rank hi)
+        {
+            switch (theme)
+            {
+                case FoldTheme.DominatedKing:
+                    return Pick(pick,
+                        hand + " is often dominated by stronger kings. It becomes more playable from the Cutoff or Button.",
+                        "This hand is just below the Middle Position opening range.",
+                        "Fold here and open it from a later seat.");
+
+                case FoldTheme.DominatedBroadway:
+                case FoldTheme.DominatedQueen:
+                    return Pick(pick,
+                        hand + " is often dominated by stronger Broadway hands. It becomes more playable from the Cutoff or Button.",
+                        "This hand is just below the Middle Position opening range.",
+                        "Fold here and open it from a later seat.");
+
+                case FoldTheme.DominatedAce:
+                    return Pick(pick,
+                        hand + " is often dominated by stronger aces. Save it for a later seat.",
+                        "This hand is just below the Middle Position opening range.",
+                        "Fold here and open it from a later seat.");
+
+                case FoldTheme.SmallPair:
+                    return Pick(pick,
+                        hand + " is just below the Middle Position opening range.",
+                        hand + " is more profitable as a late-position set-mine. Fold here.",
+                        "Fold here and open it from a later seat.");
+
+                case FoldTheme.SpeculativeSuited:
+                    return Pick(pick,
+                        hand + " is more profitable from the Cutoff or Button.",
+                        "This hand is just below the Middle Position opening range.",
+                        "Fold here and open it from a later seat.");
+
+                case FoldTheme.WeakOffsuit:
+                    return Pick(pick,
+                        hand + " is often dominated and too weak for Middle Position.",
+                        "This hand is just below the Middle Position opening range.",
+                        "Fold here and open it from a later seat.");
+
+                default:
+                    return Pick(pick,
+                        "This hand is just below the Middle Position opening range.",
+                        "Fold here and open it from a later seat.",
+                        hand + " becomes more playable from the Cutoff or Button.");
+            }
+        }
+
+        private static string FormatSmallBlindFold(
+            string hand,
+            FoldTheme theme,
+            int pick,
+            bool suited,
+            Rank hi)
+        {
+            switch (theme)
+            {
+                case FoldTheme.DominatedKing:
+                    return Pick(pick,
+                        hand + " is dominated by stronger kings and plays poorly out of position.",
+                        "Avoid entering the pot with a weak offsuit king from the Small Blind.",
+                        hand + " has poor postflop playability out of position.");
+
+                case FoldTheme.DominatedQueen:
+                case FoldTheme.DominatedBroadway:
+                    return Pick(pick,
+                        hand + " is often dominated by stronger Broadway hands out of position.",
+                        "Avoid opening weak Broadways from the Small Blind.",
+                        hand + " has poor postflop playability out of position.");
+
+                case FoldTheme.DominatedAce:
+                    return Pick(pick,
+                        hand + " is dominated by stronger aces and plays poorly out of position.",
+                        "Avoid entering the pot with a weak ace from the Small Blind.",
+                        hand + " has poor postflop playability out of position.");
+
+                case FoldTheme.WeakOffsuit:
+                    if (hi == Rank.King && !suited)
+                    {
+                        return Pick(pick,
+                            hand + " is dominated by stronger kings and plays poorly out of position.",
+                            "Avoid entering the pot with a weak offsuit king from the Small Blind.",
+                            hand + " has poor postflop playability out of position.");
+                    }
+
+                    return Pick(pick,
+                        hand + " has poor postflop playability out of position.",
+                        "Avoid entering the pot with " + hand + " from the Small Blind.",
+                        hand + " is too weak and dominated out of position.");
+
+                case FoldTheme.SmallPair:
+                    return Pick(pick,
+                        hand + " plays poorly out of position from the Small Blind.",
+                        "Set-mining is tougher out of position. Fold " + hand + " here.",
+                        hand + " has poor postflop playability out of position.");
+
+                case FoldTheme.SpeculativeSuited:
+                    return Pick(pick,
+                        hand + " has poor postflop playability out of position.",
+                        "Avoid speculative suited hands from the Small Blind.",
+                        hand + " is too weak to open from the Small Blind.");
+
+                default:
+                    return Pick(pick,
+                        hand + " has poor postflop playability out of position.",
+                        "Avoid entering the pot with " + hand + " from the Small Blind.",
+                        hand + " is too weak for a Small Blind open.");
+            }
+        }
+
+        private static string FormatCutoffFold(string hand, FoldTheme theme, int pick)
+        {
+            switch (theme)
+            {
+                case FoldTheme.DominatedAce:
+                    return Pick(pick,
+                        hand + " is often dominated by stronger aces. Too weak for a Cutoff open.",
+                        hand + " is just below the Cutoff opening range.",
+                        "Fold here; open a stronger ace from the Cutoff.");
+
+                case FoldTheme.DominatedKing:
+                case FoldTheme.DominatedQueen:
+                case FoldTheme.DominatedBroadway:
+                    return Pick(pick,
+                        hand + " is often dominated by stronger Broadway hands.",
+                        hand + " is just below the Cutoff opening range.",
+                        "This hand is more profitable from the Button.");
+
+                case FoldTheme.SmallPair:
+                    return Pick(pick,
+                        hand + " is just below the Cutoff opening range.",
+                        hand + " is a thin set-mine from the Cutoff. Fold here.",
+                        "Open a stronger range from the Cutoff.");
+
+                default:
+                    return Pick(pick,
+                        hand + " is too weak for the Cutoff opening range.",
+                        hand + " is more profitable from the Button.",
+                        "Open a stronger range from the Cutoff.");
+            }
+        }
+
+        private static string FormatButtonFold(string hand, FoldTheme theme, int pick)
+        {
+            // Rare unopened BTN folds (very weak hands).
+            return Pick(pick,
+                hand + " is too weak even for a Button open.",
+                hand + " has poor postflop playability. Fold here.",
+                hand + " is dominated and not worth opening from the Button.");
+        }
+
+        private static string FormatBigBlindFold(string hand, FoldTheme theme, int pick)
+        {
+            // Unopened BB fold is unusual; keep short and concrete.
+            return Pick(pick,
+                hand + " is too weak to continue.",
+                hand + " has poor postflop playability.",
+                hand + " is dominated in this spot.");
+        }
+
+        /// <summary>Stable 0..2 pick from hand + seat + theme (not random per frame).</summary>
+        private static int StablePick(string hand, string seat, FoldTheme theme)
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + (int)theme;
+                if (seat != null)
+                {
+                    for (int i = 0; i < seat.Length; i++)
+                        hash = hash * 31 + seat[i];
+                }
+
+                if (hand != null)
+                {
+                    for (int i = 0; i < hand.Length; i++)
+                        hash = hash * 31 + hand[i];
+                }
+
+                return (hash & 0x7fffffff) % 3;
+            }
+        }
+
+        private static string Pick(int index, string a, string b, string c)
+        {
+            switch (index % 3)
+            {
+                case 0: return a;
+                case 1: return b;
+                default: return c;
+            }
         }
 
         private static string FormatHandCode(bool isPair, Rank pairRank, bool suited, Rank hi, Rank lo)
@@ -270,20 +530,6 @@ namespace TexasHoldem
             Rank.Two   => "2",
             _          => "?",
         };
-
-        private static string FormatSeatLong(string position)
-        {
-            switch (FormatSeatShort(position))
-            {
-                case "BTN": return "the Button";
-                case "SB":  return "the Small Blind";
-                case "BB":  return "the Big Blind";
-                case "EP":  return "Early Position";
-                case "MP":  return "Middle Position";
-                case "CO":  return "the Cutoff";
-                default:    return "this seat";
-            }
-        }
 
         private static string FormatUnopenedOpenReason(
             HumanTrainerAdvice advice,
