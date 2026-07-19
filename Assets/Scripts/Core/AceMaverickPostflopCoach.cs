@@ -158,6 +158,11 @@ namespace TexasHoldem
                 return "Bottom pair";
             if (BettingAdvisor.IsPocketUnderpair(holeCards, communityCards))
                 return "Weak pair";
+
+            // Board pair only (no hole pair) — Ace high is not a weak pair.
+            if (HasAceHigh(holeCards))
+                return "Ace high";
+
             return "Weak pair";
         }
 
