@@ -186,14 +186,25 @@ namespace TexasHoldem.Dev
             if (advice.IsAceMaverick && advice.IsPreflop)
             {
                 sb.Append(FormatSpotLine(advice)).AppendLine();
-                sb.AppendLine();
-                sb.Append("Call: ").Append(advice.AmountToCall).AppendLine();
+
+                bool hasActionLine = TryFormatAceActionLine(advice, out string actionLine);
+                if (hasActionLine)
+                {
+                    sb.AppendLine();
+                    sb.Append(actionLine).AppendLine();
+                }
+
                 if (advice.AmountToCall > 0 || advice.FacingAllIn)
+                {
+                    if (!hasActionLine)
+                        sb.AppendLine();
                     sb.Append("Pot Odds: ").Append(advice.PotOddsPercent.ToString("0")).Append('%').AppendLine();
+                }
+
                 sb.AppendLine();
                 sb.Append("Confidence: ").Append(advice.ConfidencePercent).Append('%').AppendLine();
                 sb.AppendLine();
-                sb.Append("Reason: ").Append(FormatCoachReason(advice));
+                sb.Append("Reason: ").Append(advice.Explanation ?? string.Empty);
             }
             else
             {
@@ -211,6 +222,36 @@ namespace TexasHoldem.Dev
             _text.text = sb.ToString();
             FitPanelToContent();
             SetOverlayVisible(true);
+        }
+
+        /// <summary>
+        /// Ace Coach call/open/raise line from snapshot fields only (display).
+        /// Fold/Check → no line.
+        /// </summary>
+        private static bool TryFormatAceActionLine(HumanTrainerAdvice advice, out string line)
+        {
+            line = null;
+            if (advice == null)
+                return false;
+
+            switch (advice.RecommendedAction)
+            {
+                case BettingAction.Call:
+                    line = "Call: " + advice.AmountToCall;
+                    return true;
+
+                case BettingAction.Raise:
+                {
+                    bool unopened = !advice.FacingRaise && advice.StreetRaiseCount <= 0;
+                    line = unopened
+                        ? "Open to: " + advice.RecommendedTotalBet
+                        : "Raise to: " + advice.RecommendedTotalBet;
+                    return true;
+                }
+
+                default:
+                    return false;
+            }
         }
 
         /// <summary>Fixed width; height grows/shrinks with the TMP content + padding.</summary>
@@ -255,27 +296,6 @@ namespace TexasHoldem.Dev
                 return callers > 0 ? $"3-bet + {callers} {callerWord}" : "3-bet";
 
             return callers > 0 ? $"{raises} raises + {callers} {callerWord}" : $"{raises} raises";
-        }
-
-        /// <summary>
-        /// Short Coach reason from existing hand-group / action labels only (no new strategy).
-        /// </summary>
-        private static string FormatCoachReason(HumanTrainerAdvice advice)
-        {
-            if (advice.RecommendedAction == BettingAction.Call
-                && (advice.FacingRaise || advice.StreetRaiseCount >= 1)
-                && advice.PreflopHandGroup == PreflopHandGroup.Playable)
-            {
-                return "Set mine";
-            }
-
-            return advice.PreflopHandGroup switch
-            {
-                PreflopHandGroup.Premium  => "Premium hand",
-                PreflopHandGroup.Strong   => "Strong hand",
-                PreflopHandGroup.Playable => "Playable hand",
-                _                         => "Weak hand",
-            };
         }
 
         private void SetOverlayVisible(bool visible)
