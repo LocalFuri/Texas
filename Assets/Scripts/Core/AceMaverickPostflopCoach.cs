@@ -10,7 +10,7 @@ namespace TexasHoldem
     {
         /// <summary>
         /// Fills Ace coaching labels on the existing snapshot and sets a one-line Explanation.
-        /// Classification uses the same analyzers as the rest of the trainer UI — no second Recommend.
+        /// Classification is display-only; advice is not recomputed.
         /// </summary>
         public static void ApplyToSnapshot(
             HumanTrainerAdvice advice,
@@ -23,71 +23,70 @@ namespace TexasHoldem
             BoardTextureFlags texture = BoardTextureAnalyzer.Analyze(communityCards);
             PostflopDrawFlags draws = PostflopDrawDetector.Detect(holeCards, communityCards);
             bool facingBet = advice.AmountToCall > 0 || advice.FacingRaise || advice.FacingAllIn;
+            bool isBet = IsBetAction(advice);
+            bool isRaiseFacing = IsRaiseFacingAction(advice);
 
-            string concept = ResolveConcept(holeCards, communityCards, draws, texture, advice, facingBet);
+            // Hand category from cards/draws first — then label may adjust for Call-only concepts.
+            string handCategory = ResolveHandCategory(holeCards, communityCards, draws, advice);
+            string concept = ResolveDisplayConcept(
+                handCategory, advice.RecommendedAction, facingBet, isBet, isRaiseFacing, draws, texture);
+
             advice.HandCategory = concept;
             advice.BoardTexture = DescribeBoardConcept(texture);
-            advice.Explanation = FormatExplanation(advice, concept, texture, draws, facingBet);
+            advice.Explanation = FormatExplanation(concept, advice.RecommendedAction, texture, draws, facingBet, isBet);
         }
 
         /// <summary>One short coaching line already stored on the snapshot.</summary>
         public static string FormatCoachReason(HumanTrainerAdvice advice) =>
             advice?.Explanation ?? string.Empty;
 
-        /// <summary>
-        /// Builds: "{concept} — {coaching}" from snapshot recommendation + concept.
-        /// No equity percentages; no seat/tier debug labels.
-        /// </summary>
+        /// <summary>Builds "{concept} — {coaching}" matched to the recommended action.</summary>
         public static string FormatExplanation(
-            HumanTrainerAdvice advice,
             string concept,
+            BettingAction action,
             BoardTextureFlags texture,
             PostflopDrawFlags draws,
-            bool facingBet)
+            bool facingBet,
+            bool isBet)
         {
-            if (advice == null)
-                return FallbackForAction(BettingAction.Check, facingBet: false);
-
-            string coaching = ResolveCoaching(advice, concept, texture, draws, facingBet);
+            string coaching = ResolveCoaching(concept, action, texture, draws, facingBet, isBet);
             if (string.IsNullOrEmpty(concept) || concept == "Unknown")
-                return coaching;
+                return Capitalize(coaching);
 
             return concept + " — " + coaching;
         }
 
-        private static string ResolveConcept(
+        // -------------------------------------------------------------------------
+        // Hand category (from detectors only — not from recommendation)
+        // -------------------------------------------------------------------------
+
+        private static string ResolveHandCategory(
             IReadOnlyList<Card> holeCards,
             IReadOnlyList<Card> communityCards,
             PostflopDrawFlags draws,
-            BoardTextureFlags texture,
-            HumanTrainerAdvice advice,
-            bool facingBet)
+            HumanTrainerAdvice advice)
         {
-            bool river = IsRiver(advice);
-            HandRank made = BettingAdvisor.GetMadeHandRank(holeCards, communityCards);
+            if (communityCards == null || communityCards.Count < 3
+                || holeCards == null || holeCards.Count < 2)
+            {
+                return "Unknown";
+            }
 
+            HandRank made = BettingAdvisor.GetMadeHandRank(holeCards, communityCards);
             bool hasFd = (draws & PostflopDrawFlags.FlushDraw) != 0;
             bool hasOesd = (draws & PostflopDrawFlags.OpenEndedStraightDraw) != 0;
             bool hasGutshot = (draws & PostflopDrawFlags.GutshotStraightDraw) != 0;
             bool comboDraw = hasFd && (hasOesd || hasGutshot);
-            bool strongDraw = hasFd || hasOesd;
+            bool river = IsRiver(advice);
 
-            // Prefer the single most important teaching concept.
-            if (comboDraw)
+            // Draws (only when detector found them). Prefer combo / specific draw names.
+            if (comboDraw && made <= HandRank.OnePair)
                 return "Combo draw";
-
-            if (hasFd && IsNutFlushDraw(holeCards, communityCards))
-                return "Nut flush draw";
-
-            if (strongDraw && made <= HandRank.OnePair)
-            {
-                // Pair + draw: still lead with the draw when it is the lesson.
-                if (made == HandRank.HighCard)
-                    return hasFd ? "Strong draw" : "Strong draw";
-            }
 
             if (made == HandRank.HighCard)
             {
+                if (hasFd && IsNutFlushDraw(holeCards, communityCards))
+                    return "Nut flush draw";
                 if (hasFd)
                     return "Flush draw";
                 if (hasOesd)
@@ -95,95 +94,42 @@ namespace TexasHoldem
                 if (hasGutshot)
                     return "Gutshot";
 
-                // River air vs a bet: teach as a missed draw without naming a specific draw type.
-                if (river && facingBet && advice.RecommendedAction == BettingAction.Fold)
+                // River fold air: teach as missed draw (no specific draw claimed).
+                if (river
+                    && (advice.RecommendedAction == BettingAction.Fold)
+                    && (advice.AmountToCall > 0 || advice.FacingRaise || advice.FacingAllIn))
+                {
                     return "Missed draw";
+                }
 
                 if (HasAceHigh(holeCards))
                     return "Ace high";
                 return "High card";
             }
 
-            switch (made)
+            // Pair + draw: keep the made-hand name when strong; otherwise name the draw.
+            if (made == HandRank.OnePair)
             {
-                case HandRank.RoyalFlush:
-                case HandRank.StraightFlush:
-                case HandRank.FourOfAKind:
-                case HandRank.FullHouse:
-                    return river ? "River value hand" : MadeLabel(made, holeCards, communityCards);
-                case HandRank.Flush:
-                case HandRank.Straight:
-                    return river ? "River value hand" : MadeLabel(made, holeCards, communityCards);
-                case HandRank.ThreeOfAKind:
-                    return IsSet(holeCards, communityCards) ? "Set" : "Trips";
-                case HandRank.TwoPair:
-                    return river ? "River value hand" : "Two pair";
-                case HandRank.OnePair:
-                    return ResolvePairConcept(holeCards, communityCards, hasFd, hasOesd, facingBet, river);
-                default:
-                    break;
+                string pairName = ResolvePairName(holeCards, communityCards);
+                bool strongPair = pairName == "Overpair" || pairName == "Top pair";
+
+                if (!strongPair)
+                {
+                    if (comboDraw)
+                        return "Combo draw";
+                    if (hasFd && IsNutFlushDraw(holeCards, communityCards))
+                        return "Nut flush draw";
+                    if (hasFd)
+                        return "Flush draw";
+                    if (hasOesd)
+                        return "Open-ended straight draw";
+                    if (hasGutshot)
+                        return "Gutshot";
+                }
+
+                return pairName;
             }
 
-            // Board-led concept only when hand is otherwise generic and board is the lesson.
-            if ((texture & BoardTextureAnalyzer.WetFlags) != 0
-                && advice.RecommendedAction == BettingAction.Raise
-                && advice.AmountToCall <= 0)
-            {
-                return "Wet board";
-            }
-
-            if ((texture & (BoardTextureFlags.Paired | BoardTextureFlags.TwoPair | BoardTextureFlags.Trips)) != 0
-                && (advice.RecommendedAction == BettingAction.Check
-                    || advice.RecommendedAction == BettingAction.Call))
-            {
-                return "Paired board";
-            }
-
-            return "High card";
-        }
-
-        private static string ResolvePairConcept(
-            IReadOnlyList<Card> holeCards,
-            IReadOnlyList<Card> communityCards,
-            bool hasFd,
-            bool hasOesd,
-            bool facingBet,
-            bool river)
-        {
-            if (hasFd && hasOesd)
-                return "Combo draw";
-            if (hasFd || hasOesd)
-                return "Strong draw";
-
-            if (BettingAdvisor.IsOverpair(holeCards, communityCards))
-                return river ? "River value hand" : "Overpair";
-
-            if (IsTopPair(holeCards, communityCards))
-                return river ? "River value hand" : "Top pair";
-
-            if (facingBet
-                && (BettingAdvisor.IsPocketUnderpair(holeCards, communityCards)
-                    || IsMiddlePair(holeCards, communityCards)
-                    || IsWeakPair(holeCards, communityCards)))
-            {
-                return "Bluff catcher";
-            }
-
-            if (BettingAdvisor.IsPocketUnderpair(holeCards, communityCards)
-                || IsMiddlePair(holeCards, communityCards)
-                || IsWeakPair(holeCards, communityCards))
-            {
-                return "Medium pair";
-            }
-
-            return "Medium pair";
-        }
-
-        private static string MadeLabel(
-            HandRank made,
-            IReadOnlyList<Card> holeCards,
-            IReadOnlyList<Card> communityCards)
-        {
             switch (made)
             {
                 case HandRank.RoyalFlush: return "Royal flush";
@@ -195,189 +141,280 @@ namespace TexasHoldem
                 case HandRank.ThreeOfAKind:
                     return IsSet(holeCards, communityCards) ? "Set" : "Trips";
                 case HandRank.TwoPair: return "Two pair";
-                default: return "Value hand";
+                default: return "High card";
             }
         }
+
+        private static string ResolvePairName(
+            IReadOnlyList<Card> holeCards,
+            IReadOnlyList<Card> communityCards)
+        {
+            if (BettingAdvisor.IsOverpair(holeCards, communityCards))
+                return "Overpair";
+            if (IsTopPair(holeCards, communityCards))
+                return "Top pair";
+            if (IsMiddlePair(holeCards, communityCards))
+                return "Middle pair";
+            if (IsBottomPair(holeCards, communityCards))
+                return "Bottom pair";
+            if (BettingAdvisor.IsPocketUnderpair(holeCards, communityCards))
+                return "Weak pair";
+            return "Weak pair";
+        }
+
+        /// <summary>
+        /// Display concept may use Call-only labels (Bluff catcher) or Fold-only (Missed draw).
+        /// Never labels Raise/Bet as Bluff catcher.
+        /// </summary>
+        private static string ResolveDisplayConcept(
+            string handCategory,
+            BettingAction action,
+            bool facingBet,
+            bool isBet,
+            bool isRaiseFacing,
+            PostflopDrawFlags draws,
+            BoardTextureFlags texture)
+        {
+            bool betting = isBet || isRaiseFacing
+                || action == BettingAction.Raise
+                || action == BettingAction.AllIn;
+
+            // Bluff catcher is Call-only.
+            if (action == BettingAction.Call
+                && facingBet
+                && IsWeakShowdownPair(handCategory)
+                && draws == PostflopDrawFlags.None)
+            {
+                return "Bluff catcher";
+            }
+
+            // Never keep Bluff catcher / Missed draw on a bet/raise.
+            if (betting)
+            {
+                if (handCategory == "Missed draw")
+                    return HasDraw(draws) ? PrimaryDrawName(draws) : "Ace high";
+                return handCategory;
+            }
+
+            // Board texture as concept only when hand is generic high-card check/call.
+            if ((action == BettingAction.Check || action == BettingAction.Call)
+                && (handCategory == "High card" || handCategory == "Ace high")
+                && (texture & (BoardTextureFlags.Paired | BoardTextureFlags.TwoPair | BoardTextureFlags.Trips)) != 0)
+            {
+                return "Paired board";
+            }
+
+            return handCategory;
+        }
+
+        // -------------------------------------------------------------------------
+        // Coaching phrases matched to RecommendedAction
+        // -------------------------------------------------------------------------
 
         private static string ResolveCoaching(
-            HumanTrainerAdvice advice,
             string concept,
+            BettingAction action,
             BoardTextureFlags texture,
             PostflopDrawFlags draws,
-            bool facingBet)
-        {
-            bool wet = (texture & BoardTextureAnalyzer.WetFlags) != 0;
-            bool potOddsOk = advice.PotOddsPercent > 0f
-                && advice.EquityPercent + 0.5f >= advice.PotOddsPercent;
-            bool freeCard = advice.AmountToCall <= 0;
-            bool river = IsRiver(advice);
-
-            switch (advice.RecommendedAction)
-            {
-                case BettingAction.Check:
-                    return ResolveCheckCoaching(concept, freeCard);
-
-                case BettingAction.Call:
-                    return ResolveCallCoaching(concept, potOddsOk);
-
-                case BettingAction.Fold:
-                    return ResolveFoldCoaching(concept, facingBet);
-
-                case BettingAction.Raise:
-                case BettingAction.AllIn:
-                    return ResolveBetRaiseCoaching(concept, freeCard, wet, river, facingBet);
-
-                default:
-                    return FallbackForAction(advice.RecommendedAction, facingBet);
-            }
-        }
-
-        private static string ResolveCheckCoaching(string concept, bool freeCard)
-        {
-            if (concept == "Ace high" || concept == "High card")
-                return freeCard
-                    ? "check and take the free card"
-                    : "check and control the pot";
-
-            if (concept == "Medium pair" || concept == "Paired board" || concept == "Bluff catcher")
-                return "check for pot control";
-
-            if (concept == "Strong draw" || concept == "Flush draw"
-                || concept == "Nut flush draw" || concept == "Open-ended straight draw"
-                || concept == "Gutshot" || concept == "Combo draw")
-            {
-                return "check behind to realize equity";
-            }
-
-            return "check and control the pot";
-        }
-
-        private static string ResolveCallCoaching(string concept, bool potOddsOk)
-        {
-            if (concept == "Nut flush draw")
-                return potOddsOk
-                    ? "call with sufficient pot odds"
-                    : "call with sufficient pot odds";
-
-            if (concept == "Strong draw" || concept == "Flush draw"
-                || concept == "Open-ended straight draw" || concept == "Gutshot")
-            {
-                return "continue and realize equity";
-            }
-
-            if (concept == "Combo draw")
-                return "continue and realize equity";
-
-            if (concept == "Bluff catcher")
-                return "call only with sufficient pot odds";
-
-            if (concept == "Paired board" || concept == "Medium pair")
-                return potOddsOk
-                    ? "call with sufficient pot odds"
-                    : "call with sufficient pot odds";
-
-            return "call with sufficient pot odds";
-        }
-
-        private static string ResolveFoldCoaching(string concept, bool facingBet)
-        {
-            if (concept == "Missed draw")
-                return "fold versus continued aggression";
-
-            if (concept == "Bluff catcher" || concept == "Medium pair" || concept == "Ace high"
-                || concept == "High card" || concept == "Gutshot")
-            {
-                return facingBet ? "fold versus the bet" : "fold versus the bet";
-            }
-
-            return "fold versus the bet";
-        }
-
-        private static string ResolveBetRaiseCoaching(
-            string concept,
-            bool freeCard,
-            bool wet,
-            bool river,
-            bool facingBet)
-        {
-            if (!freeCard || facingBet)
-            {
-                if (concept == "Combo draw" || concept == "Strong draw" || concept == "Nut flush draw"
-                    || concept == "Flush draw" || concept == "Open-ended straight draw")
-                {
-                    return concept == "Combo draw"
-                        ? "aggressive semi-bluff"
-                        : "continue and realize equity";
-                }
-
-                return "raise for value";
-            }
-
-            // Betting when checked to / opening the betting.
-            if (concept == "Combo draw")
-                return "aggressive semi-bluff";
-
-            if (concept == "Strong draw" || concept == "Nut flush draw" || concept == "Flush draw"
-                || concept == "Open-ended straight draw")
-            {
-                return "aggressive semi-bluff";
-            }
-
-            if (concept == "Wet board")
-                return "protect against draws";
-
-            if (concept == "Overpair")
-                return wet
-                    ? "bet for value and protection"
-                    : "bet for value and protection";
-
-            if (concept == "Top pair" || concept == "Two pair" || concept == "Set" || concept == "Trips"
-                || concept == "Straight" || concept == "Flush" || concept == "Full house"
-                || concept == "Quads" || concept == "River value hand")
-            {
-                if (wet)
-                    return "bet for value and protection";
-                if (river || concept == "River value hand")
-                    return "bet against weaker calls";
-                return "value bet against weaker hands";
-            }
-
-            if (concept == "Paired board")
-                return "control the pot";
-
-            return "bet for value";
-        }
-
-        private static string FallbackForAction(BettingAction action, bool facingBet)
+            bool facingBet,
+            bool isBet)
         {
             switch (action)
             {
                 case BettingAction.Check:
-                    return "Check and control the pot";
+                    return ResolveCheckCoaching(concept);
+
                 case BettingAction.Call:
-                    return "Call with sufficient pot odds";
+                    return ResolveCallCoaching(concept);
+
                 case BettingAction.Fold:
-                    return "Fold versus the bet";
+                    return ResolveFoldCoaching(concept);
+
                 case BettingAction.Raise:
                 case BettingAction.AllIn:
-                    return facingBet ? "Raise for value" : "Bet for value";
+                    return ResolveRaiseCoaching(concept, texture, draws, isBet, facingBet);
+
                 default:
-                    return "Check and control the pot";
+                    return "check for pot control";
             }
         }
+
+        private static string ResolveCheckCoaching(string concept)
+        {
+            if (concept == "Ace high" || concept == "High card" || IsDrawConcept(concept))
+                return "take the free card";
+
+            if (IsWeakShowdownPair(concept)
+                || concept == "Bluff catcher"
+                || concept == "Paired board"
+                || concept == "Middle pair"
+                || concept == "Bottom pair"
+                || concept == "Weak pair")
+            {
+                return "check for pot control";
+            }
+
+            return "check behind";
+        }
+
+        private static string ResolveCallCoaching(string concept)
+        {
+            if (concept == "Bluff catcher")
+                return "call only with sufficient pot odds";
+
+            if (IsDrawConcept(concept))
+            {
+                if (concept == "Combo draw"
+                    || concept == "Nut flush draw"
+                    || concept == "Flush draw"
+                    || concept == "Open-ended straight draw")
+                {
+                    return "continue with a strong draw";
+                }
+
+                return "call with sufficient pot odds";
+            }
+
+            if (IsWeakShowdownPair(concept) || concept == "Paired board")
+                return "call because the price is good";
+
+            return "call with sufficient pot odds";
+        }
+
+        private static string ResolveFoldCoaching(string concept)
+        {
+            if (concept == "Missed draw")
+                return "draw missed";
+
+            if (IsDrawConcept(concept))
+                return "fold versus continued aggression";
+
+            if (IsWeakShowdownPair(concept)
+                || concept == "Bluff catcher"
+                || concept == "Ace high"
+                || concept == "High card"
+                || concept == "Paired board")
+            {
+                return "hand too weak to continue";
+            }
+
+            return "fold versus continued aggression";
+        }
+
+        private static string ResolveRaiseCoaching(
+            string concept,
+            BoardTextureFlags texture,
+            PostflopDrawFlags draws,
+            bool isBet,
+            bool facingBet)
+        {
+            // Never attach value language to air / weak pairs / missed draws.
+            if (IsNonValueConcept(concept) || IsDrawConcept(concept) || HasDraw(draws))
+            {
+                if (IsDrawConcept(concept) || HasDraw(draws))
+                    return facingBet || !isBet
+                        ? "raise as a semi-bluff"
+                        : "raise as a semi-bluff";
+
+                // Ace high / bottom pair / etc. without a detected draw: still not value.
+                return "raise as a semi-bluff";
+            }
+
+            bool wet = (texture & BoardTextureAnalyzer.WetFlags) != 0;
+            if (wet && IsStrongMadeConcept(concept))
+                return "raise to protect against draws";
+
+            return "raise for value";
+        }
+
+        // -------------------------------------------------------------------------
+        // Concept helpers
+        // -------------------------------------------------------------------------
+
+        private static bool IsDrawConcept(string concept) =>
+            concept == "Combo draw"
+            || concept == "Nut flush draw"
+            || concept == "Flush draw"
+            || concept == "Open-ended straight draw"
+            || concept == "Gutshot"
+            || concept == "Strong draw";
+
+        private static bool IsWeakShowdownPair(string concept) =>
+            concept == "Bottom pair"
+            || concept == "Middle pair"
+            || concept == "Weak pair"
+            || concept == "Underpair";
+
+        private static bool IsNonValueConcept(string concept) =>
+            concept == "Ace high"
+            || concept == "High card"
+            || concept == "Missed draw"
+            || concept == "Bluff catcher"
+            || IsWeakShowdownPair(concept)
+            || concept == "Paired board";
+
+        private static bool IsStrongMadeConcept(string concept) =>
+            concept == "Overpair"
+            || concept == "Top pair"
+            || concept == "Two pair"
+            || concept == "Set"
+            || concept == "Trips"
+            || concept == "Straight"
+            || concept == "Flush"
+            || concept == "Full house"
+            || concept == "Quads"
+            || concept == "Straight flush"
+            || concept == "Royal flush";
+
+        private static bool HasDraw(PostflopDrawFlags draws) => draws != PostflopDrawFlags.None;
+
+        private static string PrimaryDrawName(PostflopDrawFlags draws)
+        {
+            bool hasFd = (draws & PostflopDrawFlags.FlushDraw) != 0;
+            bool hasOesd = (draws & PostflopDrawFlags.OpenEndedStraightDraw) != 0;
+            bool hasGut = (draws & PostflopDrawFlags.GutshotStraightDraw) != 0;
+            if (hasFd && (hasOesd || hasGut))
+                return "Combo draw";
+            if (hasFd)
+                return "Flush draw";
+            if (hasOesd)
+                return "Open-ended straight draw";
+            if (hasGut)
+                return "Gutshot";
+            return "High card";
+        }
+
+        private static bool IsBetAction(HumanTrainerAdvice advice) =>
+            advice != null
+            && (advice.RecommendedAction == BettingAction.Raise
+                || advice.RecommendedAction == BettingAction.AllIn)
+            && advice.AmountToCall <= 0
+            && !advice.FacingRaise;
+
+        private static bool IsRaiseFacingAction(HumanTrainerAdvice advice) =>
+            advice != null
+            && (advice.RecommendedAction == BettingAction.Raise
+                || advice.RecommendedAction == BettingAction.AllIn)
+            && (advice.AmountToCall > 0 || advice.FacingRaise || advice.FacingAllIn);
 
         private static string DescribeBoardConcept(BoardTextureFlags flags)
         {
             if (flags == BoardTextureFlags.None)
                 return "Dry board";
-
             if ((flags & (BoardTextureFlags.Paired | BoardTextureFlags.TwoPair | BoardTextureFlags.Trips)) != 0)
                 return "Paired board";
-
             if ((flags & BoardTextureAnalyzer.WetFlags) != 0)
                 return "Wet board";
-
             return "Dry board";
+        }
+
+        private static string Capitalize(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+            if (char.IsUpper(text[0]))
+                return text;
+            return char.ToUpperInvariant(text[0]) + text.Substring(1);
         }
 
         private static bool IsRiver(HumanTrainerAdvice advice) =>
@@ -413,11 +450,35 @@ namespace TexasHoldem
 
         private static bool IsMiddlePair(IReadOnlyList<Card> holeCards, IReadOnlyList<Card> communityCards)
         {
+            if (!TryGetHoleBoardPairRank(holeCards, communityCards, out Rank pairRank))
+                return false;
+            if (!TryBoardHigh(communityCards, out Rank boardHigh)
+                || !TryBoardLow(communityCards, out Rank boardLow))
+            {
+                return false;
+            }
+
+            return pairRank < boardHigh && pairRank > boardLow;
+        }
+
+        private static bool IsBottomPair(IReadOnlyList<Card> holeCards, IReadOnlyList<Card> communityCards)
+        {
+            if (!TryGetHoleBoardPairRank(holeCards, communityCards, out Rank pairRank))
+                return false;
+            if (!TryBoardLow(communityCards, out Rank boardLow))
+                return false;
+            return pairRank == boardLow;
+        }
+
+        private static bool TryGetHoleBoardPairRank(
+            IReadOnlyList<Card> holeCards,
+            IReadOnlyList<Card> communityCards,
+            out Rank pairRank)
+        {
+            pairRank = Rank.Two;
             if (holeCards[0].Rank == holeCards[1].Rank)
                 return false;
 
-            Rank pairRank = Rank.Two;
-            bool found = false;
             for (int i = 0; i < communityCards.Count; i++)
             {
                 Card c = communityCards[i];
@@ -426,32 +487,11 @@ namespace TexasHoldem
                 if (c.Rank == holeCards[0].Rank || c.Rank == holeCards[1].Rank)
                 {
                     pairRank = c.Rank;
-                    found = true;
-                    break;
+                    return true;
                 }
             }
 
-            if (!found || !TryBoardHigh(communityCards, out Rank boardHigh))
-                return false;
-
-            Rank boardLow = boardHigh;
-            for (int i = 0; i < communityCards.Count; i++)
-            {
-                Card c = communityCards[i];
-                if (c != null && c.Rank < boardLow)
-                    boardLow = c.Rank;
-            }
-
-            return pairRank < boardHigh && pairRank > boardLow;
-        }
-
-        private static bool IsWeakPair(IReadOnlyList<Card> holeCards, IReadOnlyList<Card> communityCards)
-        {
-            if (BettingAdvisor.IsOverpair(holeCards, communityCards) || IsTopPair(holeCards, communityCards))
-                return false;
-            if (BettingAdvisor.IsPocketUnderpair(holeCards, communityCards) || IsMiddlePair(holeCards, communityCards))
-                return false;
-            return BettingAdvisor.GetMadeHandRank(holeCards, communityCards) == HandRank.OnePair;
+            return false;
         }
 
         private static bool TryBoardHigh(IReadOnlyList<Card> communityCards, out Rank boardHigh)
@@ -466,6 +506,23 @@ namespace TexasHoldem
                 any = true;
                 if (c.Rank > boardHigh)
                     boardHigh = c.Rank;
+            }
+
+            return any;
+        }
+
+        private static bool TryBoardLow(IReadOnlyList<Card> communityCards, out Rank boardLow)
+        {
+            boardLow = Rank.Ace;
+            bool any = false;
+            for (int i = 0; i < communityCards.Count; i++)
+            {
+                Card c = communityCards[i];
+                if (c == null)
+                    continue;
+                any = true;
+                if (c.Rank < boardLow)
+                    boardLow = c.Rank;
             }
 
             return any;
