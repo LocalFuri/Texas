@@ -112,7 +112,7 @@ namespace TexasHoldem
                 return FormatFacingRaiseReason(advice, isPair, pairRank);
 
             if (advice.CallersBefore > 0)
-                return FormatLimpedReason(advice, isPair, pairRank);
+                return FormatLimpedReason(advice, isPair, pairRank, suited, hi, lo);
 
             return FormatUnopenedReason(advice, isPair, pairRank, suited, hi, lo);
         }
@@ -163,7 +163,125 @@ namespace TexasHoldem
                     return "Call with pot odds";
 
                 default:
-                    return $"Below {seat} opening range";
+                    return FormatUnopenedFoldReason(advice, isPair, pairRank, suited, hi, lo);
+            }
+        }
+
+        /// <summary>
+        /// Teach why this hand folds unopened from this seat (display only).
+        /// </summary>
+        private static string FormatUnopenedFoldReason(
+            HumanTrainerAdvice advice,
+            bool isPair,
+            Rank pairRank,
+            bool suited,
+            Rank hi,
+            Rank lo)
+        {
+            string hand = FormatHandCode(isPair, pairRank, suited, hi, lo);
+            string seatLong = FormatSeatLong(advice.Position);
+            string why = DescribeUnopenedFoldWhy(isPair, pairRank, suited, hi, lo);
+
+            if (string.IsNullOrEmpty(hand))
+            {
+                return why + " Fold from " + seatLong + " and wait for a better spot.";
+            }
+
+            return hand + " " + why + " Fold from " + seatLong + " and wait for a better spot.";
+        }
+
+        private static string DescribeUnopenedFoldWhy(
+            bool isPair,
+            Rank pairRank,
+            bool suited,
+            Rank hi,
+            Rank lo)
+        {
+            if (isPair)
+            {
+                if (pairRank <= Rank.Seven)
+                    return "is usually too small to open profitably here.";
+                return "is outside this seat's opening range.";
+            }
+
+            // Offsuit Broadway / near-Broadway — dominated by better kickers and stronger Broadways.
+            if (!suited
+                && hi >= Rank.Ten
+                && lo >= Rank.Nine
+                && hi != lo)
+            {
+                return "is often dominated by stronger Broadway hands.";
+            }
+
+            // Weak/off-suit Ace — dominated by better Aces.
+            if (hi == Rank.Ace && (!suited || lo <= Rank.Four))
+            {
+                if (!suited)
+                    return "is often dominated by better Ace hands.";
+                return "is a weak suited Ace for this seat.";
+            }
+
+            // King/Queen high offsuit junk.
+            if (!suited && hi >= Rank.King && lo <= Rank.Nine)
+                return "is often dominated by stronger Broadway hands.";
+
+            if (!suited && hi == Rank.Queen && lo <= Rank.Nine)
+                return "is often dominated by stronger Broadway hands.";
+
+            // Suited connectors / gappers below the open range.
+            if (suited && hi - lo <= 2 && hi <= Rank.Jack)
+                return "isn't strong enough to open from this seat.";
+
+            if (suited && hi >= Rank.King && lo <= Rank.Nine)
+                return "doesn't play well enough to open from this seat.";
+
+            if (!suited)
+                return "plays poorly out of position and is often dominated.";
+
+            return "isn't strong enough to open from this seat.";
+        }
+
+        private static string FormatHandCode(bool isPair, Rank pairRank, bool suited, Rank hi, Rank lo)
+        {
+            if (isPair)
+                return RankCode(pairRank) + RankCode(pairRank);
+
+            string code = RankCode(hi) + RankCode(lo) + (suited ? "s" : "o");
+            // Guard against failed parse (defaults can look like "22o").
+            if (hi == Rank.Two && lo == Rank.Two && !isPair)
+                return string.Empty;
+            return code;
+        }
+
+        private static string RankCode(Rank rank) => rank switch
+        {
+            Rank.Ace   => "A",
+            Rank.King  => "K",
+            Rank.Queen => "Q",
+            Rank.Jack  => "J",
+            Rank.Ten   => "T",
+            Rank.Nine  => "9",
+            Rank.Eight => "8",
+            Rank.Seven => "7",
+            Rank.Six   => "6",
+            Rank.Five  => "5",
+            Rank.Four  => "4",
+            Rank.Three => "3",
+            Rank.Two   => "2",
+            _          => "?",
+        };
+
+        private static string FormatSeatLong(string position)
+        {
+            switch (FormatSeatShort(position))
+            {
+                case "BTN": return "the Button";
+                case "SB":  return "the Small Blind";
+                case "BB":  return "the Big Blind";
+                case "EP":  return "Early Position";
+                case "MP":  return "Middle Position";
+                case "CO":  return "the Cutoff";
+                default:    return "this seat";
             }
         }
 
@@ -245,7 +363,10 @@ namespace TexasHoldem
         private static string FormatLimpedReason(
             HumanTrainerAdvice advice,
             bool isPair,
-            Rank pairRank)
+            Rank pairRank,
+            bool suited,
+            Rank hi,
+            Rank lo)
         {
             string seat = FormatSeatShort(advice.Position);
 
@@ -270,7 +391,7 @@ namespace TexasHoldem
                     return "No raise needed";
 
                 default:
-                    return $"Below {seat} opening range";
+                    return FormatUnopenedFoldReason(advice, isPair, pairRank, suited, hi, lo);
             }
         }
 

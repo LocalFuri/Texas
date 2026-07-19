@@ -12,6 +12,8 @@ namespace TexasHoldem
         public float PotOddsPercent { get; set; }
         public string Position { get; set; }
         public string BoardTexture { get; set; }
+        /// <summary>Ace coach postflop hand label (Top pair, Flush draw, …). Display only.</summary>
+        public string HandCategory { get; set; }
         public string Street { get; set; }
         public PreflopHandGroup PreflopHandGroup { get; set; }
 

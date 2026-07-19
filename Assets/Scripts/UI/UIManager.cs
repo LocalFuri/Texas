@@ -2042,6 +2042,15 @@ namespace TexasHoldem
             if (isAce && isPreflop)
                 snapshot.Explanation = AceMaverickPreflopCoach.FormatCoachReason(snapshot);
 
+            // Ace postflop: hand category + board texture + why (display only).
+            if (isAce && !isPreflop)
+            {
+                AceMaverickPostflopCoach.ApplyToSnapshot(
+                    snapshot,
+                    human.HoleCards,
+                    _gameManager.CommunityCards);
+            }
+
             return snapshot;
         }
 

@@ -207,7 +207,19 @@ namespace TexasHoldem.Dev
                     sb.Append("Pot Odds: ").Append(advice.PotOddsPercent.ToString("0")).Append('%').AppendLine();
 
                 sb.Append("Confidence: ").Append(advice.ConfidencePercent).Append('%').AppendLine();
-                sb.Append("Reason: ").Append(FormatAceCoachReason(advice));
+                sb.Append("Reason: ").Append(advice.Explanation ?? string.Empty);
+            }
+            else if (advice.IsAceMaverick)
+            {
+                // Postflop Ace: display snapshot fields only — no Coach reinterpretation.
+                if (TryFormatAceActionLine(advice, out string postflopAction))
+                    sb.Append(postflopAction).AppendLine();
+
+                if (advice.AmountToCall > 0 || advice.FacingAllIn)
+                    sb.Append("Pot Odds: ").Append(advice.PotOddsPercent.ToString("0")).Append('%').AppendLine();
+
+                sb.Append("Confidence: ").Append(advice.ConfidencePercent).Append('%').AppendLine();
+                sb.Append("Reason: ").Append(advice.Explanation ?? string.Empty);
             }
             else
             {
@@ -234,21 +246,6 @@ namespace TexasHoldem.Dev
             && advice.CallersBefore <= 0;
 
         /// <summary>
-        /// Ace Coach reason from the shared snapshot Explanation
-        /// (built by <see cref="AceMaverickPreflopCoach.FormatCoachReason"/>).
-        /// </summary>
-        private static string FormatAceCoachReason(HumanTrainerAdvice advice)
-        {
-            if (advice == null)
-                return string.Empty;
-
-            if (!string.IsNullOrEmpty(advice.Explanation))
-                return advice.Explanation;
-
-            return AceMaverickPreflopCoach.FormatCoachReason(advice);
-        }
-
-        /// <summary>
         /// Ace Coach call/open/raise line. Raise totals come from the Raise control
         /// (same clamped total the Raise button submits), not trainer sizing.
         /// Fold/Check → no line.
@@ -271,10 +268,21 @@ namespace TexasHoldem.Dev
                     if (_ui != null && _ui.TryGetHumanRaiseTotalBet(out int raiseTotal))
                         totalBet = raiseTotal;
 
-                    bool unopened = !advice.FacingRaise && advice.StreetRaiseCount <= 0;
-                    line = unopened
-                        ? "Open to: " + totalBet
-                        : "Raise to: " + totalBet;
+                    if (!advice.IsPreflop)
+                    {
+                        bool isBet = advice.AmountToCall <= 0 && !advice.FacingRaise;
+                        line = isBet
+                            ? "Bet to: " + totalBet
+                            : "Raise to: " + totalBet;
+                    }
+                    else
+                    {
+                        bool unopened = !advice.FacingRaise && advice.StreetRaiseCount <= 0;
+                        line = unopened
+                            ? "Open to: " + totalBet
+                            : "Raise to: " + totalBet;
+                    }
+
                     return true;
                 }
 
