@@ -218,7 +218,7 @@ namespace TexasHoldem.Dev
                 if (advice.AmountToCall > 0 || advice.FacingAllIn)
                     sb.Append("Pot Odds: ").Append(advice.PotOddsPercent.ToString("0")).Append('%').AppendLine();
 
-                sb.Append("Confidence: ").Append(advice.ConfidencePercent).Append('%').AppendLine();
+                sb.Append("Equity: ").Append(advice.ConfidencePercent).Append('%').AppendLine();
                 sb.Append("Reason: ").Append(advice.Explanation ?? string.Empty);
             }
             else
