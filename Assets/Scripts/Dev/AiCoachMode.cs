@@ -15,15 +15,21 @@ namespace TexasHoldem.Dev
         private const string LogPrefix = "[AiCoach]";
 
         private const float FontSize = 19f;
+        private const float RecoFontSize = 28f;
         private const float LineSpacing = 108f;
         private const float PadX = 16f;
         private const float PadY = 14f;
         private const float PanelAlpha = 0.93f;
+        private const float PanelWidth = 360f;
+        private const float PanelHeightPreflop = 340f;
+        private const float PanelHeightSimple = 160f;
+        private const float Margin = 16f;
 
         private const string ColorCyan = "#00E5FF";
         private const string ColorRaise = "#3DDC64";
         private const string ColorCall = "#F0D040";
         private const string ColorFold = "#E84A4A";
+        private const string ColorAllIn = "#E040FB";
         private const string ColorMuted = "#D0D4DA";
 
         private UIManager _ui;
@@ -179,6 +185,7 @@ namespace TexasHoldem.Dev
                 return;
 
             ApplyOverlayStyle();
+            AnchorTopRight();
 
             var sb = new StringBuilder(384);
             sb.Append("<b>AI Coach</b>");
@@ -186,7 +193,6 @@ namespace TexasHoldem.Dev
                 sb.Append(" — Ace Maverick");
             sb.AppendLine();
 
-            // Ace Maverick preflop: same data, sectioned for readability.
             if (advice.IsAceMaverick && advice.IsPreflop)
             {
                 sb.AppendLine();
@@ -208,61 +214,77 @@ namespace TexasHoldem.Dev
 
                 sb.AppendLine();
                 sb.Append("<b>Decision</b>").AppendLine();
-                sb.Append("Recommended: ").Append(ColoredRecommendation(advice)).AppendLine();
-                sb.Append("Sizing: ").Append(FormatSizing(advice)).AppendLine();
+                sb.Append(FormatLargeRecommendation(advice)).AppendLine();
+                if (TryFormatValidSizing(advice, out string sizing))
+                    sb.Append("Sizing: ").Append(sizing).AppendLine();
                 sb.Append("Confidence: ").Append(advice.ConfidencePercent).Append('%');
-                _panel.sizeDelta = new Vector2(340f, 320f);
+                _panel.sizeDelta = new Vector2(PanelWidth, PanelHeightPreflop);
             }
             else
             {
                 sb.AppendLine();
                 sb.Append("<b>Decision</b>").AppendLine();
-                sb.Append("Recommended: ").Append(ColoredRecommendation(advice));
+                sb.Append(FormatLargeRecommendation(advice));
 
-                if (advice.RecommendedAction == BettingAction.Raise
-                    || (advice.RecommendedAction == BettingAction.AllIn && advice.RecommendedRaiseIncrement > 0))
+                if (TryFormatValidSizing(advice, out string sizing))
                 {
                     sb.AppendLine();
-                    sb.Append("Amount: ").Append(advice.RecommendedTotalBet);
-                    if (advice.RecommendedRaiseIncrement > 0
-                        && advice.RecommendedTotalBet != advice.RecommendedRaiseIncrement)
-                    {
-                        sb.Append(" (increment ").Append(advice.RecommendedRaiseIncrement).Append(')');
-                    }
-                }
-                else if (advice.RecommendedAction == BettingAction.AllIn)
-                {
-                    sb.AppendLine();
-                    sb.Append("Amount: All-In");
+                    sb.Append("Sizing: ").Append(sizing);
                 }
 
                 if (!string.IsNullOrEmpty(advice.Explanation))
                 {
                     sb.AppendLine();
-                    sb.Append("<color=").Append(ColorMuted).Append('>').Append(advice.Explanation).Append("</color>");
+                    sb.Append("<color=").Append(ColorMuted).Append('>')
+                        .Append(advice.Explanation).Append("</color>");
                 }
 
-                _panel.sizeDelta = new Vector2(320f, 150f);
+                _panel.sizeDelta = new Vector2(PanelWidth, PanelHeightSimple);
             }
 
             _text.text = sb.ToString();
             SetOverlayVisible(true);
         }
 
+        private void AnchorTopRight()
+        {
+            if (_panel == null)
+                return;
+
+            _panel.anchorMin = new Vector2(1f, 1f);
+            _panel.anchorMax = new Vector2(1f, 1f);
+            _panel.pivot = new Vector2(1f, 1f);
+            _panel.anchoredPosition = new Vector2(-Margin, -Margin);
+        }
+
         private static string Cyan(string value) =>
             $"<color={ColorCyan}>{value}</color>";
 
-        private static string ColoredRecommendation(HumanTrainerAdvice advice)
+        private static string FormatLargeRecommendation(HumanTrainerAdvice advice)
+        {
+            string word = ResolveRecommendationWord(advice);
+            string hex = RecommendationColorHex(advice.RecommendedAction, advice.DecisionLabel);
+            return $"<size={RecoFontSize}><b><color={hex}>{word}</color></b></size>";
+        }
+
+        private static string ResolveRecommendationWord(HumanTrainerAdvice advice)
         {
             string label = advice.DecisionLabel ?? advice.AdviceLabel ?? "?";
-            if (advice.RecommendedAction == BettingAction.Raise && advice.RecommendedTotalBet > 0)
-                label = $"{label} to {advice.RecommendedTotalBet}";
-            else if (advice.RecommendedAction == BettingAction.AllIn
-                     && label.IndexOf("All-In", System.StringComparison.OrdinalIgnoreCase) < 0)
-                label = $"{label} (All-In)";
-
-            string hex = RecommendationColorHex(advice.RecommendedAction, advice.DecisionLabel);
-            return $"<b><color={hex}>{label}</color></b>";
+            switch (advice.RecommendedAction)
+            {
+                case BettingAction.Raise:
+                    return (label == "Bet" ? "BET" : "RAISE");
+                case BettingAction.Call:
+                    return "CALL";
+                case BettingAction.Check:
+                    return "CHECK";
+                case BettingAction.Fold:
+                    return "FOLD";
+                case BettingAction.AllIn:
+                    return "ALL-IN";
+                default:
+                    return label.ToUpperInvariant();
+            }
         }
 
         private static string RecommendationColorHex(BettingAction action, string decisionLabel)
@@ -276,9 +298,9 @@ namespace TexasHoldem.Dev
                 case BettingAction.Fold:
                     return ColorFold;
                 case BettingAction.AllIn:
-                    return ColorRaise;
+                    return ColorAllIn;
                 case BettingAction.Check:
-                    return ColorMuted;
+                    return ColorCyan;
                 default:
                     if (decisionLabel == "Bet")
                         return ColorRaise;
@@ -286,21 +308,31 @@ namespace TexasHoldem.Dev
             }
         }
 
-        private static string FormatSizing(HumanTrainerAdvice advice)
+        /// <summary>True when a concrete bet/call size exists (not Fold/Check/empty).</summary>
+        private static bool TryFormatValidSizing(HumanTrainerAdvice advice, out string sizing)
         {
+            sizing = null;
             if (advice == null)
-                return "—";
+                return false;
 
             switch (advice.RecommendedAction)
             {
                 case BettingAction.Raise:
-                    return $"total {advice.RecommendedTotalBet} (inc {advice.RecommendedRaiseIncrement})";
-                case BettingAction.AllIn:
-                    return "All-In";
+                    if (advice.RecommendedTotalBet <= 0 && advice.RecommendedRaiseIncrement <= 0)
+                        return false;
+                    sizing = advice.RecommendedTotalBet > 0
+                        ? $"total {advice.RecommendedTotalBet} (inc {advice.RecommendedRaiseIncrement})"
+                        : $"inc {advice.RecommendedRaiseIncrement}";
+                    return true;
+
                 case BettingAction.Call:
-                    return $"call {advice.AmountToCall}";
+                    if (advice.AmountToCall <= 0)
+                        return false;
+                    sizing = $"call {advice.AmountToCall}";
+                    return true;
+
                 default:
-                    return "—";
+                    return false;
             }
         }
 
@@ -327,6 +359,8 @@ namespace TexasHoldem.Dev
                 _text.lineSpacing = LineSpacing;
                 _text.richText = true;
                 _text.color = Color.white;
+                _text.enableWordWrapping = true;
+                _text.overflowMode = TextOverflowModes.Ellipsis;
             }
         }
 
@@ -335,6 +369,7 @@ namespace TexasHoldem.Dev
             if (_panel != null)
             {
                 ApplyOverlayStyle();
+                AnchorTopRight();
                 return;
             }
 
@@ -346,11 +381,7 @@ namespace TexasHoldem.Dev
             var go = new GameObject("AiCoachOverlay", typeof(RectTransform), typeof(Image));
             go.transform.SetParent(parent.transform, false);
             _panel = go.GetComponent<RectTransform>();
-            _panel.anchorMin = new Vector2(0f, 1f);
-            _panel.anchorMax = new Vector2(0f, 1f);
-            _panel.pivot = new Vector2(0f, 1f);
-            _panel.anchoredPosition = new Vector2(16f, -16f);
-            _panel.sizeDelta = new Vector2(340f, 320f);
+            _panel.sizeDelta = new Vector2(PanelWidth, PanelHeightPreflop);
 
             _panelBg = go.GetComponent<Image>();
             _panelBg.raycastTarget = false;
@@ -363,11 +394,11 @@ namespace TexasHoldem.Dev
 
             _text = textGo.AddComponent<TextMeshProUGUI>();
             _text.alignment = TextAlignmentOptions.TopLeft;
-            _text.enableWordWrapping = true;
             _text.raycastTarget = false;
             _text.richText = true;
 
             ApplyOverlayStyle();
+            AnchorTopRight();
             go.SetActive(false);
         }
 
