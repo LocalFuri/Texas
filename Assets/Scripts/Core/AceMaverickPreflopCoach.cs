@@ -99,44 +99,63 @@ namespace TexasHoldem
                 && advice.StreetRaiseCount <= 0
                 && advice.CallersBefore <= 0;
 
-            TryParseHoleShape(advice.HoleCards, out bool isPair, out Rank pairRank,
+            bool parsed = TryParseHoleShape(advice.HoleCards, out bool isPair, out Rank pairRank,
                 out bool suited, out Rank hi, out Rank lo);
+            string hand = parsed
+                ? FormatHandCode(isPair, pairRank, suited, hi, lo)
+                : string.Empty;
 
+            string text;
             if (advice.FacingAllIn)
-                return FormatFacingAllInReason(advice);
+                text = FormatFacingAllInReason(advice, hand);
+            else if (unopened)
+                text = FormatUnopenedReason(advice, hand, isPair, pairRank, suited, hi, lo);
+            else if (advice.FacingRaise || advice.StreetRaiseCount > 0 || advice.AmountToCall > 0)
+                text = FormatFacingRaiseReason(advice, hand, isPair, pairRank);
+            else if (advice.CallersBefore > 0)
+                text = FormatLimpedReason(advice, hand, isPair, pairRank, suited, hi, lo);
+            else
+                text = FormatUnopenedReason(advice, hand, isPair, pairRank, suited, hi, lo);
 
-            if (unopened)
-                return FormatUnopenedReason(advice, isPair, pairRank, suited, hi, lo);
-
-            if (advice.FacingRaise || advice.StreetRaiseCount > 0 || advice.AmountToCall > 0)
-                return FormatFacingRaiseReason(advice, isPair, pairRank);
-
-            if (advice.CallersBefore > 0)
-                return FormatLimpedReason(advice, isPair, pairRank, suited, hi, lo);
-
-            return FormatUnopenedReason(advice, isPair, pairRank, suited, hi, lo);
+            return EnsureMentionsHand(hand, text);
         }
 
-        private static string FormatFacingAllInReason(HumanTrainerAdvice advice)
+        /// <summary>Never emit an explanation that omits the hero hand code.</summary>
+        private static string EnsureMentionsHand(string hand, string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                text = string.Empty;
+
+            if (string.IsNullOrEmpty(hand))
+                return text;
+
+            if (text.IndexOf(hand, System.StringComparison.Ordinal) >= 0)
+                return text;
+
+            return hand + " — " + text;
+        }
+
+        private static string FormatFacingAllInReason(HumanTrainerAdvice advice, string hand)
         {
             switch (advice.RecommendedAction)
             {
                 case BettingAction.Call:
                 case BettingAction.AllIn:
                     if (advice.PreflopHandGroup == PreflopHandGroup.Premium)
-                        return "Premium shove call";
-                    return "Call with pot odds";
+                        return hand + " is a premium shove call";
+                    return hand + " — call with pot odds";
 
                 case BettingAction.Fold:
-                    return "Too weak to defend";
+                    return hand + " is too weak to defend";
 
                 default:
-                    return "Premium shove call";
+                    return hand + " is a premium shove call";
             }
         }
 
         private static string FormatUnopenedReason(
             HumanTrainerAdvice advice,
+            string hand,
             bool isPair,
             Rank pairRank,
             bool suited,
@@ -149,21 +168,20 @@ namespace TexasHoldem
             {
                 case BettingAction.Raise:
                 case BettingAction.AllIn:
-                    return FormatUnopenedOpenReason(advice, seat, isPair, pairRank, suited, hi, lo);
+                    return FormatUnopenedOpenReason(advice, hand, seat, isPair, pairRank, suited, hi, lo);
 
                 case BettingAction.Check:
                     if (seat == "BB")
-                        return "Defend Big Blind";
-                    return "No raise needed";
+                        return hand + " — defend Big Blind";
+                    return hand + " — no raise needed";
 
                 case BettingAction.Call:
-                    // Limped-in call shouldn't hit here often; keep short.
                     if (isPair && IsSetMinePair(pairRank))
-                        return "Small pair for set mining";
-                    return "Call with pot odds";
+                        return hand + " is a small pair for set mining";
+                    return hand + " — call with pot odds";
 
                 default:
-                    return FormatUnopenedFoldReason(advice, isPair, pairRank, suited, hi, lo);
+                    return FormatUnopenedFoldReason(advice, hand, isPair, pairRank, suited, hi, lo);
             }
         }
 
@@ -173,13 +191,16 @@ namespace TexasHoldem
         /// </summary>
         private static string FormatUnopenedFoldReason(
             HumanTrainerAdvice advice,
+            string hand,
             bool isPair,
             Rank pairRank,
             bool suited,
             Rank hi,
             Rank lo)
         {
-            string hand = FormatHandCode(isPair, pairRank, suited, hi, lo);
+            if (string.IsNullOrEmpty(hand))
+                hand = FormatHandCode(isPair, pairRank, suited, hi, lo);
+
             string seat = FormatSeatShort(advice.Position);
             FoldTheme theme = ClassifyUnopenedFoldTheme(isPair, pairRank, suited, hi, lo);
             return FormatPositionFoldExplanation(seat, hand, theme, suited, hi);
@@ -236,25 +257,28 @@ namespace TexasHoldem
             bool suited,
             Rank hi)
         {
-            string label = string.IsNullOrEmpty(hand) ? "This hand" : hand;
-            int pick = StablePick(label, seat, theme);
+            // Always use a concrete hand label — never "This hand".
+            if (string.IsNullOrEmpty(hand))
+                hand = "Hero";
+
+            int pick = StablePick(hand, seat, theme);
 
             switch (seat)
             {
                 case "EP":
-                    return FormatEarlyPositionFold(label, theme, pick);
+                    return FormatEarlyPositionFold(hand, theme, pick);
                 case "MP":
-                    return FormatMiddlePositionFold(label, theme, pick, hi);
+                    return FormatMiddlePositionFold(hand, theme, pick);
                 case "SB":
-                    return FormatSmallBlindFold(label, theme, pick, suited, hi);
+                    return FormatSmallBlindFold(hand, theme, pick, suited, hi);
                 case "CO":
-                    return FormatCutoffFold(label, theme, pick);
+                    return FormatCutoffFold(hand, theme, pick);
                 case "BTN":
-                    return FormatButtonFold(label, theme, pick);
+                    return FormatButtonFold(hand, theme, pick);
                 case "BB":
-                    return FormatBigBlindFold(label, theme, pick);
+                    return FormatBigBlindFold(hand, theme, pick);
                 default:
-                    return FormatMiddlePositionFold(label, theme, pick, hi);
+                    return FormatMiddlePositionFold(hand, theme, pick);
             }
         }
 
@@ -267,91 +291,91 @@ namespace TexasHoldem
                     return Pick(pick,
                         hand + " is often dominated by stronger Broadway hands. Early Position requires a tighter opening range.",
                         hand + " performs much better from late position. Fold here.",
-                        "Open a stronger range from Early Position. " + hand + " is too weak here.");
+                        hand + " is too weak to open from Early Position.");
 
                 case FoldTheme.DominatedKing:
                     return Pick(pick,
                         hand + " is often dominated by stronger kings. Early Position requires a tighter opening range.",
                         hand + " performs much better from late position. Fold here.",
-                        "Open a stronger range from Early Position.");
+                        hand + " is too weak to open from Early Position.");
 
                 case FoldTheme.DominatedAce:
                     return Pick(pick,
                         hand + " is often dominated by stronger aces. Early Position requires a tighter opening range.",
                         hand + " has a weak kicker for Early Position. Fold here.",
-                        "Open a stronger range from Early Position.");
+                        hand + " is too weak to open from Early Position.");
 
                 case FoldTheme.SmallPair:
                     return Pick(pick,
                         hand + " is too small to open from Early Position.",
                         hand + " plays better as a late-position set-mine. Fold here.",
-                        "Early Position needs a tighter opening range than " + hand + ".");
+                        hand + " is too small to open from this position.");
 
                 case FoldTheme.SpeculativeSuited:
                     return Pick(pick,
                         hand + " is too speculative to open from Early Position.",
                         hand + " has better implied odds from late position. Fold here.",
-                        "Open a stronger range from Early Position.");
+                        hand + " is too weak to open from Early Position.");
 
                 case FoldTheme.WeakOffsuit:
                     return Pick(pick,
                         hand + " has poor postflop playability from Early Position.",
                         hand + " is often dominated and plays poorly multiway. Fold here.",
-                        "Open a stronger range from Early Position.");
+                        hand + " is too weak to open from Early Position.");
 
                 default:
                     return Pick(pick,
                         hand + " is too weak for the Early Position opening range.",
-                        "Open a stronger range from Early Position.",
+                        hand + " is too weak to open from Early Position.",
                         hand + " performs much better from late position. Fold here.");
             }
         }
 
-        private static string FormatMiddlePositionFold(string hand, FoldTheme theme, int pick, Rank hi)
+        private static string FormatMiddlePositionFold(string hand, FoldTheme theme, int pick)
         {
             switch (theme)
             {
                 case FoldTheme.DominatedKing:
                     return Pick(pick,
                         hand + " is often dominated by stronger kings. It becomes more playable from the Cutoff or Button.",
-                        "This hand is just below the Middle Position opening range.",
-                        "Fold here and open it from a later seat.");
+                        hand + " is just below the Middle Position opening range.",
+                        hand + " — fold here and open it from a later seat.");
 
                 case FoldTheme.DominatedBroadway:
                 case FoldTheme.DominatedQueen:
                     return Pick(pick,
                         hand + " is often dominated by stronger Broadway hands. It becomes more playable from the Cutoff or Button.",
-                        "This hand is just below the Middle Position opening range.",
-                        "Fold here and open it from a later seat.");
+                        hand + " is just below the Middle Position opening range.",
+                        hand + " — fold here and open it from a later seat.");
 
                 case FoldTheme.DominatedAce:
                     return Pick(pick,
                         hand + " is often dominated by stronger aces. Save it for a later seat.",
-                        "This hand is just below the Middle Position opening range.",
-                        "Fold here and open it from a later seat.");
+                        hand + " is just below the Middle Position opening range.",
+                        hand + " — fold here and open it from a later seat.");
 
                 case FoldTheme.SmallPair:
                     return Pick(pick,
                         hand + " is just below the Middle Position opening range.",
                         hand + " is more profitable as a late-position set-mine. Fold here.",
-                        "Fold here and open it from a later seat.");
+                        hand + " is too small to open from this position.");
 
                 case FoldTheme.SpeculativeSuited:
                     return Pick(pick,
                         hand + " is more profitable from the Cutoff or Button.",
-                        "This hand is just below the Middle Position opening range.",
-                        "Fold here and open it from a later seat.");
+                        hand + " is just below the Middle Position opening range.",
+                        hand + " — fold here and open it from a later seat.");
 
                 case FoldTheme.WeakOffsuit:
                     return Pick(pick,
                         hand + " is often dominated and too weak for Middle Position.",
-                        "This hand is just below the Middle Position opening range.",
-                        "Fold here and open it from a later seat.");
+                        hand + " is just below the Middle Position opening range.",
+                        hand + " — fold here and open it from a later seat.");
 
                 default:
                     return Pick(pick,
-                        "This hand is just below the Middle Position opening range.",
-                        "Fold here and open it from a later seat.",
+                        hand + " is just below the Middle Position opening range.",
+                        hand + " — fold here and open it from a later seat.",
                         hand + " becomes more playable from the Cutoff or Button.");
             }
         }
@@ -368,20 +392,20 @@ namespace TexasHoldem
                 case FoldTheme.DominatedKing:
                     return Pick(pick,
                         hand + " is dominated by stronger kings and plays poorly out of position.",
-                        "Avoid entering the pot with a weak offsuit king from the Small Blind.",
+                        "Avoid entering the pot with " + hand + " from the Small Blind.",
                         hand + " has poor postflop playability out of position.");
 
                 case FoldTheme.DominatedQueen:
                 case FoldTheme.DominatedBroadway:
                     return Pick(pick,
                         hand + " is often dominated by stronger Broadway hands out of position.",
-                        "Avoid opening weak Broadways from the Small Blind.",
+                        "Avoid opening " + hand + " from the Small Blind.",
                         hand + " has poor postflop playability out of position.");
 
                 case FoldTheme.DominatedAce:
                     return Pick(pick,
                         hand + " is dominated by stronger aces and plays poorly out of position.",
-                        "Avoid entering the pot with a weak ace from the Small Blind.",
+                        "Avoid entering the pot with " + hand + " from the Small Blind.",
                         hand + " has poor postflop playability out of position.");
 
                 case FoldTheme.WeakOffsuit:
@@ -389,7 +413,7 @@ namespace TexasHoldem
                     {
                         return Pick(pick,
                             hand + " is dominated by stronger kings and plays poorly out of position.",
-                            "Avoid entering the pot with a weak offsuit king from the Small Blind.",
+                            "Avoid entering the pot with " + hand + " from the Small Blind.",
                             hand + " has poor postflop playability out of position.");
                     }
 
@@ -407,7 +431,7 @@ namespace TexasHoldem
                 case FoldTheme.SpeculativeSuited:
                     return Pick(pick,
                         hand + " has poor postflop playability out of position.",
-                        "Avoid speculative suited hands from the Small Blind.",
+                        "Avoid opening " + hand + " from the Small Blind.",
                         hand + " is too weak to open from the Small Blind.");
 
                 default:
@@ -426,7 +450,7 @@ namespace TexasHoldem
                     return Pick(pick,
                         hand + " is often dominated by stronger aces. Too weak for a Cutoff open.",
                         hand + " is just below the Cutoff opening range.",
-                        "Fold here; open a stronger ace from the Cutoff.");
+                        hand + " — fold here; open a stronger ace from the Cutoff.");
 
                 case FoldTheme.DominatedKing:
                 case FoldTheme.DominatedQueen:
@@ -434,19 +458,19 @@ namespace TexasHoldem
                     return Pick(pick,
                         hand + " is often dominated by stronger Broadway hands.",
                         hand + " is just below the Cutoff opening range.",
-                        "This hand is more profitable from the Button.");
+                        hand + " is more profitable from the Button.");
 
                 case FoldTheme.SmallPair:
                     return Pick(pick,
                         hand + " is just below the Cutoff opening range.",
                         hand + " is a thin set-mine from the Cutoff. Fold here.",
-                        "Open a stronger range from the Cutoff.");
+                        hand + " is too small to open from this position.");
 
                 default:
                     return Pick(pick,
                         hand + " is too weak for the Cutoff opening range.",
                         hand + " is more profitable from the Button.",
-                        "Open a stronger range from the Cutoff.");
+                        hand + " is too weak to open from the Cutoff.");
             }
         }
 
@@ -533,6 +557,7 @@ namespace TexasHoldem
 
         private static string FormatUnopenedOpenReason(
             HumanTrainerAdvice advice,
+            string hand,
             string seat,
             bool isPair,
             Rank pairRank,
@@ -541,31 +566,32 @@ namespace TexasHoldem
             Rank lo)
         {
             if (advice.PreflopHandGroup == PreflopHandGroup.Premium)
-                return "Premium opening hand";
+                return hand + " is a premium opening hand";
 
             if (isPair && IsSetMinePair(pairRank))
-                return "Set-mine candidate";
+                return hand + " is a set-mine candidate";
 
             if (suited && hi == Rank.Ace && lo >= Rank.Five && lo <= Rank.Nine)
-                return "Strong suited Ace";
+                return hand + " is a strong suited Ace";
 
             if (advice.PreflopHandGroup == PreflopHandGroup.Strong)
-                return "Strong opening hand";
+                return hand + " is a strong opening hand";
 
             if (seat == "BTN")
-                return "Standard Button open";
+                return hand + " — standard Button open";
 
             if (seat == "CO")
-                return "Standard Cutoff open";
+                return hand + " — standard Cutoff open";
 
             if (seat == "SB")
-                return "Standard SB open";
+                return hand + " — standard SB open";
 
-            return $"Standard {seat} open";
+            return hand + " — standard " + seat + " open";
         }
 
         private static string FormatFacingRaiseReason(
             HumanTrainerAdvice advice,
+            string hand,
             bool isPair,
             Rank pairRank)
         {
@@ -579,35 +605,37 @@ namespace TexasHoldem
                 case BettingAction.Raise:
                 case BettingAction.AllIn:
                     if (advice.PreflopHandGroup == PreflopHandGroup.Premium)
-                        return advice.StreetRaiseCount >= 2 ? "Premium 4-bet" : "Premium 3-bet";
+                        return advice.StreetRaiseCount >= 2
+                            ? hand + " — premium 4-bet"
+                            : hand + " — premium 3-bet";
                     if (advice.PreflopHandGroup == PreflopHandGroup.Strong)
-                        return "Strong 3-bet";
-                    return is3BetPlus ? "Value re-raise" : "Raise for value";
+                        return hand + " — strong 3-bet";
+                    return is3BetPlus
+                        ? hand + " — value re-raise"
+                        : hand + " — raise for value";
 
                 case BettingAction.Call:
                     if (seat == "BB")
-                        return "Defend Big Blind";
+                        return hand + " — defend Big Blind";
                     if (isPair && IsSetMinePair(pairRank))
-                        return "Small pair for set mining";
-                    if (advice.PotOddsPercent > 0f)
-                        return "Call with pot odds";
-                    return "Call with pot odds";
+                        return hand + " is a small pair for set mining";
+                    return hand + " — call with pot odds";
 
                 case BettingAction.Check:
                     if (seat == "BB")
-                        return "Defend Big Blind";
-                    return "No raise needed";
+                        return hand + " — defend Big Blind";
+                    return hand + " — no raise needed";
 
                 default:
                     if (advice.PreflopHandGroup == PreflopHandGroup.Weak)
-                        return "Too weak to defend";
-                    // Opener seat unknown on snapshot; keep concept-focused.
-                    return "Fold versus raise";
+                        return hand + " is too weak to defend";
+                    return hand + " — fold versus raise";
             }
         }
 
         private static string FormatLimpedReason(
             HumanTrainerAdvice advice,
+            string hand,
             bool isPair,
             Rank pairRank,
             bool suited,
@@ -621,23 +649,23 @@ namespace TexasHoldem
                 case BettingAction.Raise:
                 case BettingAction.AllIn:
                     if (advice.PreflopHandGroup == PreflopHandGroup.Premium)
-                        return "Premium opening hand";
+                        return hand + " is a premium opening hand";
                     if (advice.PreflopHandGroup == PreflopHandGroup.Strong)
-                        return "Strong opening hand";
-                    return $"Standard {seat} open";
+                        return hand + " is a strong opening hand";
+                    return hand + " — standard " + seat + " open";
 
                 case BettingAction.Call:
                     if (isPair && IsSetMinePair(pairRank))
-                        return "Small pair for set mining";
-                    return "Call with pot odds";
+                        return hand + " is a small pair for set mining";
+                    return hand + " — call with pot odds";
 
                 case BettingAction.Check:
                     if (seat == "BB")
-                        return "Defend Big Blind";
-                    return "No raise needed";
+                        return hand + " — defend Big Blind";
+                    return hand + " — no raise needed";
 
                 default:
-                    return FormatUnopenedFoldReason(advice, isPair, pairRank, suited, hi, lo);
+                    return FormatUnopenedFoldReason(advice, hand, isPair, pairRank, suited, hi, lo);
             }
         }
 
