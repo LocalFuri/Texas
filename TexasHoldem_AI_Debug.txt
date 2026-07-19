@@ -2,3 +2,294 @@
 ==========================
 
 (Complete hand protocols appended below.)
+
+=== Hand #1 ===
+Players:
+  Ace Maverick | pos=Middle | hole=A♦ K♥ | startStack=1000 | tier=Premium
+  Lady Luck | pos=Cutoff | hole=4♣ J♣ | startStack=1000 | tier=Weak
+  Prince Beaumont | pos=Button | hole=7♥ Q♥ | startStack=1000 | tier=Weak
+  Victor Shark | pos=SmallBlind | hole=8♦ K♦ | startStack=1000 | tier=Playable
+  Jasmine Vale | pos=BigBlind | hole=10♣ A♠ | startStack=1000 | tier=Playable
+  Alex Hunter | pos=Early | hole=9♠ 2♥ | startStack=1000 | tier=Weak
+Board by street:
+  Flop:  7♣ 7♦ 3♠
+  Turn:  7♣ 7♦ 3♠ 10♠
+  River: 7♣ 7♦ 3♠ 10♠ 2♣
+Betting sequence:
+  PreFlop | Victor Shark | Call | amount=1 | pot=1 | tableBet=0 | playerStreetBet=1 | streetRaiseCount=0 | tier=Playable
+  PreFlop | Jasmine Vale | Call | amount=2 | pot=3 | tableBet=2 | playerStreetBet=2 | streetRaiseCount=0 | tier=Playable
+  PreFlop | Alex Hunter | Fold | amount=0 | pot=3 | tableBet=2 | playerStreetBet=0 | streetRaiseCount=0 | tier=Weak
+  PreFlop | Ace Maverick | Raise | amount=3 | pot=8 | tableBet=5 | playerStreetBet=5 | streetRaiseCount=1 | tier=Premium
+  PreFlop | Lady Luck | Fold | amount=0 | pot=8 | tableBet=5 | playerStreetBet=0 | streetRaiseCount=1 | tier=Weak
+  PreFlop | Prince Beaumont | Fold | amount=0 | pot=8 | tableBet=5 | playerStreetBet=0 | streetRaiseCount=1 | tier=Weak
+  PreFlop | Victor Shark | Call | amount=4 | pot=12 | tableBet=5 | playerStreetBet=5 | streetRaiseCount=1 | tier=Playable
+  PreFlop | Jasmine Vale | Call | amount=3 | pot=15 | tableBet=5 | playerStreetBet=5 | streetRaiseCount=1 | tier=Playable
+  Flop | Victor Shark | Check | amount=0 | pot=15 | tableBet=0 | playerStreetBet=0 | streetRaiseCount=0 | tier=Playable
+  Flop | Jasmine Vale | Check | amount=0 | pot=15 | tableBet=0 | playerStreetBet=0 | streetRaiseCount=0 | tier=Playable
+  Flop | Ace Maverick | Check | amount=0 | pot=15 | tableBet=0 | playerStreetBet=0 | streetRaiseCount=0 | tier=Premium
+  Turn | Victor Shark | Check | amount=0 | pot=15 | tableBet=0 | playerStreetBet=0 | streetRaiseCount=0 | tier=Playable
+  Turn | Jasmine Vale | Check | amount=0 | pot=15 | tableBet=0 | playerStreetBet=0 | streetRaiseCount=0 | tier=Playable
+  Turn | Ace Maverick | Check | amount=0 | pot=15 | tableBet=0 | playerStreetBet=0 | streetRaiseCount=0 | tier=Premium
+  River | Victor Shark | Check | amount=0 | pot=15 | tableBet=0 | playerStreetBet=0 | streetRaiseCount=0 | tier=Playable
+  River | Jasmine Vale | Raise | amount=10 | pot=25 | tableBet=10 | playerStreetBet=10 | streetRaiseCount=1 | tier=Playable
+  River | Ace Maverick | Fold | amount=0 | pot=25 | tableBet=10 | playerStreetBet=0 | streetRaiseCount=1 | tier=Premium
+  River | Victor Shark | Fold | amount=0 | pot=25 | tableBet=10 | playerStreetBet=0 | streetRaiseCount=1 | tier=Playable
+Postflop AI decisions:
+[PostflopAI]
+Player: Victor Shark
+Street: Flop
+Hand: 8♦ K♦
+Board: 7♣ 7♦ 3♠
+Category: Pair of 7s, K-8-3 Kickers
+Opponent Range: Wide
+Opponent Range Why: check/call (no bet faced)
+Base Range: Wide
+Player Tendency (Ace Maverick): Tightness=0,00, Aggression=0,00
+Observed Action: Check
+Preview Adjustment: None
+Preview Range: Wide
+Preview Why: Check leaves range unchanged
+Equity (MC, Wide): 31,0%
+Pot Odds: n/a
+Call Amount: 0
+Table Bet: 0
+Player Street Bet: 0
+Pot: 15
+Branch: checked-to
+Raise Threshold: 65,0%
+Call Threshold: n/a
+Decision Threshold: 65,0%
+Opponents: 2
+Draw: None
+Board Texture: Paired
+Decision: Check
+Raise Amount: 0
+Reason: Equity below value threshold (65%)
+Bet Size: 0
+Hand Summary:
+Preflop: Call
+Flop: Check
+---
+[PostflopAI]
+Player: Jasmine Vale
+Street: Flop
+Hand: 10♣ A♠
+Board: 7♣ 7♦ 3♠
+Category: Pair of 7s, A-10-3 Kickers
+Opponent Range: Wide
+Opponent Range Why: check/call (no bet faced)
+Base Range: Wide
+Player Tendency (Ace Maverick): Tightness=0,00, Aggression=0,00
+Observed Action: Check
+Preview Adjustment: None
+Preview Range: Wide
+Preview Why: Check leaves range unchanged
+Equity (MC, Wide): 36,4%
+Pot Odds: n/a
+Call Amount: 0
+Table Bet: 0
+Player Street Bet: 0
+Pot: 15
+Branch: checked-to
+Raise Threshold: 65,0%
+Call Threshold: n/a
+Decision Threshold: 65,0%
+Opponents: 2
+Draw: None
+Board Texture: Paired
+Decision: Check
+Raise Amount: 0
+Reason: Equity below value threshold (65%)
+Bet Size: 0
+Hand Summary:
+Preflop: Call
+Flop: Check
+---
+[PostflopAI]
+Player: Victor Shark
+Street: Turn
+Hand: 8♦ K♦
+Board: 7♣ 7♦ 3♠ 10♠
+Category: Pair of 7s, K-10-8 Kickers
+Opponent Range: Wide
+Opponent Range Why: check/call (no bet faced)
+Base Range: Wide
+Player Tendency (Ace Maverick): Tightness=0,00, Aggression=0,00
+Observed Action: Check
+Preview Adjustment: None
+Preview Range: Wide
+Preview Why: Check leaves range unchanged
+Equity (MC, Wide): 19,8%
+Pot Odds: n/a
+Call Amount: 0
+Table Bet: 0
+Player Street Bet: 0
+Pot: 15
+Branch: checked-to
+Raise Threshold: 65,0%
+Call Threshold: n/a
+Decision Threshold: 65,0%
+Opponents: 2
+Draw: None
+Board Texture: Paired
+Decision: Check
+Raise Amount: 0
+Reason: Equity below value threshold (65%)
+Bet Size: 0
+Hand Summary:
+Preflop: Call
+Flop: Check
+Turn: Check
+---
+[PostflopAI]
+Player: Jasmine Vale
+Street: Turn
+Hand: 10♣ A♠
+Board: 7♣ 7♦ 3♠ 10♠
+Category: Two Pair, Tens and 7s, A Kicker
+Opponent Range: Wide
+Opponent Range Why: check/call (no bet faced)
+Base Range: Wide
+Player Tendency (Ace Maverick): Tightness=0,00, Aggression=0,00
+Observed Action: Check
+Preview Adjustment: None
+Preview Range: Wide
+Preview Why: Check leaves range unchanged
+Equity (MC, Wide): 69,3%
+Pot Odds: n/a
+Call Amount: 0
+Table Bet: 0
+Player Street Bet: 0
+Pot: 15
+Branch: checked-to
+Raise Threshold: 65,0%
+Call Threshold: n/a
+Decision Threshold: 65,0%
+Opponents: 2
+Draw: None
+Board Texture: Paired
+Decision: Check
+Raise Amount: 0
+Reason: Equity below value threshold (65%)
+Bet Size: 0
+Hand Summary:
+Preflop: Call
+Flop: Check
+Turn: Check
+---
+[PostflopAI]
+Player: Victor Shark
+Street: River
+Hand: 8♦ K♦
+Board: 7♣ 7♦ 3♠ 10♠ 2♣
+Category: Pair of 7s, K-10-8 Kickers
+Opponent Range: Wide
+Opponent Range Why: check/call (no bet faced)
+Base Range: Wide
+Player Tendency (Ace Maverick): Tightness=0,00, Aggression=0,00
+Observed Action: Check
+Preview Adjustment: None
+Preview Range: Wide
+Preview Why: Check leaves range unchanged
+Equity (MC, Wide): 12,0%
+Pot Odds: n/a
+Call Amount: 0
+Table Bet: 0
+Player Street Bet: 0
+Pot: 15
+Branch: checked-to
+Raise Threshold: 65,0%
+Call Threshold: n/a
+Decision Threshold: 65,0%
+Opponents: 2
+Draw: None
+Board Texture: Paired
+Decision: Check
+Raise Amount: 0
+Reason: Equity below value threshold (65%)
+Bet Size: 0
+Hand Summary:
+Preflop: Call
+Flop: Check
+Turn: Check
+River: Check
+---
+[PostflopAI]
+Player: Jasmine Vale
+Street: River
+Hand: 10♣ A♠
+Board: 7♣ 7♦ 3♠ 10♠ 2♣
+Category: Two Pair, Tens and 7s, A Kicker
+Opponent Range: Wide
+Opponent Range Why: check/call (no bet faced)
+Base Range: Wide
+Player Tendency (Ace Maverick): Tightness=0,00, Aggression=0,00
+Observed Action: Check
+Preview Adjustment: None
+Preview Range: Wide
+Preview Why: Check leaves range unchanged
+Equity (MC, Wide): 77,5%
+Pot Odds: n/a
+Call Amount: 0
+Table Bet: 0
+Player Street Bet: 0
+Pot: 15
+Branch: checked-to
+Raise Threshold: 65,0%
+Call Threshold: n/a
+Decision Threshold: 65,0%
+Opponents: 2
+Draw: None
+Board Texture: Paired
+Decision: Raise
+Raise Amount: 10
+Reason: Strong value bet (equity ≥ 65%)
+Bet Size: 10
+Hand Summary:
+Preflop: Call
+Flop: Check
+Turn: Check
+River: Raise
+---
+[PostflopAI]
+Player: Victor Shark
+Street: River
+Hand: 8♦ K♦
+Board: 7♣ 7♦ 3♠ 10♠ 2♣
+Category: Pair of 7s, K-10-8 Kickers
+Opponent Range: Strong
+Opponent Range Why: bet/raise (streetRaiseCount=1)
+Base Range: Strong
+Player Tendency (Jasmine Vale): Tightness=-0,65, Aggression=-0,65
+Observed Action: Bet
+Preview Adjustment: None
+Preview Range: Strong
+Preview Why: Loose and passive effects cancel
+Equity (MC, Strong): 0,0%
+Pot Odds: 28,6%
+Call Amount: 10
+Table Bet: 10
+Player Street Bet: 0
+Pot: 25
+Branch: facing-bet
+Raise Threshold: 53,6%
+Call Threshold: 31,6%
+Decision Threshold: 31,6%
+Opponents: 1
+Draw: None
+Board Texture: Paired
+Decision: Fold
+Raise Amount: 0
+Reason: Equity below call threshold (31,6%)
+Bet Size: 0
+Hand Summary:
+Preflop: Call
+Flop: Check
+Turn: Check
+River: Fold
+---
+Final board: 7♣ 7♦ 3♠ 10♠ 2♣
+Showdown hands:
+  Jasmine Vale | hole=10♣ A♠ | TwoPair [10,7,14]
+Winner: Jasmine Vale
+Pot: gross=15 awarded=15

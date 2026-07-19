@@ -1568,7 +1568,10 @@ namespace TexasHoldem
             }
 
             if (isHumanTurn)
+            {
+                BeginHumanTrainerAdviceTurn();
                 PrepareRaiseInputForTurn();
+            }
 
             UpdateHumanActionButtons(isHumanTurn);
 
@@ -1581,13 +1584,15 @@ namespace TexasHoldem
             }
 
             if (isHumanTurn)
-            {
-                BeginHumanTrainerAdviceTurn();
                 RefreshHumanEquity();
-            }
 
-            if (isHumanTurn && CanHumanRaise())
+            if (isHumanTurn
+                && CanHumanRaise()
+                && (_currentHumanTrainerAdvice == null
+                    || _currentHumanTrainerAdvice.RecommendedAction != BettingAction.Fold))
+            {
                 yield return RaiseInputBuilder.FocusAndSelectAllWhenReady(_raiseInput);
+            }
 
             _beginTurnCoroutine = null;
         }
@@ -2358,6 +2363,116 @@ namespace TexasHoldem
 
             SeedRaiseInputFromAdviceIfStillAtMinimum(snapshot);
             humanView.SetEquityDisplay(snapshot.ConfidencePercent, snapshot.AdviceLabel);
+            ApplyAdvisorRecommendedActionUi(snapshot);
+        }
+
+        /// <summary>
+        /// UI-only: when the advisor recommends Fold, hide Call/All-In amounts and the Raise control.
+        /// Otherwise restore the legal action panel if Fold UI had left Raise hidden.
+        /// Does not change legal actions or advisor logic.
+        /// </summary>
+        private void ApplyAdvisorRecommendedActionUi(HumanTrainerAdvice advice)
+        {
+            if (advice == null || !IsHumanActionPending() || _humanPlayer == null)
+                return;
+
+            if (advice.RecommendedAction == BettingAction.Fold)
+            {
+                ApplyFoldRecommendationUi();
+                return;
+            }
+
+            bool raiseHidden = _raiseButton != null && !_raiseButton.gameObject.activeSelf;
+            if (raiseHidden && CanHumanRaise())
+            {
+                RefreshBottomBettingControlsFromLegalActions();
+                SeedRaiseInputFromAdviceIfStillAtMinimum(advice);
+                return;
+            }
+
+            // Fold UI may have hidden amount badges; restore them for Call / All-In.
+            if (GetCallAmount() > 0)
+                UpdateCheckCallLabel();
+            if (_allInButton != null && _allInButton.gameObject.activeSelf)
+                UpdateAllInLabel();
+        }
+
+        private void RefreshBottomBettingControlsFromLegalActions()
+        {
+            if (!Application.isPlaying || _humanPlayer == null || _gameManager == null)
+                return;
+
+            int callAmount = GetCallAmount();
+            bool canCheck  = callAmount <= 0;
+            bool canCall   = callAmount > 0 && _humanPlayer.Chips > 0;
+            bool canRaise  = CanHumanRaise();
+            bool canAllIn  = _humanPlayer.Chips > 0;
+            ShowBottomBettingControls(canCheck, canCall, canRaise, canAllIn);
+        }
+
+        private void ApplyFoldRecommendationUi()
+        {
+            if (!Application.isPlaying || _humanPlayer == null || _gameManager == null)
+                return;
+
+            EnsureBettingButtonsResolved();
+
+            _checkCallAmountBadge?.Hide();
+            _allInAmountBadge?.Hide();
+
+            if (_raiseInput != null && _raiseInput.isFocused)
+                _raiseInput.DeactivateInputField();
+
+            SetActionButtonVisible(_raiseButton, false);
+            SetRaiseInputVisible(false);
+
+            int callAmount = GetCallAmount();
+            bool canCheck  = callAmount <= 0;
+            bool canCall   = callAmount > 0 && _humanPlayer.Chips > 0;
+            bool canAllIn  = _humanPlayer.Chips > 0;
+
+            FitBettingButtonWidths(canCheck, canCall, canRaise: false, canAllIn);
+            SyncBettingRowBottomAlignmentForFoldAdvice(canCheck, canCall, canAllIn);
+            RebuildActionButtonRowLayout();
+        }
+
+        /// <summary>
+        /// Same row alignment as <see cref="SyncBettingRowBottomAlignment"/> but without
+        /// Call/All-In amount badges or Raise (Fold recommendation).
+        /// </summary>
+        private void SyncBettingRowBottomAlignmentForFoldAdvice(bool canCheck, bool canCall, bool canAllIn)
+        {
+            float buttonHeight = _gameManager != null ? _gameManager.ButtonHeight : 50f;
+            float belowSlot    = 0f;
+
+            ApplyActionAmountBadgeSettings();
+
+            Transform row = GetButtonRowTransform();
+            ActionPanelLayout.ConfigureRowAlignment(row);
+            if (row == null)
+                return;
+
+            if (_foldButton != null && _foldButton.gameObject.activeSelf)
+            {
+                ActionPanelLayout.EnsurePlainButtonColumn(_foldButton, row, ActionPanelLayout.FoldColumnName);
+                float width = _foldButton.transform is RectTransform foldRt ? foldRt.sizeDelta.x : 0f;
+                ActionPanelLayout.SyncPlainButtonColumn(_foldButton, buttonHeight, belowSlot, width);
+            }
+
+            if (canCheck || canCall)
+            {
+                float width = ResolveCheckCallButton()?.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
+                ActionPanelLayout.SyncAmountBadgeColumn(
+                    ResolveCheckCallButton(), _checkCallAmountBadge, badgeVisible: false, buttonHeight, belowSlot, width);
+            }
+
+            ResolveAllInButton();
+            if (_allInButton != null && _allInButton.gameObject.activeSelf && canAllIn)
+            {
+                float width = _allInButton.transform is RectTransform rt ? rt.sizeDelta.x : 0f;
+                ActionPanelLayout.SyncAmountBadgeColumn(
+                    _allInButton, _allInAmountBadge, badgeVisible: false, buttonHeight, belowSlot, width);
+            }
         }
 
         /// <summary>
