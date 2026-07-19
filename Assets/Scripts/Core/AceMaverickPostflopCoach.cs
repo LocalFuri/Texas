@@ -33,7 +33,7 @@ namespace TexasHoldem
 
             advice.HandCategory = concept;
             advice.BoardTexture = DescribeBoardConcept(texture);
-            advice.Explanation = FormatExplanation(concept, advice.RecommendedAction, texture, draws, facingBet, isBet);
+            advice.Explanation = FormatExplanation(concept, advice.RecommendedAction, texture, draws, isBet);
         }
 
         /// <summary>One short coaching line already stored on the snapshot.</summary>
@@ -46,10 +46,9 @@ namespace TexasHoldem
             BettingAction action,
             BoardTextureFlags texture,
             PostflopDrawFlags draws,
-            bool facingBet,
             bool isBet)
         {
-            string coaching = ResolveCoaching(concept, action, texture, draws, facingBet, isBet);
+            string coaching = ResolveCoaching(concept, action, texture, draws, isBet);
             if (string.IsNullOrEmpty(concept) || concept == "Unknown")
                 return Capitalize(coaching);
 
@@ -216,7 +215,6 @@ namespace TexasHoldem
             BettingAction action,
             BoardTextureFlags texture,
             PostflopDrawFlags draws,
-            bool facingBet,
             bool isBet)
         {
             switch (action)
@@ -232,17 +230,17 @@ namespace TexasHoldem
 
                 case BettingAction.Raise:
                 case BettingAction.AllIn:
-                    return ResolveRaiseCoaching(concept, texture, draws, isBet, facingBet);
+                    return ResolveBetOrRaiseCoaching(concept, texture, draws, isBet);
 
                 default:
-                    return "check for pot control";
+                    return "Check for pot control";
             }
         }
 
         private static string ResolveCheckCoaching(string concept)
         {
             if (concept == "Ace high" || concept == "High card" || IsDrawConcept(concept))
-                return "take the free card";
+                return "Take the free card";
 
             if (IsWeakShowdownPair(concept)
                 || concept == "Bluff catcher"
@@ -251,10 +249,10 @@ namespace TexasHoldem
                 || concept == "Bottom pair"
                 || concept == "Weak pair")
             {
-                return "check for pot control";
+                return "Check for pot control";
             }
 
-            return "check behind";
+            return "Check behind";
         }
 
         private static string ResolveCallCoaching(string concept)
@@ -262,32 +260,23 @@ namespace TexasHoldem
             if (concept == "Bluff catcher")
                 return "call only with sufficient pot odds";
 
-            if (IsDrawConcept(concept))
-            {
-                if (concept == "Combo draw"
+            if (IsDrawConcept(concept)
+                && (concept == "Combo draw"
                     || concept == "Nut flush draw"
                     || concept == "Flush draw"
-                    || concept == "Open-ended straight draw")
-                {
-                    return "continue with a strong draw";
-                }
-
-                return "call with sufficient pot odds";
+                    || concept == "Open-ended straight draw"
+                    || concept == "Strong draw"))
+            {
+                return "Continue with a strong draw";
             }
 
-            if (IsWeakShowdownPair(concept) || concept == "Paired board")
-                return "call because the price is good";
-
-            return "call with sufficient pot odds";
+            return "Call with sufficient pot odds";
         }
 
         private static string ResolveFoldCoaching(string concept)
         {
             if (concept == "Missed draw")
-                return "draw missed";
-
-            if (IsDrawConcept(concept))
-                return "fold versus continued aggression";
+                return "Draw missed";
 
             if (IsWeakShowdownPair(concept)
                 || concept == "Bluff catcher"
@@ -295,36 +284,30 @@ namespace TexasHoldem
                 || concept == "High card"
                 || concept == "Paired board")
             {
-                return "hand too weak to continue";
+                return "Hand too weak to continue";
             }
 
-            return "fold versus continued aggression";
+            return "Fold versus continued aggression";
         }
 
-        private static string ResolveRaiseCoaching(
+        /// <summary>
+        /// BET (opening the betting) vs RAISE (facing a bet) use matching verbs.
+        /// </summary>
+        private static string ResolveBetOrRaiseCoaching(
             string concept,
             BoardTextureFlags texture,
             PostflopDrawFlags draws,
-            bool isBet,
-            bool facingBet)
+            bool isBet)
         {
-            // Never attach value language to air / weak pairs / missed draws.
+            // Never attach value language to air / weak pairs / missed draws / draws.
             if (IsNonValueConcept(concept) || IsDrawConcept(concept) || HasDraw(draws))
-            {
-                if (IsDrawConcept(concept) || HasDraw(draws))
-                    return facingBet || !isBet
-                        ? "raise as a semi-bluff"
-                        : "raise as a semi-bluff";
-
-                // Ace high / bottom pair / etc. without a detected draw: still not value.
-                return "raise as a semi-bluff";
-            }
+                return isBet ? "Bet as a semi-bluff" : "Raise as a semi-bluff";
 
             bool wet = (texture & BoardTextureAnalyzer.WetFlags) != 0;
             if (wet && IsStrongMadeConcept(concept))
-                return "raise to protect against draws";
+                return isBet ? "Bet to protect against draws" : "Raise to protect against draws";
 
-            return "raise for value";
+            return isBet ? "Bet for value" : "Raise for value";
         }
 
         // -------------------------------------------------------------------------
