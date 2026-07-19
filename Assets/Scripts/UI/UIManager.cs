@@ -1885,27 +1885,6 @@ namespace TexasHoldem
             _currentHumanTrainerAdvice = null;
         }
 
-        private string ResolveHumanBettingAdvice(int equityPercent)
-        {
-            if (!IsHumanActionPending() || _humanPlayer == null)
-                return null;
-
-            if (_gameManager != null && _gameManager.CurrentPhase == GamePhase.PreFlop)
-            {
-                PreflopStrategy.LogEffectiveStack(
-                    _humanPlayer,
-                    _gameManager.Players,
-                    _gameManager.CurrentBet,
-                    _gameManager.BigBlindAmount);
-            }
-
-            if (!TryGetOrCreateHumanTrainerAdvice(_humanPlayer, equityPercent, out HumanTrainerAdvice snapshot)
-                || snapshot == null)
-                return null;
-
-            return snapshot.AdviceLabel;
-        }
-
         /// <summary>Builds the one shared trainer snapshot for this human turn.</summary>
         private HumanTrainerAdvice BuildHumanTrainerAdvice(
             PlayerState human,
@@ -2059,6 +2038,10 @@ namespace TexasHoldem
                 ConfidencePercent = confidence,
             };
 
+            // Ace preflop: replace generic hand-tier labels with coaching reasons.
+            if (isAce && isPreflop)
+                snapshot.Explanation = AceMaverickPreflopCoach.FormatCoachReason(snapshot);
+
             return snapshot;
         }
 
@@ -2200,18 +2183,46 @@ namespace TexasHoldem
                 _                            => seat.ToString(),
             };
 
+        /// <summary>
+        /// Caches Monte Carlo equity internally, then paints the human HUD from the
+        /// shared <see cref="HumanTrainerAdvice"/> (ConfidencePercent + AdviceLabel).
+        /// Does not run a second recommendation.
+        /// </summary>
         private void ApplyHumanEquityDisplay(int equityPercent)
         {
             if (_winnerCelebrationActive)
                 return;
 
+            // Keep live Monte Carlo equity for review/debug consumers.
             _cachedHumanEquityPercent = equityPercent;
 
             PlayerView humanView = ResolveHumanSeatView();
             if (humanView == null || !humanView.IsHuman)
                 return;
 
-            humanView.SetEquityDisplay(equityPercent, ResolveHumanBettingAdvice(equityPercent));
+            if (!IsHumanActionPending() || _humanPlayer == null)
+            {
+                humanView.SetEquityDisplay(equityPercent, null);
+                return;
+            }
+
+            if (_gameManager != null && _gameManager.CurrentPhase == GamePhase.PreFlop)
+            {
+                PreflopStrategy.LogEffectiveStack(
+                    _humanPlayer,
+                    _gameManager.Players,
+                    _gameManager.CurrentBet,
+                    _gameManager.BigBlindAmount);
+            }
+
+            if (!TryGetOrCreateHumanTrainerAdvice(_humanPlayer, equityPercent, out HumanTrainerAdvice snapshot)
+                || snapshot == null)
+            {
+                humanView.SetEquityDisplay(equityPercent, null);
+                return;
+            }
+
+            humanView.SetEquityDisplay(snapshot.ConfidencePercent, snapshot.AdviceLabel);
         }
 
         private void RefreshHumanEquityAdviceOnly()

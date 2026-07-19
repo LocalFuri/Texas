@@ -207,7 +207,7 @@ namespace TexasHoldem.Dev
                     sb.Append("Pot Odds: ").Append(advice.PotOddsPercent.ToString("0")).Append('%').AppendLine();
 
                 sb.Append("Confidence: ").Append(advice.ConfidencePercent).Append('%').AppendLine();
-                sb.Append("Reason: ").Append(FormatAceCoachReason(advice, unopened));
+                sb.Append("Reason: ").Append(FormatAceCoachReason(advice));
             }
             else
             {
@@ -234,73 +234,18 @@ namespace TexasHoldem.Dev
             && advice.CallersBefore <= 0;
 
         /// <summary>
-        /// Coach reason from snapshot fields only. Unopened uses a short label;
-        /// other spots use <see cref="HumanTrainerAdvice.Explanation"/>.
+        /// Ace Coach reason from the shared snapshot Explanation
+        /// (built by <see cref="AceMaverickPreflopCoach.FormatCoachReason"/>).
         /// </summary>
-        private static string FormatAceCoachReason(HumanTrainerAdvice advice, bool unopened)
+        private static string FormatAceCoachReason(HumanTrainerAdvice advice)
         {
-            if (!unopened)
-                return advice.Explanation ?? string.Empty;
+            if (advice == null)
+                return string.Empty;
 
-            string seat = FormatSeatDisplayName(advice.Position);
-            string tier = advice.PreflopHandGroup switch
-            {
-                PreflopHandGroup.Premium  => "Premium",
-                PreflopHandGroup.Strong   => "Strong",
-                PreflopHandGroup.Playable => "Playable",
-                _                         => "Weak",
-            };
+            if (!string.IsNullOrEmpty(advice.Explanation))
+                return advice.Explanation;
 
-            switch (advice.RecommendedAction)
-            {
-                case BettingAction.Raise:
-                case BettingAction.AllIn:
-                    return $"{tier} {seat} opener";
-
-                case BettingAction.Check:
-                    return $"{tier} {seat} check";
-
-                case BettingAction.Call:
-                    return $"{tier} call";
-
-                default:
-                    if (advice.PreflopHandGroup == PreflopHandGroup.Weak
-                        && IsOffsuitHoleCards(advice.HoleCards))
-                        return "Weak offsuit hand";
-                    return $"Below {seat} opening range";
-            }
-        }
-
-        private static string FormatSeatDisplayName(string position)
-        {
-            if (string.IsNullOrEmpty(position))
-                return "EP";
-
-            switch (position)
-            {
-                case "BTN": return "Button";
-                case "SB":  return "SB";
-                case "BB":  return "BB";
-                case "EP":  return "EP";
-                case "MP":  return "MP";
-                case "CO":  return "CO";
-                default:    return position;
-            }
-        }
-
-        /// <summary>Display helper: two hole-card tokens with different suits → offsuit.</summary>
-        private static bool IsOffsuitHoleCards(string holeCards)
-        {
-            if (string.IsNullOrEmpty(holeCards))
-                return false;
-
-            string[] parts = holeCards.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 2 || parts[0].Length < 2 || parts[1].Length < 2)
-                return false;
-
-            char suit0 = parts[0][parts[0].Length - 1];
-            char suit1 = parts[1][parts[1].Length - 1];
-            return suit0 != suit1;
+            return AceMaverickPreflopCoach.FormatCoachReason(advice);
         }
 
         /// <summary>

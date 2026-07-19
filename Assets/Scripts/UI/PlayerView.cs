@@ -546,8 +546,10 @@ namespace TexasHoldem
                 RemoveEquityDisplay();
         }
 
-        /// <summary>Shows Monte Carlo equity and optional pot-odds advice to its right.</summary>
-        public void SetEquityDisplay(int equityPercent, string advice = null)
+        /// <summary>
+        /// Shows HUD percent + optional action label (e.g. coach ConfidencePercent + AdviceLabel).
+        /// </summary>
+        public void SetEquityDisplay(int percent, string advice = null)
         {
             if (!_isHuman)
                 return;
@@ -556,8 +558,8 @@ namespace TexasHoldem
             if (_equityText == null)
                 return;
 
-            equityPercent = Mathf.Clamp(equityPercent, 0, 100);
-            _equityText.text = $"{equityPercent}%";
+            percent = Mathf.Clamp(percent, 0, 100);
+            _equityText.text = $"{percent}%";
             _equityText.gameObject.SetActive(true);
 
             EnsureEquityAdviceText();
