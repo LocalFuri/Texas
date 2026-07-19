@@ -2444,6 +2444,21 @@ namespace TexasHoldem
             MonteCarloResult result = default;
             bool completed = false;
 
+            int callAmount = _gameManager.GetCallAmountFor(_humanPlayer);
+            int streetRaiseCount = _gameManager.StreetRaiseCount;
+            int preflopRaiseCount = _gameManager.ResolvePreflopRaiseCount();
+            bool facingBet = callAmount > 0;
+            string opponentRangeWhy = MonteCarloSimulator.DescribeOpponentRangeSelection(
+                facingBet,
+                streetRaiseCount,
+                callAmount,
+                _humanPlayer.Chips,
+                out OpponentRangeStrength opponentRange,
+                preflopRaiseCount);
+            Debug.Log(
+                $"[AceCoach] OpponentRange={opponentRange} ({opponentRangeWhy}) " +
+                $"call={callAmount} streetRaises={streetRaiseCount} preflopRaises={preflopRaiseCount}");
+
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             const bool logLiveEquityPerformance = true;
 #else
@@ -2462,7 +2477,8 @@ namespace TexasHoldem
                 simulationCount,
                 MonteCarloSimulator.DefaultSimsPerFrame,
                 logLiveEquityPerformance,
-                logLiveEquityPerformance ? "live refresh" : null);
+                logLiveEquityPerformance ? "live refresh" : null,
+                opponentRange);
 
             if (generation != _equityRefreshGeneration || !completed)
                 yield break;

@@ -30,6 +30,9 @@ namespace TexasHoldem
         /// <summary>Hand-scoped action history for bot AI analysis (read-only).</summary>
         public IReadOnlyList<HandActionEntry> HandActions => _handActionLog.Entries;
 
+        /// <summary>Max preflop raise count for Monte Carlo range floors (read-only).</summary>
+        public int ResolvePreflopRaiseCount() => _handActionLog.ResolvePreflopRaiseCount();
+
         /// <summary>Clears per-hand aggression tracking and action log at the start of a new hand.</summary>
         public void ClearHandState()
         {

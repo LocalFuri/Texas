@@ -99,6 +99,13 @@ namespace TexasHoldem
         public IReadOnlyList<HandActionEntry> HandActions =>
             _aiController != null ? _aiController.HandActions : System.Array.Empty<HandActionEntry>();
 
+        /// <summary>
+        /// Max preflop street-raise count for opponent-range floors (same source bots use).
+        /// Read-only; does not change AI decisions.
+        /// </summary>
+        public int ResolvePreflopRaiseCount() =>
+            _aiController != null ? _aiController.ResolvePreflopRaiseCount() : 0;
+
         /// <summary>Shared per-turn trainer advice from the HUD (null if not yet built).</summary>
         public HumanTrainerAdvice CurrentHumanTrainerAdvice =>
             ResolveUiManager()?.CurrentHumanTrainerAdvice;
