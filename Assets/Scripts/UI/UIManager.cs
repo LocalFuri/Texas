@@ -1666,6 +1666,7 @@ namespace TexasHoldem
             ApplyRaiseInputLimits();
             StyleRaiseInput();
             RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
+            NotifyHumanRaiseTotalChanged();
         }
 
         private void UpdateRaiseInput(bool preserveTypedValue = true)
@@ -1691,6 +1692,7 @@ namespace TexasHoldem
             ApplyRaiseInputLimits();
             StyleRaiseInput();
             RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
+            NotifyHumanRaiseTotalChanged();
         }
 
         private void ApplyRaiseInputLimits()
@@ -1710,6 +1712,7 @@ namespace TexasHoldem
                 return;
 
             NormalizeRaiseInputText();
+            NotifyHumanRaiseTotalChanged();
         }
 
         private void OnRaiseInputEndEdit(string _)
@@ -1718,6 +1721,7 @@ namespace TexasHoldem
                 return;
 
             NormalizeRaiseInputText();
+            NotifyHumanRaiseTotalChanged();
         }
 
         private void NormalizeRaiseInputText()
@@ -1798,6 +1802,34 @@ namespace TexasHoldem
 
         /// <summary>Maximum total chips to put in via raise (full stack).</summary>
         private int GetMaxRaiseTotal() => _humanPlayer?.Chips ?? 0;
+
+        /// <summary>
+        /// Total the Raise control will submit (same clamp as the Raise button click path).
+        /// Display-only — does not change raise sizing or trainer advice.
+        /// </summary>
+        public bool TryGetHumanRaiseTotalBet(out int totalBet)
+        {
+            totalBet = 0;
+            if (_humanPlayer == null || _gameManager == null || !CanHumanRaise())
+                return false;
+
+            int minTotal = GetMinRaiseTotal();
+            int maxTotal = GetMaxRaiseTotal();
+            if (maxTotal < minTotal)
+                return false;
+
+            string raw = _raiseInput != null ? _raiseInput.text : string.Empty;
+            if (string.IsNullOrWhiteSpace(raw) || !int.TryParse(raw.Trim(), out int totalIn))
+                totalIn = minTotal;
+
+            totalBet = Mathf.Clamp(totalIn, minTotal, maxTotal);
+            return true;
+        }
+
+        /// <summary>Raised when the raise input total changes (Coach display sync).</summary>
+        public event System.Action OnHumanRaiseTotalChanged;
+
+        private void NotifyHumanRaiseTotalChanged() => OnHumanRaiseTotalChanged?.Invoke();
 
         private void RefreshHumanEquity()
         {

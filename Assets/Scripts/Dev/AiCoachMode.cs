@@ -85,7 +85,10 @@ namespace TexasHoldem.Dev
             _game = FindFirstObjectByType<GameManager>();
 
             if (_ui != null)
+            {
                 _ui.OnHumanTrainerAdviceUpdated += OnAdviceUpdated;
+                _ui.OnHumanRaiseTotalChanged += OnRaiseTotalChanged;
+            }
 
             if (_game != null)
             {
@@ -102,6 +105,7 @@ namespace TexasHoldem.Dev
             if (_ui != null)
             {
                 _ui.OnHumanTrainerAdviceUpdated -= OnAdviceUpdated;
+                _ui.OnHumanRaiseTotalChanged -= OnRaiseTotalChanged;
                 _ui = null;
             }
 
@@ -155,6 +159,13 @@ namespace TexasHoldem.Dev
             ShowAdvice(advice);
         }
 
+        private void OnRaiseTotalChanged()
+        {
+            if (!IsEnabled)
+                return;
+            RefreshFromCache();
+        }
+
         private void RefreshFromCache()
         {
             if (!IsEnabled || _ui == null)
@@ -185,26 +196,18 @@ namespace TexasHoldem.Dev
 
             if (advice.IsAceMaverick && advice.IsPreflop)
             {
+                bool unopened = IsUnopenedSpot(advice);
+
                 sb.Append(FormatSpotLine(advice)).AppendLine();
 
-                bool hasActionLine = TryFormatAceActionLine(advice, out string actionLine);
-                if (hasActionLine)
-                {
-                    sb.AppendLine();
+                if (TryFormatAceActionLine(advice, out string actionLine))
                     sb.Append(actionLine).AppendLine();
-                }
 
-                if (advice.AmountToCall > 0 || advice.FacingAllIn)
-                {
-                    if (!hasActionLine)
-                        sb.AppendLine();
+                if (!unopened && (advice.AmountToCall > 0 || advice.FacingAllIn))
                     sb.Append("Pot Odds: ").Append(advice.PotOddsPercent.ToString("0")).Append('%').AppendLine();
-                }
 
-                sb.AppendLine();
                 sb.Append("Confidence: ").Append(advice.ConfidencePercent).Append('%').AppendLine();
-                sb.AppendLine();
-                sb.Append("Reason: ").Append(advice.Explanation ?? string.Empty);
+                sb.Append("Reason: ").Append(FormatAceCoachReason(advice, unopened));
             }
             else
             {
@@ -212,7 +215,6 @@ namespace TexasHoldem.Dev
 
                 if (!string.IsNullOrEmpty(advice.Explanation))
                 {
-                    sb.AppendLine();
                     sb.AppendLine();
                     sb.Append("Reason: ").Append("<color=").Append(ColorMuted).Append('>')
                         .Append(advice.Explanation).Append("</color>");
@@ -224,11 +226,89 @@ namespace TexasHoldem.Dev
             SetOverlayVisible(true);
         }
 
+        /// <summary>True when spot label is Unopened (no raise, no limpers).</summary>
+        private static bool IsUnopenedSpot(HumanTrainerAdvice advice) =>
+            advice != null
+            && !advice.FacingRaise
+            && advice.StreetRaiseCount <= 0
+            && advice.CallersBefore <= 0;
+
         /// <summary>
-        /// Ace Coach call/open/raise line from snapshot fields only (display).
+        /// Coach reason from snapshot fields only. Unopened uses a short label;
+        /// other spots use <see cref="HumanTrainerAdvice.Explanation"/>.
+        /// </summary>
+        private static string FormatAceCoachReason(HumanTrainerAdvice advice, bool unopened)
+        {
+            if (!unopened)
+                return advice.Explanation ?? string.Empty;
+
+            string seat = FormatSeatDisplayName(advice.Position);
+            string tier = advice.PreflopHandGroup switch
+            {
+                PreflopHandGroup.Premium  => "Premium",
+                PreflopHandGroup.Strong   => "Strong",
+                PreflopHandGroup.Playable => "Playable",
+                _                         => "Weak",
+            };
+
+            switch (advice.RecommendedAction)
+            {
+                case BettingAction.Raise:
+                case BettingAction.AllIn:
+                    return $"{tier} {seat} opener";
+
+                case BettingAction.Check:
+                    return $"{tier} {seat} check";
+
+                case BettingAction.Call:
+                    return $"{tier} call";
+
+                default:
+                    if (advice.PreflopHandGroup == PreflopHandGroup.Weak
+                        && IsOffsuitHoleCards(advice.HoleCards))
+                        return "Weak offsuit hand";
+                    return $"Below {seat} opening range";
+            }
+        }
+
+        private static string FormatSeatDisplayName(string position)
+        {
+            if (string.IsNullOrEmpty(position))
+                return "EP";
+
+            switch (position)
+            {
+                case "BTN": return "Button";
+                case "SB":  return "SB";
+                case "BB":  return "BB";
+                case "EP":  return "EP";
+                case "MP":  return "MP";
+                case "CO":  return "CO";
+                default:    return position;
+            }
+        }
+
+        /// <summary>Display helper: two hole-card tokens with different suits → offsuit.</summary>
+        private static bool IsOffsuitHoleCards(string holeCards)
+        {
+            if (string.IsNullOrEmpty(holeCards))
+                return false;
+
+            string[] parts = holeCards.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 2 || parts[0].Length < 2 || parts[1].Length < 2)
+                return false;
+
+            char suit0 = parts[0][parts[0].Length - 1];
+            char suit1 = parts[1][parts[1].Length - 1];
+            return suit0 != suit1;
+        }
+
+        /// <summary>
+        /// Ace Coach call/open/raise line. Raise totals come from the Raise control
+        /// (same clamped total the Raise button submits), not trainer sizing.
         /// Fold/Check → no line.
         /// </summary>
-        private static bool TryFormatAceActionLine(HumanTrainerAdvice advice, out string line)
+        private bool TryFormatAceActionLine(HumanTrainerAdvice advice, out string line)
         {
             line = null;
             if (advice == null)
@@ -242,10 +322,14 @@ namespace TexasHoldem.Dev
 
                 case BettingAction.Raise:
                 {
+                    int totalBet = advice.RecommendedTotalBet;
+                    if (_ui != null && _ui.TryGetHumanRaiseTotalBet(out int raiseTotal))
+                        totalBet = raiseTotal;
+
                     bool unopened = !advice.FacingRaise && advice.StreetRaiseCount <= 0;
                     line = unopened
-                        ? "Open to: " + advice.RecommendedTotalBet
-                        : "Raise to: " + advice.RecommendedTotalBet;
+                        ? "Open to: " + totalBet
+                        : "Raise to: " + totalBet;
                     return true;
                 }
 

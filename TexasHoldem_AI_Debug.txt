@@ -5,25 +5,25 @@
 
 === Hand #1 ===
 Players:
-  Ace Maverick | pos=Button | hole=9♠ A♠ | startStack=1000 | tier=Playable
-  Lady Luck | pos=SmallBlind | hole=4♥ 9♥ | startStack=1000 | tier=Weak
-  Prince Beaumont | pos=BigBlind | hole=A♣ 7♠ | startStack=1000 | tier=Weak
-  Victor Shark | pos=Early | hole=4♠ 8♥ | startStack=1000 | tier=Weak
-  Jasmine Vale | pos=Middle | hole=2♦ 10♠ | startStack=1000 | tier=Weak
-  Alex Hunter | pos=Cutoff | hole=Q♣ 6♥ | startStack=1000 | tier=Weak
+  Ace Maverick | pos=Middle | hole=8♠ A♠ | startStack=1000 | tier=Playable
+  Lady Luck | pos=Cutoff | hole=10♠ 6♠ | startStack=1000 | tier=Weak
+  Prince Beaumont | pos=Button | hole=5♥ 9♣ | startStack=1000 | tier=Weak
+  Victor Shark | pos=SmallBlind | hole=2♥ J♠ | startStack=1000 | tier=Weak
+  Jasmine Vale | pos=BigBlind | hole=3♠ 7♥ | startStack=1000 | tier=Weak
+  Alex Hunter | pos=Early | hole=8♦ A♣ | startStack=1000 | tier=Weak
 Board by street:
   Flop:  (none)
   Turn:  (none)
   River: (none)
 Betting sequence:
-  PreFlop | Lady Luck | Call | amount=1 | pot=1 | tableBet=0 | playerStreetBet=1 | streetRaiseCount=0 | tier=Weak
-  PreFlop | Prince Beaumont | Call | amount=2 | pot=3 | tableBet=2 | playerStreetBet=2 | streetRaiseCount=0 | tier=Weak
-  PreFlop | Victor Shark | Fold | amount=0 | pot=3 | tableBet=2 | playerStreetBet=0 | streetRaiseCount=0 | tier=Weak
-  PreFlop | Jasmine Vale | Fold | amount=0 | pot=3 | tableBet=2 | playerStreetBet=0 | streetRaiseCount=0 | tier=Weak
+  PreFlop | Victor Shark | Call | amount=1 | pot=1 | tableBet=0 | playerStreetBet=1 | streetRaiseCount=0 | tier=Weak
+  PreFlop | Jasmine Vale | Call | amount=2 | pot=3 | tableBet=2 | playerStreetBet=2 | streetRaiseCount=0 | tier=Weak
   PreFlop | Alex Hunter | Fold | amount=0 | pot=3 | tableBet=2 | playerStreetBet=0 | streetRaiseCount=0 | tier=Weak
   PreFlop | Ace Maverick | Raise | amount=2 | pot=7 | tableBet=4 | playerStreetBet=4 | streetRaiseCount=1 | tier=Playable
-  PreFlop | Lady Luck | Fold | amount=0 | pot=7 | tableBet=4 | playerStreetBet=1 | streetRaiseCount=1 | tier=Weak
-  PreFlop | Prince Beaumont | Fold | amount=0 | pot=7 | tableBet=4 | playerStreetBet=2 | streetRaiseCount=1 | tier=Weak
+  PreFlop | Lady Luck | Fold | amount=0 | pot=7 | tableBet=4 | playerStreetBet=0 | streetRaiseCount=1 | tier=Weak
+  PreFlop | Prince Beaumont | Fold | amount=0 | pot=7 | tableBet=4 | playerStreetBet=0 | streetRaiseCount=1 | tier=Weak
+  PreFlop | Victor Shark | Fold | amount=0 | pot=7 | tableBet=4 | playerStreetBet=1 | streetRaiseCount=1 | tier=Weak
+  PreFlop | Jasmine Vale | Fold | amount=0 | pot=7 | tableBet=4 | playerStreetBet=2 | streetRaiseCount=1 | tier=Weak
 Postflop AI decisions:
   (none)
 Final board: (none)
