@@ -36,6 +36,7 @@ namespace TexasHoldem
         private Image                     _winnerShadowImage;
         private ActionBadgeGradientImage  _winnerGradientImage;
         private Coroutine                 _winnerPopCoroutine;
+        private Coroutine                 _hideCoroutine;
 
         public bool UsesCustomLayout => _useCustomLayout;
 
@@ -75,7 +76,7 @@ namespace TexasHoldem
         /// <summary>Hides the badge immediately.</summary>
         public void Hide()
         {
-            CancelInvoke(nameof(Hide));
+            StopHideTimer();
             StopWinnerPop();
             ResetWinnerPresentation();
             HideLabelChild();
@@ -135,9 +136,37 @@ namespace TexasHoldem
             else
                 ResetWinnerPresentation();
 
+            StopHideTimer();
+            // duration <= 0 → stay until Hide() (used while waiting for Ace to act).
+            // Unscaled time so Options-menu pause (timeScale 0) does not affect timed badges.
+            if (duration > 0f && isActiveAndEnabled)
+                _hideCoroutine = StartCoroutine(HideAfterUnscaled(duration));
+        }
+
+        private void StopHideTimer()
+        {
             CancelInvoke(nameof(Hide));
-            if (duration > 0f)
-                Invoke(nameof(Hide), duration);
+            if (_hideCoroutine != null)
+            {
+                StopCoroutine(_hideCoroutine);
+                _hideCoroutine = null;
+            }
+        }
+
+        private IEnumerator HideAfterUnscaled(float durationSecs)
+        {
+            float elapsed = 0f;
+            while (elapsed < durationSecs)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            _hideCoroutine = null;
+            StopWinnerPop();
+            ResetWinnerPresentation();
+            HideLabelChild();
+            gameObject.SetActive(false);
         }
 
         private void ApplyLayout(Sprite sprite)

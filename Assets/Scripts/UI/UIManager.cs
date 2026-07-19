@@ -342,8 +342,17 @@ namespace TexasHoldem
         /// <summary>
         /// When true, Check/Call/Raise/All-In badges stay visible until Ace Maverick acts
         /// (or the street/hand ends). Fold badges still use a short timer.
+        /// Opening the Options pause menu is not a decision and must not clear these.
         /// </summary>
         private bool          _holdStreetActionBadges = true;
+        private readonly System.Collections.Generic.Dictionary<int, HeldStreetBadge> _heldStreetBadges =
+            new System.Collections.Generic.Dictionary<int, HeldStreetBadge>(8);
+
+        private struct HeldStreetBadge
+        {
+            public BettingAction Action;
+            public int Amount;
+        }
         private bool          _winnerCelebrationActive;
         private Coroutine     _winnerCelebrationCoroutine;
         private Coroutine     _potCollectAfterZoomCoroutine;
@@ -566,6 +575,8 @@ namespace TexasHoldem
 
         private void OnOptionsMenuClosed()
         {
+            // Pause menu is not a betting decision — restore held street badges.
+            ReapplyHeldStreetActionBadges();
             RefreshActiveBotTurnTimer();
         }
 
