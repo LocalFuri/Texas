@@ -938,10 +938,11 @@ namespace TexasHoldem
             if (_winnerCelebrationActive) return;
             if (!ShouldShowActionBadge(player, action)) return;
 
-            // Ace decided: drop other seats' held labels, then show Ace's badge briefly.
+            // Ace's real betting decision only — Options pause menu must not reach here.
             if (player.Type == PlayerType.Human)
             {
                 _holdStreetActionBadges = false;
+                ClearHeldStreetBadges();
                 HideActionBadgesExcept(player);
             }
 
@@ -973,11 +974,26 @@ namespace TexasHoldem
                 return;
             }
 
+            int seatIndex = _gameManager.Players.IndexOf(player);
+
             // Hold Check/Call/Raise/All-In until Ace acts. Fold stays short-lived.
             bool persistUntilHuman =
                 _holdStreetActionBadges
                 && action != BettingAction.Fold
                 && player.Type != PlayerType.Human;
+
+            if (persistUntilHuman && seatIndex >= 0)
+            {
+                _heldStreetBadges[seatIndex] = new HeldStreetBadge
+                {
+                    Action = action,
+                    Amount = amount,
+                };
+            }
+            else if (seatIndex >= 0)
+            {
+                _heldStreetBadges.Remove(seatIndex);
+            }
 
             float duration = persistUntilHuman
                 ? 0f
@@ -987,6 +1003,39 @@ namespace TexasHoldem
 
             view.ShowAction(action, amount, duration);
         }
+
+        /// <summary>
+        /// Re-shows Check/Call/Raise/All-In badges held until Ace acts.
+        /// Used after Options menu close / HUD refresh — not a new decision.
+        /// </summary>
+        private void ReapplyHeldStreetActionBadges()
+        {
+            if (!_holdStreetActionBadges || _winnerCelebrationActive)
+                return;
+
+            if (_gameManager?.Players == null || _heldStreetBadges.Count == 0)
+                return;
+
+            IReadOnlyList<PlayerState> players = _gameManager.Players;
+            foreach (var pair in _heldStreetBadges)
+            {
+                int seatIndex = pair.Key;
+                if (seatIndex < 0 || seatIndex >= players.Count)
+                    continue;
+
+                PlayerState player = players[seatIndex];
+                if (player == null || player.Type == PlayerType.Human)
+                    continue;
+
+                if (pair.Value.Action == BettingAction.Fold)
+                    continue;
+
+                PlayerView view = ResolvePlayerView(player);
+                view?.ShowAction(pair.Value.Action, pair.Value.Amount, 0f);
+            }
+        }
+
+        private void ClearHeldStreetBadges() => _heldStreetBadges.Clear();
 
         /// <summary>Keeps the pending badge above bet chips after HUD refresh without restarting its timer.</summary>
         private void ApplyPendingActionBadge()
@@ -1067,6 +1116,7 @@ namespace TexasHoldem
         private void BeginHoldingStreetActionBadges()
         {
             _holdStreetActionBadges = true;
+            ClearHeldStreetBadges();
         }
 
         private void ClearPendingActionBadge()
@@ -1338,6 +1388,7 @@ namespace TexasHoldem
             }
 
             ApplyPendingActionBadge();
+            ReapplyHeldStreetActionBadges();
 
             TryScheduleHumanHoleReveal(humanView, humanState);
 
