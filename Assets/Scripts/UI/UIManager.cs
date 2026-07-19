@@ -1964,6 +1964,22 @@ namespace TexasHoldem
                 _gameManager.CommunityCards,
                 CountActiveOpponentsFor(human));
 
+            bool isAce = human.Name == "Ace Maverick";
+            int callersBefore = _gameManager.CallersBefore;
+
+            // Ace human trainer only: slightly wider unopened MP opens (bots unchanged).
+            if (isAce && isPreflop)
+            {
+                advice = AceMaverickPreflopCoach.ApplyUnopenedMiddleAllowlist(
+                    advice,
+                    preflopSeat,
+                    facingRaise,
+                    streetRaiseCount,
+                    callersBefore,
+                    human.HoleCards,
+                    canRaise);
+            }
+
             string adviceLabel = BettingAdvisor.LabelFor(advice);
 
             if (!_gameManager.TryMapTrainerAdviceToAction(
@@ -1985,10 +2001,8 @@ namespace TexasHoldem
 
             string decisionLabel = ResolveTrainerDecisionLabel(recommendedAction, callAmount);
 
-            bool isAce = human.Name == "Ace Maverick";
             bool facingAllIn = isPreflop
                 && PreflopStrategy.IsFacingAllInCommitment(callAmount, human.Chips);
-            int callersBefore = _gameManager.CallersBefore;
             int playersBehind = _gameManager.PlayersBehind;
             int playersInPot = CountPlayersInPot(_gameManager.Players);
             string holeCards = FormatTrainerHoleCards(human.HoleCards);
