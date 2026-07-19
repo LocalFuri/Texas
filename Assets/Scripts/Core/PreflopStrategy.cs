@@ -313,8 +313,15 @@ namespace TexasHoldem
             return ResolveCallOrFoldAdvice(group, potBeforeAction, callAmount, playerChips, canCall, streetRaiseCount, holeCards, playersBehind, shovePosition);
         }
 
-        private static bool IsFacingAllIn(int callAmount, int playerChips) =>
+        /// <summary>
+        /// Same commitment threshold the preflop trainer uses for "facing all-in"
+        /// (call ≥ 85% of hero chips). Read-only helper for Coach / Review display.
+        /// </summary>
+        public static bool IsFacingAllInCommitment(int callAmount, int playerChips) =>
             playerChips > 0 && callAmount >= Mathf.CeilToInt(playerChips * 0.85f);
+
+        private static bool IsFacingAllIn(int callAmount, int playerChips) =>
+            IsFacingAllInCommitment(callAmount, playerChips);
 
         /// <summary>Strong hands that 3-bet: TT, 99, AJs+, AQo+, KQs.</summary>
         private static bool IsStrongThreeBetHand(IReadOnlyList<Card> holeCards)

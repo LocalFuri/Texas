@@ -1953,6 +1953,31 @@ namespace TexasHoldem
 
             string decisionLabel = ResolveTrainerDecisionLabel(recommendedAction, callAmount);
 
+            bool isAce = human.Name == "Ace Maverick";
+            bool facingAllIn = isPreflop
+                && PreflopStrategy.IsFacingAllInCommitment(callAmount, human.Chips);
+            int callersBefore = _gameManager.CallersBefore;
+            int playersBehind = _gameManager.PlayersBehind;
+            int playersInPot = CountPlayersInPot(_gameManager.Players);
+            string holeCards = FormatTrainerHoleCards(human.HoleCards);
+
+            float effectiveStackBb = 0f;
+            string stackBand = string.Empty;
+            if (isPreflop)
+            {
+                int heroTotal = human.Chips + human.CurrentBet;
+                int villainTotal = PreflopStrategy.ResolveVillainTotalChipsForEffectiveStack(
+                    human, _gameManager.Players, currentBet);
+                effectiveStackBb = PreflopStrategy.ResolveEffectiveStackBB(
+                    heroTotal, villainTotal, _gameManager.BigBlindAmount);
+                stackBand = PreflopStrategy.ResolveEffectiveStackBand(
+                    heroTotal, villainTotal, _gameManager.BigBlindAmount).ToString();
+            }
+
+            int confidence = isPreflop
+                ? ResolveAcePreflopConfidence(preflopGroup, facingRaise, facingAllIn, streetRaiseCount, callersBefore)
+                : Mathf.Clamp(Mathf.RoundToInt(equityPercent), 0, 100);
+
             var snapshot = new HumanTrainerAdvice
             {
                 TurnId = turnId,
@@ -1972,10 +1997,77 @@ namespace TexasHoldem
                 PotBeforeAction = pot,
                 DecisionLabel = decisionLabel,
                 Explanation = BuildTrainerExplanation(
-                    isPreflop, preflopGroup, potOdds, equityPercent, position, boardTexture),
+                    isPreflop, preflopGroup, potOdds, equityPercent, position, boardTexture,
+                    facingAllIn, streetRaiseCount, effectiveStackBb),
+                IsPreflop = isPreflop,
+                IsAceMaverick = isAce,
+                HoleCards = holeCards,
+                PlayersInPot = playersInPot,
+                CallersBefore = callersBefore,
+                PlayersBehind = playersBehind,
+                StreetRaiseCount = streetRaiseCount,
+                FacingRaise = facingRaise,
+                FacingAllIn = facingAllIn,
+                EffectiveStackBB = effectiveStackBb,
+                EffectiveStackBand = stackBand,
+                ConfidencePercent = confidence,
             };
 
             return snapshot;
+        }
+
+        private static int CountPlayersInPot(System.Collections.Generic.IReadOnlyList<PlayerState> players)
+        {
+            if (players == null)
+                return 0;
+
+            int count = 0;
+            for (int i = 0; i < players.Count; i++)
+            {
+                PlayerState p = players[i];
+                if (p == null || p.HasFolded)
+                    continue;
+                if (p.CurrentBet > 0 || p.IsAllIn)
+                    count++;
+            }
+
+            return count;
+        }
+
+        private static string FormatTrainerHoleCards(System.Collections.Generic.IReadOnlyList<Card> cards)
+        {
+            if (cards == null || cards.Count < 2)
+                return string.Empty;
+            return $"{cards[0]} {cards[1]}";
+        }
+
+        /// <summary>
+        /// Display confidence from existing hand-tier / spot labels only (Ace Maverick Coach).
+        /// Does not change <see cref="PreflopStrategy"/> decisions.
+        /// </summary>
+        private static int ResolveAcePreflopConfidence(
+            PreflopHandGroup group,
+            bool facingRaise,
+            bool facingAllIn,
+            int streetRaiseCount,
+            int callersBefore)
+        {
+            int confidence = group switch
+            {
+                PreflopHandGroup.Premium  => 90,
+                PreflopHandGroup.Strong   => 75,
+                PreflopHandGroup.Playable => 55,
+                _                         => 30,
+            };
+
+            if (facingAllIn)
+                confidence = Mathf.Max(20, confidence - 10);
+            if (facingRaise && streetRaiseCount >= 2)
+                confidence = Mathf.Max(20, confidence - 10);
+            if (callersBefore >= 2)
+                confidence = Mathf.Max(20, confidence - 5);
+
+            return confidence;
         }
 
         private static string ResolveTrainerDecisionLabel(BettingAction action, int amountToCall)
@@ -2000,9 +2092,12 @@ namespace TexasHoldem
             float potOdds,
             float equityPercent,
             string position,
-            string boardTexture)
+            string boardTexture,
+            bool facingAllIn = false,
+            int streetRaiseCount = 0,
+            float effectiveStackBb = 0f)
         {
-            var parts = new System.Collections.Generic.List<string>(4);
+            var parts = new System.Collections.Generic.List<string>(6);
 
             if (isPreflop)
             {
@@ -2013,6 +2108,14 @@ namespace TexasHoldem
                     PreflopHandGroup.Playable => "Playable hand",
                     _                         => "Weak hand",
                 });
+                if (facingAllIn && potOdds > 0f)
+                    parts.Add($"Pot odds {potOdds:0.0}% (shove)");
+                else if (potOdds > 0f)
+                    parts.Add($"Pot odds {potOdds:0.0}%");
+                if (streetRaiseCount > 0)
+                    parts.Add($"Raises {streetRaiseCount}");
+                if (effectiveStackBb > 0f)
+                    parts.Add($"{effectiveStackBb:0}bb eff");
             }
             else
             {

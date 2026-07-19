@@ -161,33 +161,84 @@ namespace TexasHoldem.Dev
             }
 
             EnsureOverlay();
-            if (_text == null)
+            if (_text == null || _panel == null)
                 return;
 
-            var sb = new StringBuilder(128);
-            sb.Append("AI Coach\n");
-            sb.Append("Decision: ").Append(advice.DecisionLabel ?? advice.AdviceLabel ?? "?");
+            var sb = new StringBuilder(256);
+            sb.Append("AI Coach");
+            if (advice.IsAceMaverick)
+                sb.Append(" — Ace Maverick");
+            sb.AppendLine();
 
-            if (advice.RecommendedAction == BettingAction.Raise
-                || (advice.RecommendedAction == BettingAction.AllIn && advice.RecommendedRaiseIncrement > 0))
+            // Ace Maverick preflop: full checklist (display only; same shared TrainerAdvice).
+            if (advice.IsAceMaverick && advice.IsPreflop)
             {
-                sb.Append("\nAmount: ").Append(advice.RecommendedTotalBet);
-                if (advice.RecommendedRaiseIncrement > 0
-                    && advice.RecommendedTotalBet != advice.RecommendedRaiseIncrement)
+                sb.Append("Position: ").Append(advice.Position ?? "?").AppendLine();
+                sb.Append("Hole cards: ").Append(advice.HoleCards ?? "?").AppendLine();
+                sb.Append("Players in pot: ").Append(advice.PlayersInPot);
+                sb.Append(" (callers before ").Append(advice.CallersBefore).Append(')').AppendLine();
+                sb.Append("Raise count: ").Append(advice.StreetRaiseCount).AppendLine();
+                sb.Append("All-in: ").Append(advice.FacingAllIn ? "Yes" : "No").AppendLine();
+                sb.Append("Stack depth: ").Append(advice.EffectiveStackBB.ToString("0"))
+                    .Append("bb (").Append(advice.EffectiveStackBand ?? "?").Append(')').AppendLine();
+                sb.Append("Call amount: ").Append(advice.AmountToCall).AppendLine();
+                if (advice.FacingAllIn || advice.AmountToCall > 0)
+                    sb.Append("Pot odds: ").Append(advice.PotOddsPercent.ToString("0.0")).Append('%').AppendLine();
+                sb.Append("Recommended: ").Append(advice.DecisionLabel ?? advice.AdviceLabel ?? "?");
+                if (advice.RecommendedAction == BettingAction.Raise)
+                    sb.Append(" to ").Append(advice.RecommendedTotalBet);
+                else if (advice.RecommendedAction == BettingAction.AllIn)
+                    sb.Append(" (All-In)");
+                sb.AppendLine();
+                sb.Append("Sizing: ").Append(FormatSizing(advice)).AppendLine();
+                sb.Append("Confidence: ").Append(advice.ConfidencePercent).Append('%');
+                _panel.sizeDelta = new Vector2(300f, 240f);
+            }
+            else
+            {
+                sb.Append("Decision: ").Append(advice.DecisionLabel ?? advice.AdviceLabel ?? "?");
+
+                if (advice.RecommendedAction == BettingAction.Raise
+                    || (advice.RecommendedAction == BettingAction.AllIn && advice.RecommendedRaiseIncrement > 0))
                 {
-                    sb.Append(" (increment ").Append(advice.RecommendedRaiseIncrement).Append(')');
+                    sb.Append("\nAmount: ").Append(advice.RecommendedTotalBet);
+                    if (advice.RecommendedRaiseIncrement > 0
+                        && advice.RecommendedTotalBet != advice.RecommendedRaiseIncrement)
+                    {
+                        sb.Append(" (increment ").Append(advice.RecommendedRaiseIncrement).Append(')');
+                    }
                 }
-            }
-            else if (advice.RecommendedAction == BettingAction.AllIn)
-            {
-                sb.Append("\nAmount: All-In");
-            }
+                else if (advice.RecommendedAction == BettingAction.AllIn)
+                {
+                    sb.Append("\nAmount: All-In");
+                }
 
-            if (!string.IsNullOrEmpty(advice.Explanation))
-                sb.Append("\n").Append(advice.Explanation);
+                if (!string.IsNullOrEmpty(advice.Explanation))
+                    sb.Append("\n").Append(advice.Explanation);
+
+                _panel.sizeDelta = new Vector2(280f, 110f);
+            }
 
             _text.text = sb.ToString();
             SetOverlayVisible(true);
+        }
+
+        private static string FormatSizing(HumanTrainerAdvice advice)
+        {
+            if (advice == null)
+                return "—";
+
+            switch (advice.RecommendedAction)
+            {
+                case BettingAction.Raise:
+                    return $"total {advice.RecommendedTotalBet} (inc {advice.RecommendedRaiseIncrement})";
+                case BettingAction.AllIn:
+                    return "All-In";
+                case BettingAction.Call:
+                    return $"call {advice.AmountToCall}";
+                default:
+                    return "—";
+            }
         }
 
         private void SetOverlayVisible(bool visible)

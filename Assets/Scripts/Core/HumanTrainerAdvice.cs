@@ -33,5 +33,21 @@ namespace TexasHoldem
 
         /// <summary>Short explanation from existing trainer evaluation inputs only.</summary>
         public string Explanation { get; set; }
+
+        // --- Ace Maverick preflop context (populated on preflop human turns) ---
+
+        public bool IsPreflop { get; set; }
+        public bool IsAceMaverick { get; set; }
+        public string HoleCards { get; set; }
+        public int PlayersInPot { get; set; }
+        public int CallersBefore { get; set; }
+        public int PlayersBehind { get; set; }
+        public int StreetRaiseCount { get; set; }
+        public bool FacingRaise { get; set; }
+        public bool FacingAllIn { get; set; }
+        public float EffectiveStackBB { get; set; }
+        public string EffectiveStackBand { get; set; }
+        /// <summary>Display confidence from existing hand tier / spot (not a new strategy).</summary>
+        public int ConfidencePercent { get; set; }
     }
 }

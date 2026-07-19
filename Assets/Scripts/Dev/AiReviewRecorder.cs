@@ -305,6 +305,14 @@ namespace TexasHoldem.Dev
             snap.DecisionLabel = advice.DecisionLabel ?? string.Empty;
             snap.Explanation = advice.Explanation ?? string.Empty;
             snap.CachedEquityPercent = advice.EquityPercent;
+            snap.ConfidencePercent = advice.ConfidencePercent;
+            snap.IsAceMaverickPreflop = advice.IsAceMaverick && advice.IsPreflop;
+            snap.PlayersInPot = advice.PlayersInPot;
+            snap.CallersBefore = advice.CallersBefore;
+            snap.PlayersBehind = advice.PlayersBehind;
+            snap.FacingAllIn = advice.FacingAllIn;
+            snap.EffectiveStackBB = advice.EffectiveStackBB;
+            snap.EffectiveStackBand = advice.EffectiveStackBand ?? string.Empty;
             snap.TrainerInputs = new AiReviewTrainerInputsDto
             {
                 equity = advice.EquityPercent,
@@ -347,6 +355,14 @@ namespace TexasHoldem.Dev
                 recommendedBetOrRaiseAmount = snap.RecommendedRaiseAmount,
                 recommendedTotalBet = snap.RecommendedTotalBet,
                 explanation = snap.Explanation ?? string.Empty,
+                confidencePercent = snap.ConfidencePercent,
+                aceMaverickPreflop = snap.IsAceMaverickPreflop,
+                playersInPot = snap.PlayersInPot,
+                callersBefore = snap.CallersBefore,
+                playersBehind = snap.PlayersBehind,
+                facingAllIn = snap.FacingAllIn,
+                effectiveStackBB = snap.EffectiveStackBB,
+                effectiveStackBand = snap.EffectiveStackBand ?? string.Empty,
                 trainerInputs = snap.TrainerInputs ?? new AiReviewTrainerInputsDto(),
                 cachedHumanEquityPercent = snap.CachedEquityPercent,
                 actualAction = action.ToString(),
@@ -712,6 +728,14 @@ namespace TexasHoldem.Dev
             public int RecommendedRaiseAmount;
             public int RecommendedTotalBet;
             public int CachedEquityPercent;
+            public int ConfidencePercent;
+            public bool IsAceMaverickPreflop;
+            public int PlayersInPot;
+            public int CallersBefore;
+            public int PlayersBehind;
+            public bool FacingAllIn;
+            public float EffectiveStackBB;
+            public string EffectiveStackBand;
             public int HeroStreetBetBefore;
             public AiReviewTrainerInputsDto TrainerInputs;
         }
@@ -741,6 +765,14 @@ namespace TexasHoldem.Dev
             public int recommendedBetOrRaiseAmount;
             public int recommendedTotalBet;
             public string explanation;
+            public int confidencePercent;
+            public bool aceMaverickPreflop;
+            public int playersInPot;
+            public int callersBefore;
+            public int playersBehind;
+            public bool facingAllIn;
+            public float effectiveStackBB;
+            public string effectiveStackBand;
             public AiReviewTrainerInputsDto trainerInputs;
             public int cachedHumanEquityPercent;
             public string actualAction;
