@@ -7,7 +7,7 @@ using UnityEngine;
 namespace TexasHoldem.Dev
 {
     /// <summary>
-    /// Developer-only observer: records interesting human decisions during normal play
+    /// Developer-only observer: records every human (Hero) decision during normal play
     /// as JSON Lines under <see cref="Application.persistentDataPath"/>.
     /// Does not change AI strategy or gameplay.
     /// </summary>
@@ -26,6 +26,7 @@ namespace TexasHoldem.Dev
         private readonly List<PendingDecision> _pending = new List<PendingDecision>(8);
         private bool _loggedPath;
         private bool _applicationQuitting;
+        private GamePhase _lastObservedPhase = GamePhase.WaitingToStart;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void EnsureExists()
@@ -81,6 +82,8 @@ namespace TexasHoldem.Dev
             _game.OnPlayerTurn.AddListener(OnPlayerTurn);
             _game.OnPlayerAction.AddListener(OnPlayerAction);
             _game.OnRoundEnded.AddListener(OnRoundEnded);
+            _game.OnPhaseChanged.AddListener(OnPhaseChanged);
+            _lastObservedPhase = _game.CurrentPhase;
         }
 
         private void Unbind()
@@ -92,6 +95,7 @@ namespace TexasHoldem.Dev
             _game.OnPlayerTurn.RemoveListener(OnPlayerTurn);
             _game.OnPlayerAction.RemoveListener(OnPlayerAction);
             _game.OnRoundEnded.RemoveListener(OnRoundEnded);
+            _game.OnPhaseChanged.RemoveListener(OnPhaseChanged);
             _game = null;
             _ui = null;
         }
@@ -123,6 +127,29 @@ namespace TexasHoldem.Dev
             _sessionNetAtHandStart = human != null ? human.SessionNetProfit : 0;
         }
 
+        /// <summary>
+        /// New game session: leave WaitingToStart/GameOver into the first hand (RoundOver).
+        /// Deletes the JSONL so each session starts with a fresh log.
+        /// </summary>
+        private void OnPhaseChanged(GamePhase phase)
+        {
+            bool startingNewGame =
+                (phase == GamePhase.RoundOver)
+                && (_lastObservedPhase == GamePhase.WaitingToStart
+                    || _lastObservedPhase == GamePhase.GameOver);
+
+            _lastObservedPhase = phase;
+
+            if (!startingNewGame)
+                return;
+
+            DeleteReviewLogForNewGame();
+            _handNumber = 0;
+            _pending.Clear();
+            _hasTurnSnapshot = false;
+            _decisionIndexInHand = 0;
+        }
+
         private void OnPlayerTurn(PlayerState player)
         {
             _hasTurnSnapshot = false;
@@ -143,9 +170,6 @@ namespace TexasHoldem.Dev
 
             TurnSnapshot snap = _turnSnapshot;
             _hasTurnSnapshot = false;
-
-            if (!IsInteresting(snap, action))
-                return;
 
             AiReviewDecisionDto record = CreatePendingRecord(snap, player, action, amount);
             _pending.Add(new PendingDecision(record));
@@ -402,32 +426,6 @@ namespace TexasHoldem.Dev
             return flags == BoardTextureFlags.None ? "Dry" : flags.ToString();
         }
 
-        private static bool IsInteresting(TurnSnapshot snap, BettingAction action)
-        {
-            if (!snap.IsPreflop)
-                return true;
-
-            if (snap.FacingRaise)
-                return true;
-
-            bool isWeak = snap.PreflopGroup == PreflopHandGroup.Weak;
-
-            // Skip obvious weak unopened folds.
-            if (action == BettingAction.Fold && isWeak)
-                return false;
-
-            // Skip weak BB free checks.
-            if (action == BettingAction.Check && isWeak)
-                return false;
-
-            // Skip weak unopened opens.
-            if ((action == BettingAction.Raise || action == BettingAction.AllIn) && isWeak)
-                return false;
-
-            // Keep non-weak opens, limps, non-weak folds/checks, etc.
-            return true;
-        }
-
         private static string ResolveOutcomeStatus(
             bool bbWalk,
             IReadOnlyList<(PlayerState Player, HandResult Result)> showdownHands)
@@ -586,6 +584,29 @@ namespace TexasHoldem.Dev
 
         private static string ResolveOutputPath() =>
             Path.Combine(Application.persistentDataPath, FileName);
+
+        private void DeleteReviewLogForNewGame()
+        {
+            try
+            {
+                string path = ResolveOutputPath();
+                if (!File.Exists(path))
+                    return;
+
+                File.Delete(path);
+                Debug.LogFormat(
+                    LogType.Log,
+                    LogOption.NoStacktrace,
+                    null,
+                    "{0} New game: cleared review log at {1}",
+                    LogPrefix,
+                    path);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"{LogPrefix} Failed to clear review log: {ex.Message}");
+            }
+        }
 
         /// <summary>
         /// Ensures every JSON line includes <c>"chatgptReview":null</c>
