@@ -339,6 +339,11 @@ namespace TexasHoldem
         private Canvas               _rootCanvas;
 
         private bool          _hasPendingActionBadge;
+        /// <summary>
+        /// When true, Check/Call/Raise/All-In badges stay visible until Ace Maverick acts
+        /// (or the street/hand ends). Fold badges still use a short timer.
+        /// </summary>
+        private bool          _holdStreetActionBadges = true;
         private bool          _winnerCelebrationActive;
         private Coroutine     _winnerCelebrationCoroutine;
         private Coroutine     _potCollectAfterZoomCoroutine;
@@ -922,6 +927,13 @@ namespace TexasHoldem
             if (_winnerCelebrationActive) return;
             if (!ShouldShowActionBadge(player, action)) return;
 
+            // Ace decided: drop other seats' held labels, then show Ace's badge briefly.
+            if (player.Type == PlayerType.Human)
+            {
+                _holdStreetActionBadges = false;
+                HideActionBadgesExcept(player);
+            }
+
             ShowActionBadgeForPlayer(player, action, amount);
 
             if (player == _humanPlayer && action == BettingAction.Fold)
@@ -950,9 +962,17 @@ namespace TexasHoldem
                 return;
             }
 
-            float duration = player.Type == PlayerType.AI
-                ? ActionBadge.BotDisplayDurationSecs
-                : ActionBadge.DisplayDurationSecs;
+            // Hold Check/Call/Raise/All-In until Ace acts. Fold stays short-lived.
+            bool persistUntilHuman =
+                _holdStreetActionBadges
+                && action != BettingAction.Fold
+                && player.Type != PlayerType.Human;
+
+            float duration = persistUntilHuman
+                ? 0f
+                : player.Type == PlayerType.AI
+                    ? ActionBadge.BotDisplayDurationSecs
+                    : ActionBadge.DisplayDurationSecs;
 
             view.ShowAction(action, amount, duration);
         }
@@ -1008,6 +1028,36 @@ namespace TexasHoldem
                 view?.HideActionBadge();
         }
 
+        private void HideActionBadgesExcept(PlayerState keepPlayer)
+        {
+            IReadOnlyList<PlayerView> views = ResolvePlayerViews();
+            IReadOnlyList<PlayerState> players = _gameManager?.Players;
+            if (views == null)
+                return;
+
+            for (int i = 0; i < views.Count; i++)
+            {
+                PlayerView view = views[i];
+                if (view == null)
+                    continue;
+
+                if (keepPlayer != null
+                    && players != null
+                    && i < players.Count
+                    && players[i] == keepPlayer)
+                {
+                    continue;
+                }
+
+                view.HideActionBadge();
+            }
+        }
+
+        private void BeginHoldingStreetActionBadges()
+        {
+            _holdStreetActionBadges = true;
+        }
+
         private void ClearPendingActionBadge()
         {
             _hasPendingActionBadge = false;
@@ -1023,6 +1073,7 @@ namespace TexasHoldem
             HideDealDeckGhost();
 
             StopHumanHoleReveal();
+            BeginHoldingStreetActionBadges();
             HideAllActionBadges();
 
             IReadOnlyList<PlayerView> views = ResolvePlayerViews();
@@ -1075,6 +1126,17 @@ namespace TexasHoldem
 
         private void OnPhaseChanged(GamePhase phase)
         {
+            // New betting street: clear previous-street labels and hold again until Ace acts.
+            if (phase == GamePhase.PreFlop
+                || phase == GamePhase.Flop
+                || phase == GamePhase.Turn
+                || phase == GamePhase.River)
+            {
+                BeginHoldingStreetActionBadges();
+                HideAllActionBadges();
+                ClearPendingActionBadge();
+            }
+
             if (phase == GamePhase.Showdown) RevealAllCards();
             if (phase == GamePhase.RoundOver)
                 HideBettingControls();
@@ -1491,6 +1553,7 @@ namespace TexasHoldem
             _hasPendingActionBadge    = false;
             _winnerCelebrationActive  = false;
             _suppressDealerButton     = true;
+            _holdStreetActionBadges   = true;
 
             _previousBets.Clear();
             StopTurnTimer();

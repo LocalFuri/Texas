@@ -2,3 +2,69 @@
 ==========================
 
 (Complete hand protocols appended below.)
+
+=== Hand #1 ===
+Players:
+  Ace Maverick | pos=SmallBlind | hole=Q♥ Q♦ | startStack=1000 | tier=Premium
+  Lady Luck | pos=BigBlind | hole=2♥ 10♦ | startStack=1000 | tier=Weak
+  Prince Beaumont | pos=Early | hole=5♦ K♣ | startStack=1000 | tier=Weak
+  Victor Shark | pos=Middle | hole=Q♣ A♥ | startStack=1000 | tier=Strong
+  Jasmine Vale | pos=Cutoff | hole=4♦ A♣ | startStack=1000 | tier=Weak
+  Alex Hunter | pos=Button | hole=5♣ 9♠ | startStack=1000 | tier=Weak
+Board by street:
+  Flop:  10♥ 3♠ 2♣
+  Turn:  (none)
+  River: (none)
+Betting sequence:
+  PreFlop | Ace Maverick | Call | amount=1 | pot=1 | tableBet=0 | playerStreetBet=1 | streetRaiseCount=0 | tier=Premium
+  PreFlop | Lady Luck | Call | amount=2 | pot=3 | tableBet=2 | playerStreetBet=2 | streetRaiseCount=0 | tier=Weak
+  PreFlop | Prince Beaumont | Fold | amount=0 | pot=3 | tableBet=2 | playerStreetBet=0 | streetRaiseCount=0 | tier=Weak
+  PreFlop | Victor Shark | Raise | amount=3 | pot=8 | tableBet=5 | playerStreetBet=5 | streetRaiseCount=1 | tier=Strong
+  PreFlop | Jasmine Vale | Fold | amount=0 | pot=8 | tableBet=5 | playerStreetBet=0 | streetRaiseCount=1 | tier=Weak
+  PreFlop | Alex Hunter | Fold | amount=0 | pot=8 | tableBet=5 | playerStreetBet=0 | streetRaiseCount=1 | tier=Weak
+  PreFlop | Ace Maverick | Raise | amount=3 | pot=15 | tableBet=8 | playerStreetBet=8 | streetRaiseCount=2 | tier=Premium
+  PreFlop | Lady Luck | Fold | amount=0 | pot=15 | tableBet=8 | playerStreetBet=2 | streetRaiseCount=2 | tier=Weak
+  PreFlop | Victor Shark | Call | amount=3 | pot=18 | tableBet=8 | playerStreetBet=8 | streetRaiseCount=2 | tier=Strong
+  Flop | Ace Maverick | Raise | amount=6 | pot=24 | tableBet=6 | playerStreetBet=6 | streetRaiseCount=1 | tier=Premium
+  Flop | Victor Shark | Fold | amount=0 | pot=24 | tableBet=6 | playerStreetBet=0 | streetRaiseCount=1 | tier=Strong
+Postflop AI decisions:
+[PostflopAI]
+Player: Victor Shark
+Street: Flop
+Hand: Q♣ A♥
+Board: 10♥ 3♠ 2♣
+Category: A-Q-10-3-2 High
+Opponent Range: Strong
+Opponent Range Why: bet/raise (streetRaiseCount=1); preflopRaises=2 floor=Strong
+Base Range: Strong
+Player Tendency (Ace Maverick): Tightness=0,00, Aggression=0,00
+Observed Action: Bet
+Preview Adjustment: None
+Preview Range: Strong
+Preview Why: No tendency axes above threshold
+Equity (MC, Strong): 22,6%
+Pot Odds: 20,0%
+Call Amount: 6
+Table Bet: 6
+Player Street Bet: 0
+Pot: 24
+Branch: facing-bet
+Raise Threshold: 35,0%
+Call Threshold: 23,0%
+Decision Threshold: 23,0%
+Opponents: 1
+Draw: None
+Board Texture: Dry
+Decision: Fold
+Raise Amount: 0
+Reason: Equity below call threshold (23,0%)
+Bet Size: 0
+Hand Summary:
+Preflop: Call
+Flop: Fold
+---
+Final board: 10♥ 3♠ 2♣
+Showdown hands:
+  Ace Maverick | hole=Q♥ Q♦ | OnePair [12,10,3,2]
+Winner: Ace Maverick
+Pot: gross=18 awarded=18
