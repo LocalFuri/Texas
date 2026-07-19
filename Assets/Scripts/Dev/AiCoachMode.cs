@@ -246,8 +246,9 @@ namespace TexasHoldem.Dev
             && advice.CallersBefore <= 0;
 
         /// <summary>
-        /// Ace Coach call/open/raise line. Raise totals come from the Raise control
-        /// (same clamped total the Raise button submits), not trainer sizing.
+        /// Ace Coach call/open/raise line from the shared snapshot recommendation.
+        /// Uses <see cref="HumanTrainerAdvice.RecommendedTotalBet"/> (advisor size), not the
+        /// Raise control default (which is often the table minimum / 1 BB).
         /// Fold/Check → no line.
         /// </summary>
         private bool TryFormatAceActionLine(HumanTrainerAdvice advice, out string line)
@@ -265,8 +266,6 @@ namespace TexasHoldem.Dev
                 case BettingAction.Raise:
                 {
                     int totalBet = advice.RecommendedTotalBet;
-                    if (_ui != null && _ui.TryGetHumanRaiseTotalBet(out int raiseTotal))
-                        totalBet = raiseTotal;
 
                     if (!advice.IsPreflop)
                     {

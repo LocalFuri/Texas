@@ -2294,7 +2294,47 @@ namespace TexasHoldem
                 return;
             }
 
+            SeedRaiseInputFromAdviceIfStillAtMinimum(snapshot);
             humanView.SetEquityDisplay(snapshot.ConfidencePercent, snapshot.AdviceLabel);
+        }
+
+        /// <summary>
+        /// If the Raise field is still at the table minimum (default from PrepareRaiseInputForTurn),
+        /// replace it with the trainer recommended total so BET matches the coach.
+        /// Does not overwrite a value the player has already edited.
+        /// </summary>
+        private void SeedRaiseInputFromAdviceIfStillAtMinimum(HumanTrainerAdvice snapshot)
+        {
+            if (snapshot == null
+                || _raiseInput == null
+                || !CanHumanRaise()
+                || snapshot.RecommendedAction != BettingAction.Raise
+                || snapshot.RecommendedTotalBet <= 0)
+            {
+                return;
+            }
+
+            int minTotal = GetMinRaiseTotal();
+            int maxTotal = GetMaxRaiseTotal();
+            if (maxTotal < minTotal)
+                return;
+
+            string raw = _raiseInput.text != null ? _raiseInput.text.Trim() : string.Empty;
+            int typed = 0;
+            bool parsed = int.TryParse(raw, out typed);
+            bool stillAtDefault = string.IsNullOrEmpty(raw) || (parsed && typed == minTotal);
+            if (!stillAtDefault)
+                return;
+
+            int seeded = Mathf.Clamp(snapshot.RecommendedTotalBet, minTotal, maxTotal);
+            if (parsed && seeded == typed)
+                return;
+
+            _raiseInput.text = seeded.ToString();
+            ApplyRaiseInputLimits();
+            StyleRaiseInput();
+            RaiseInputBuilder.ResetRaiseInputEntryState(_raiseInput, _raiseInput.text);
+            NotifyHumanRaiseTotalChanged();
         }
 
         private void RefreshHumanEquityAdviceOnly()
