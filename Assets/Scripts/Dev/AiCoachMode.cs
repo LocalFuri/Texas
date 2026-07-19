@@ -246,10 +246,9 @@ namespace TexasHoldem.Dev
             && advice.CallersBefore <= 0;
 
         /// <summary>
-        /// Ace Coach call/open/raise line from the shared snapshot recommendation.
-        /// Uses <see cref="HumanTrainerAdvice.RecommendedTotalBet"/> (advisor size), not the
-        /// Raise control default (which is often the table minimum / 1 BB).
-        /// Fold/Check → no line.
+        /// Ace Coach action line from the shared snapshot recommendation.
+        /// Amounts only for Bet/Raise (advisor <see cref="HumanTrainerAdvice.RecommendedTotalBet"/>).
+        /// Check / Call / Fold show the action label with no amount.
         /// </summary>
         private bool TryFormatAceActionLine(HumanTrainerAdvice advice, out string line)
         {
@@ -259,8 +258,16 @@ namespace TexasHoldem.Dev
 
             switch (advice.RecommendedAction)
             {
+                case BettingAction.Fold:
+                    line = "Fold";
+                    return true;
+
+                case BettingAction.Check:
+                    line = "Check";
+                    return true;
+
                 case BettingAction.Call:
-                    line = "Call: " + advice.AmountToCall;
+                    line = "Call";
                     return true;
 
                 case BettingAction.Raise:
